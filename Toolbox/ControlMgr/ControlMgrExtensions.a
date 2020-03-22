@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted the speedup in <SM2>. The mouse-down and tick-count check loop
+;							was de-reversed -- this might have been the bugfix component of <SM2>,
+;							but it is not clear how.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ControlMgrExtensions.a
 ;
 ;	Contains:	Extensions to the Control Manager used by both the ROM and System.
@@ -83,7 +92,7 @@ result			DS.W	1
 FirstValue		EQU		12						; Number of ticks to begin with.
 KnownEndValue	EQU		3						; Number of ticks to end with, when the list size is known.
 UnknownEndValue	EQU		0						; Number of ticks to end with, when the list size is unknown.
-DecayValue		EQU		48						; Time to decay from StartValue to EndValue.
+DecayValue		EQU		108						; Time to decay from StartValue to EndValue.		ex<SM2> <Sys7.1>
 KnownConst		EQU		DecayValue / (FirstValue - KnownEndValue)
 UnknownConst	EQU		DecayValue / (FirstValue - UnknownEndValue)
 
@@ -99,13 +108,14 @@ UnknownConst	EQU		DecayValue / (FirstValue - UnknownEndValue)
 				CLR.W	result(SP)				; No error.
 				
 ; Commented out 5/18/93 RPC so that EndValue is always 0 for both ListMgr and non-ListMgr alike.
-;				TST.W	itemsVisible(SP)		; Know the number of items visible?
-;				BEQ.S	@unknown				; No, skip this part.
-;				MOVEQ.L	#KnownEndValue, D0		; EndValue = KnownEndValue
-;				MOVEQ.L	#KnownConst, D1			; For speed
-;				BRA.S	@calcDelay
+; ex<SM2> <Sys7.1> Uncommented to revert that change
+				TST.W	itemsVisible(SP)		; Know the number of items visible?
+				BEQ.S	@unknown				; No, skip this part.
+				MOVEQ.L	#KnownEndValue, D0		; EndValue = KnownEndValue
+				MOVEQ.L	#KnownConst, D1			; For speed
+				BRA.S	@calcDelay
 
-;@unknown
+@unknown
 				MOVEQ.L	#UnknownEndValue, D0	; EndValue = UnknownEndValue
 				MOVEQ.L	#UnknownConst, D1		; For speed
 
@@ -122,17 +132,19 @@ UnknownConst	EQU		DecayValue / (FirstValue - UnknownEndValue)
 
 ; We need to loop until D0 <= TickCount() or the mouse button comes up.
 				MOVE.L	D0, -(SP)				; Save the time on the stack.
+; ex<SM2> <Sys7.1> The order of these two checks was reversed (unclear why)
 @loopDelay
+				SUBQ.L	#2, SP
+				_StillDown						; Mouse still down?
+				TST.B	(SP)+
+				BEQ.S	@endDelay				; ex<SM2> <Sys7.1> Was BNE.S @loopDelay
+
 				SUBQ.L	#4, SP
 				_TickCount
 				MOVE.L	(SP)+, D0
 				CMP.L	(SP), D0				; Timed out?
-				BHS.S	@endDelay				; Yes, Get Out.
+				BLO.S	@loopDelay				; ex<SM2> <Sys7.1> Was BHS.S @endDelay
 
-				SUBQ.L	#2, SP
-				_StillDown						; Mouse still down?
-				TST.B	(SP)+
-				BNE.S	@loopDelay				; Yes, Try Again.
 
 
 @endDelay

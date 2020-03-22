@@ -1,4 +1,12 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Restored missing source files to the Backlight DRVR build
+#							Made build rule for linked patch file backlightpatch.a 
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		Backlight.make
 #
 #	Contains:	Makefile for Backlight.
@@ -20,12 +28,19 @@
 # Backlight driver
 
 BL_DRVR_OBJ		=	"{ObjDir}backlight.c.o"											∂
-					"{ObjDir}backlight.a.o"											
+					"{ObjDir}backlight.a.o"											∂
+					"{ObjDir}pwm.c.o"				# <Sys7.1>						∂
+					"{ObjDir}register.c.o"			# <Sys7.1>						∂
+					"{CLibraries}StdCLib.o"			# <Sys7.1>
 
 "{ObjDir}backlight.a.o" 	ƒ	"{AIncludes}SysEqu.a"								∂
 								"{AIncludes}SysErr.a"								∂
 								"{BackLightDir}backlight.a"
 	Asm -o {Targ} "{BackLightDir}backlight.a" {StdAOpts}
+
+# <Sys7.1>
+"{ObjDir}backlightpatch.a.o"	ƒ	"{BackLightDir}backlightpatch.a"
+	Asm -o {Targ} "{BackLightDir}backlightpatch.a" {StdAOpts}
 
 "{ObjDir}backlight.c.o" 	ƒ	"{BackLightDir}backlight.h"							∂
 								"{BackLightDir}PowerMgr.h"							∂

@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM5> word branch. Reverted <SM7> code to search for Chicago in
+;							ROM. Reverted <SM8>/<12> fix to gestaltScriptMgr return code.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ScriptMgrExtensions.a
 ;
 ;	Contains:	Extensions to the Script Manager that were formerly in ScriptMgrExtTail.a.
@@ -100,7 +108,7 @@ gestaltScriptMgr
 
 ; initialize loop, set up default return values
 			move.l	gestaltSelector(a6),d0				; selector value
-			move.w	#gestaltUndefSelectorErr,result(a6) ; assume unknown selector	<12>
+			move.l	#gestaltUndefSelectorErr,result(a6) ; assume unknown selector	<12> <Sys7.1> Changed from move.l
 			lea	gestaltSMgrTable,a1
 
 ; loop to find Gestalt selector in table
@@ -599,7 +607,7 @@ MacPlusISOOptSp	equ	$1004				; bits set for Opt & Space on Mac+ ISO		<7>
 		subq	#4,sp						; space for return value
 		move.l	#'FOND',-(sp)				; push type
 		move.w	d4,-(sp)					; push next id in range
-		MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM7> rb
+											; 										ex<SM7> <Sys7.1> Not in ROM
 		_GetResource
 		tst.l	(sp)+						; was it there?
 		bne.s	@popRetnAndSetSysFondId		; if yes, go reset
@@ -1033,7 +1041,7 @@ FixFond
 			subq	#4,sp						; return room
 			move.l	#'FOND',-(sp)				; see if this FOND exists
 			move.w	(a2),-(sp)					; id, get the id from a2 pointer <47>
-			MOVE.W	#MapTrue,RomMapInsert		; look in ROM first						<SM7> rb
+												; 									ex<SM7> <Sys7.1> Not in ROM
 			_GetResource
 			tst.l	(sp)+						; was it there?
 			bne.s	@fixFondDone				; yes, ok
@@ -1689,7 +1697,7 @@ haveValidScript								;										<38>
 			move.l	d0,sourceLen(a6)		; save length
 			_PtrToHand						; make new handle containing copy of text
 			move.w	d0,errCode(a6)			; save err code
-			bne		lwrTrUnlk				; if error in PtrToHand, quit <SM5> CSS
+			bne.s	lwrTrUnlk				; if error in PtrToHand, quit <SM5> CSS <Sys7.1>
 			move.l	a0,sourceHndl(a6)		; save new source handle
 			move.l	sourceLen(a6),d0		; get length again
 			_NewHandle						; make new handle with random contents

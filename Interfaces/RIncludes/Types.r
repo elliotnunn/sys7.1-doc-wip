@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM4>: replaced new 'actb' with old, and old with older
+							Referred to the MPW 3.2 version of this file (1990, E.T.O. #4)
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Types.r
 
 	Contains:	Type Declarations for Rez and DeRez
@@ -148,23 +156,15 @@ type 'acur' {
 #ifdef oldTemp
 /*--------------------------actb • Alert Color old Lookup Table--------------------------*/
 	type 'actb' {
-			unsigned hex longint = 0;								/* ctSeed				*/
-			integer = 0;											/* ctFlags				*/
+			unsigned hex longint;									/* ctSeed				*/
+			integer;												/* ctFlags				*/
 			integer = $$Countof(ColorSpec) - 1;						/* ctSize				*/
 			wide array ColorSpec {
 					integer		wContentColor,						/* value				*/
 								wFrameColor,
 								wTextColor,
 								wHiliteColor,
-								wTitleBarColor,
-								wHiliteLight,
-								wHiliteDark,
-								wTitleBarLight,
-								wTitleBarDark,
-								wDialogLight,
-								wDialogDark,
-								wTingeLight,
-								wTingeDark;
+								wTitleBarColor;
 					unsigned integer;								/* RGB:	red				*/
 					unsigned integer;								/*		green			*/
 					unsigned integer;								/*		blue			*/
@@ -174,7 +174,7 @@ type 'acur' {
 /*----------------------------actb • Alert Color Lookup Table----------------------------*/
 	type 'actb' {
 			unsigned hex longint = 0;								/* ctSeed				*/
-			integer = 1;											/* ctFlags				*/
+			integer = 0;											/* ctFlags				*/
 			integer = $$Countof(ColorSpec) - 1;						/* ctSize				*/
 			wide array ColorSpec {
 					integer		wContentColor,						/* value				*/

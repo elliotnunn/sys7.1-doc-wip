@@ -1,3 +1,10 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM2>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ; Version: 2.96
 ; Created: Friday, October 20, 1989 at 9:18:00 PM
 ;
@@ -122,7 +129,7 @@ maxHFSTrap		EQU 		17        				; Highest TFS trap dispatch index
 hfsVars   		EQU 		$36A      				; Start of TFS variables in RAM version
 ; (previously RgSvArea)
 hfsTmpSize		EQU 		16        				; Additional temporary space for TFS
-hfsStkLen 		EQU 		1792      				; Allocate a decent-sized chunk of memory	<SM2>
+hfsStkLen 		EQU 		1280      				; Allocate a decent-sized chunk of memory	<SM2> <Sys7.1>
 HFSStkTop 		EQU 		$36A      				; Temporary location of pointer to top of Stack
 HFSStkPtr 		EQU 		$36E      				; Temporary location of TFS Stack pointer
 WDCBsPtr  		EQU 		$372      				; Working Directory queue header
@@ -384,7 +391,7 @@ btcNodeSize   	EQU 		42        				; BTree node size in bytes (word)
 btcKeyLen 		EQU 		44        				; max key length (word)
 btcNNodes 		EQU 		46        				; total number of nodes (long)
 btcFree   		EQU 		50        				; number of free nodes (long)
-LenBTCB   		EQU 		74        				; length of a BTCB		<SM2>
+LenBTCB   		EQU 		54        				; length of a BTCB		<SM2> <Sys7.1>
 
 ;
 ; BTree Variables (btVars) layout

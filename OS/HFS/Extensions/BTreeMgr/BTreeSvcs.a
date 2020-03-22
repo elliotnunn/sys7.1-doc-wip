@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Re-routed the unused function ExtBTUpdate through the trap table.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		BTreeSvcs.a
 ;
 ;	Contains:	These routines provide service functions used to access
@@ -1234,6 +1241,9 @@ BSExit1
 ;__________________________________________________________________________________
 
 ExtBTUpdate
+			MOVE.L	jBTUpdate,-(SP) 	; jumptable entry for vBTUpdate 		  <25Oct85>	<Sys7.1>
+			RTS 						; go there								  <25Oct85>	<Sys7.1>
+vExtBTUpdate							;													<Sys7.1>
 
 			MOVE.L	(SP)+,-(A6) 		; save return address on A6 stack
 			MOVEM.L  D1/A0-A1/A4,-(A6)	; save regs

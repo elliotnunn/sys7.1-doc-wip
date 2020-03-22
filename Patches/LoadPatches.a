@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted the credits.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		LoadPatches.a
 ;
 ;	Contains:	data fork of the System file
@@ -130,20 +137,25 @@ Failed
 
 Copyright
 		string asis
-			dc.b	'© 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991 Apple Computer Inc.',13
+			dc.b	'© 1983-1992 Apple Computer Inc.',13
 			dc.b	'All Rights Reserved.',13
 			dc.b	13
-			dc.b	'Help! Help! We’re being held prisoner in a system software factory!',13
+			dc.b	'Help! Help! We’re still being held prisoner in a system software factory!',13
 			dc.b	13
 			dc.b	'The Blue Meanies',13
 			dc.b	13
-			dc.b	'Darin Adler',13
-			dc.b	'Scott Boyd',13
+			dc.b	'Lew Cirne',13
+			dc.b	'David Collins',13
+			dc.b	'Wayne Correia',13
 			dc.b	'Chris Derossi',13
-			dc.b	'Cynthia Jasper',13
+			dc.b	'Pete Helme',13
+			dc.b	'Fred Huxham',13
+			dc.b	'Don Louv',13
+			dc.b	'Kevin MacDonell',13
 			dc.b	'Brian McGhie',13
 			dc.b	'Greg Marriott',13
-			dc.b	'Beatrice Sochor',13
+			dc.b	'Jeff Miller',13
+			dc.b	'Fred Monroe',13
 			dc.b	'Dean Yu',13
 		align
 

@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Made all patch routines self-installing with MakePatch macros on color
+;							machines. Restored some RomBinds that were probably deleted from
+;							SuperMario, although possibly not from this file.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		Text.a
 ;
 ;	Contains:	QuickDraw routines for measuring and drawing text
@@ -181,6 +190,13 @@ hasGlyphState			EQU		1
 	EndIf
 		INCLUDE 	'SysPrivateEqu.a'
 		INCLUDE		'LinkedPatchMacros.a'
+
+CheckPic		RomBind		(II,$20ef2),(IIci,$33780)				; <Sys7.1>
+DPutPicByte		RomBind		(II,$20806),(IIci,$32bf0)				; <Sys7.1>
+DPutPicOp		RomBind		(II,$20884),(IIci,$32c90)				; <Sys7.1>
+PutPicData		RomBind		(II,$207f0),(IIci,$32bd0)				; <Sys7.1>
+PutPicLong		RomBind		(II,$20830),(IIci,$32c30)				; <Sys7.1>
+PutPicWord		RomBind		(II,$2081e),(IIci,$32c10)				; <Sys7.1>
 ;——————————————————————————————————————————————————————————————————————————————
 
 	MACHINE		MC68020
@@ -217,6 +233,8 @@ RASTER			EQU 	24				;WORD
 ;
 ; Note that this is a fairly inelegant head patch to the
 ; real StdText, hereafter referred to as "ReglarStdText"
+
+		MakePatch	StdText,_StdText,(II,IIci)						; <Sys7.1>
 
 StdText		PROC	EXPORT
 
@@ -1134,6 +1152,8 @@ GOHOME	UNLINK	PARAMSIZE,'TEXTWIDT'
 	ENDIF									; NOT hasSplineFonts <1.6-4april89-CEL>
 
 
+		MakePatch	StdTxMeas,_StdTxMeas,(II,IIci)					; <Sys7.1>
+
 StdTxMeas FUNC	  EXPORT
 		  IMPORT  CalcCharExtra
 
@@ -1353,6 +1373,8 @@ noOverFlow									;									<30-CEL/RWB>
 
 
 	IF	(forROM OR SCRIPT_CHAR_EXTRA OR hasDoubleByte) THEN	;<1.6-4april89-CEL> <8> CEL
+		MakePatch	MeasureText,_MeasureText,(II,IIci)				; <Sys7.1>
+
 		PROC
 		EXPORT	MeasureText
 		IMPORT	CalcCharExtra

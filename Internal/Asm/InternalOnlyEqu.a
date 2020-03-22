@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Added superseded boxFlag equates for code compatibility.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		InternalOnlyEqu.a
 ;
 ;	Contains:	Internal Only Equates
@@ -645,6 +652,7 @@ boxQuadra700		EQU			16			; Spike (25MHz 040)
 boxClassicII		EQU			17			; Apollo
 boxPowerBook100		EQU			18			; Asahi (Its a Sony!) Portable									<2>
 boxPowerBook140		EQU			19			; TimLC 16 Mhz Tim; no FPU
+boxZydeco			EQU			20			; code-compatibility equate										<Sys7.1>
 boxQuadra950		EQU			20			; a Mac Quadra 950 (33MHz 040, 5 slots+PDS, VIA1&2, Orwell MCA, 2 IOPs, SCSI 2*53c96)	<H18>
 boxLCIII			EQU			21			; Vail (25 MHz, 030, optional FPU, 1 PDS, Sonora)					<H14><SM41>
 boxSoftmacSUN		EQU			22			; Softmac on Sun, (recycled, was boxCarnation33)					<SM52>

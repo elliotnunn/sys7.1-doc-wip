@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Conditionalized a check for a nil CODE 0 handle (a PowerPC-only case)
+							under "PsychicTV".
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Processes.c
 
 	Contains:	Process Mgr creation/deletion routines.
@@ -742,7 +750,9 @@ CreateProcess(InternalLaunchPBPtr pParams, PEntryPtr pNewProc, PEntryPtr pLaunch
 	BlockMove(pCode0->jt, (Ptr)currenta5 + pCode0->jtoffset, pCode0->jtsize);
 
 	/* Now that things are set up, we can release segment 0 */
+#if PsychicTV																// <Sys7.1>
 	if (SAVESEGHANDLE != nil)
+#endif																		// <Sys7.1>
 		ReleaseResource(SAVESEGHANDLE);
 
 	/* Try to set APPLLIMIT to ssize below current stack.  We get an error if this

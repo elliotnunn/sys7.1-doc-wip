@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		BTPScan.a
 ;
 ;	Written by:	David Feldman
@@ -215,7 +222,7 @@ GetMultNodes:	proc
 	MOVE.L		D2, fcbCrPs(A3)						; put our current pos back into fcb
 	
 @RdTop:
-	jsrRom		CACHERDIP   						; go do the read
+	jsrRom		ROMCACHERDIP						; go do the read					ex<SM1><Sys7.1> Put back "ROM"
 @1:	BNE.S		@Exit
 	ADD.L		D6, D5								; advance current file position
 	ADD.L		D6, ioActCount(A0)					; and tally up bytes read
@@ -348,7 +355,7 @@ ValidateNode:		proc
 		
 		MOVE.L		A4, D2						; save PSR around ChkNode
 		MOVEA.L		PSR.btcbPtr(A4), A4			; A4 = ptr(BTCB)
-		jsrRom		CHKNODE   					; is this node valid?
+		jsrRom		ROMCHKNODE					; is this node valid?				ex<SM1><Sys7.1> Put back "ROM"
 		MOVEA.L		D2, A4						; restore PSR
 		BNE.S		@more						; not valid, get another node
 
@@ -447,7 +454,7 @@ BTGetPhys:		proc
 	MOVE.W		PSR.curRec(A4), D1			; D1 = record we want
 	ADDQ.W		#1, PSR.curRec(A4)			; advance to next record for next time	<8>
 	MOVEA.L		PSR.btcbPtr(A4), A4			; A4 = ptr(BTCB)
-	jsrRom		LOCREC   
+	jsrRom		ROMLOCREC					;										ex<SM1><Sys7.1> Put back "ROM"
 @1: MOVEA.L		(A6)+, A4					; restore PSR ptr
 @Exit:
 	MOVE.L		(A6)+, -(A7)				; restore return address

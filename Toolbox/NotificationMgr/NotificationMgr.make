@@ -1,4 +1,13 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added NotificationMgrPatch.a to the lpch build lib. Recreated the build
+#							rule for PatchROMAlarmNotify.a, which also goes in the lpch build, but
+#							separately.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		NotificationMgr.make
 #
 #	Contains:	Makefile for the Notification Manager.
@@ -11,7 +20,8 @@
 #
 
 
-NotificationMgrObjs 	=			"{ObjDir}NotificationMgr.c.o"					∂
+NotificationMgrObjs 	=			"{ObjDir}NotificationMgrPatch.a.o"	# <Sys7.1>	∂
+									"{ObjDir}NotificationMgr.c.o"					∂
 									"{ObjDir}NotificationMgr.a.o"					∂
 									"{ObjDir}SetProcessorLevel.a.o"
 
@@ -47,4 +57,16 @@ NotificationMgrObjs 	=			"{ObjDir}NotificationMgr.c.o"					∂
 
 "{ObjDir}SetProcessorLevel.a.o"	ƒ "{NotificationDir}SetProcessorLevel.a"
 	Asm {StdAOpts} -o "{Targ}" "{NotificationDir}SetProcessorLevel.a"
+
+
+# <Sys7.1>
+"{ObjDir}NotificationMgrPatch.a.o"		ƒ	"{ObjDir}StandardEqu.d"					∂
+											"{IntAIncludes}LinkedPatchMacros.a"		∂
+											"{NotificationDir}NotificationMgrPatch.a"
+	Asm {StdAOpts} -o {Targ} "{NotificationDir}NotificationMgrPatch.a"
+
+
+# <Sys7.1>
+"{ObjDir}PatchROMAlarmNotify.a.o"	ƒ "{NotificationDir}PatchROMAlarmNotify.a"
+	Asm {StdAOpts} -o "{Targ}" "{NotificationDir}PatchROMAlarmNotify.a"
 

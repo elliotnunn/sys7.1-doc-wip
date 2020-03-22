@@ -1,4 +1,13 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted Horror and SuperMario changes
+							Left out boxFlag definitions, because they use obscure codenames
+							Version somehow increased from 1.0.1 to 1.0.2
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		backlight.h
 
 	Contains:	definitions for backlight driver
@@ -65,7 +74,7 @@
  *
  */
 #define	DRIVERMAJORVERSION		0x0100
-#define	DRIVERMINORVERSION		0x0001
+#define	DRIVERMINORVERSION		0x0002
 #define DRIVERVERSION			(DRIVERMAJORVERSION + DRIVERMINORVERSION)
 
 /* Control Calls */
@@ -156,13 +165,6 @@ typedef struct
 
 typedef struct
 	{
-	short				minimum;
-	short				maximum;
-	unsigned char		table[];
-	} setTableType;									/* <H8> new structure for tables */
-
-typedef struct
-	{
 	SleepQRec		sleepQelement;					/* sleep queue element, MUST stay on top */
 	vblstruct		brightnessVbl;					/* vbl element for background functions */
 	unsigned short	version;
@@ -187,9 +189,9 @@ typedef struct
 	short			slewLimit;
 	unsigned short	lowThreshold;
 	unsigned short	hiThreshold;
-	setTableType	*settingTable;					/* <H8> pointer to record now */
-	setTableType	*settingTableLow;				/* <H8> pointer to record now */
-	setTableType	*settingTableHigh;				/* <H8> pointer to record now */
+	unsigned char	*settingTable;
+	unsigned char	*settingTableLow;
+	unsigned char	*settingTableHigh;
 	short			*maximumTable;
 
 	short			lastLevel;						/* last power level */
@@ -203,8 +205,6 @@ typedef struct
 	short			mousedownTicks;					/* first notice of mouse down in tick count */
 	short			keycodes;						/* key combinations */
 	short			lastatod;						/* last raw a to d value */
-	
-	Ptr				hardwareDependentPtr;			/* private storage for hardware dependent code */
 	} driverGlobaltypes, *driverGlobalPtr;
 
 typedef struct 
@@ -248,20 +248,20 @@ typedef struct
 #define	SaveBrightness(new)		SaveBacklightInfo(new+1,VALUE_MASK, 0)
 #define	SaveKeyData(new)		SaveBacklightInfo(new,KEY_MASK, 5)
 
-/* <H8> new ponti defintions */
-#define	PONTILMPCTLREG			*((unsigned char *) 0x50f96C00)
-#define	PONTILMPON				0
-#define	PONTILMPHWCTL			1
-#define	PONTILMPMUX0			2
-#define	PONTILMPMUX1			3
-
 typedef	int 	(*intFunction)();
 typedef OSErr	(*osFunction)();
 typedef void	(*voidFunction)();
 
 int abs(int);
 unsigned char GetPortableValues(int	parameter);
-OSErr InitPWMControls(driverGlobalPtr globalPtr);
+void InitPWMControls(driverGlobalPtr globalPtr);
 unsigned char Get_AtoD(int channel);
 unsigned char Get_PGEButton(int	channel);
 int SetPWM(int new, driverGlobalPtr globalPtr);
+void InitRegControls(driverGlobalPtr globalPtr);
+int PotControl (driverGlobalPtr globalPtr);
+int PWMCloseRoutine (driverGlobalPtr globalPtr);
+OSErr PWMControl(CntrlParam *ctlPB,driverGlobalPtr globalPtr);
+OSErr PWMStatus(CntrlParam *ctlPB,driverGlobalPtr globalPtr);
+unsigned int LowTable (driverGlobalPtr globalPtr);
+void ChargerAdjust (driverGlobalPtr globalPtr);

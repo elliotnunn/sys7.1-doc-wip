@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <74>: Go back to direct ExpandMem access
+							Reverted <SM2>: XGlue to romX, XGuts to oldX etc
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		LayerMgr.c
 
 	Contains:	Layer Manager primitives
@@ -316,16 +324,17 @@ short ShortDiv(short, short)
 #define	layerProc	layerWDEF*16
 
 #if	!hasLayerlessAppsINIT
-pascal void			InitWindowsGuts(void);
+pascal void			oldInitWindows(void);
 #endif
-pascal void			ClipAboveGuts(WindowPeek);
-pascal void			PaintOneGuts(WindowPeek, RgnHandle);
-pascal void			CloseWindowGuts(WindowPtr);
-pascal void			InsertWindow(WindowPtr, WindowPtr);
-pascal void			MakeDeactiveGlue(WindowPtr);
-pascal void			CallWindowGlue(WindowPeek, short, long);
-pascal void			CallWindowDrawGlue(WindowPeek);
-pascal void			CallWindowCalcGlue(WindowPeek);
+pascal void			oldClipAbove(WindowPeek);
+pascal void			oldPaintOne(WindowPeek, RgnHandle);
+pascal void			oldCloseWindow(WindowPtr);
+pascal void			oldBeginUpdate(WindowPtr);
+pascal void			romInsertWindow(WindowPtr, WindowPtr);
+pascal void			romMakeDeactive(WindowPtr);
+pascal void			romCallWindow(WindowPeek, short, long);
+pascal void			romCallWindowDraw(WindowPeek);
+pascal void			romCallWindowCalc(WindowPeek);
 
 pascal void			PaintDesk(void);
 pascal void			ValidateMenuBar(void);
@@ -473,7 +482,7 @@ void GetNewStructRect(Rect *newStruct, WindowPeek whichWindow, Rect *thePort)
 
 	//	call the WDEF with the wCalcRgns message in this new faked up state.
 
-	CallWindowCalcGlue(whichWindow);
+	romCallWindowCalc(whichWindow); /* <Sys7.1> */
 
 	//	get the bounding box of the structure rgn.
 
@@ -487,7 +496,7 @@ void GetNewStructRect(Rect *newStruct, WindowPeek whichWindow, Rect *thePort)
 
 	SetPort(curPort);
 
-	CallWindowCalcGlue(whichWindow);
+	romCallWindowCalc(whichWindow); /* <Sys7.1> */
 }
 
 #define staggerIncrement 20
@@ -1120,7 +1129,7 @@ NewWindowCommon(register Ptr wStorage, register const Rect *boundsRect, const St
 			((WindowPeek) wStorage)->nextWindow = WindowList;
 			WindowList = ((WindowPeek) wStorage);
 		} else
-			InsertWindow((WindowPtr) wStorage, behind);
+			romInsertWindow((WindowPtr) wStorage, behind); /* <Sys7.1> */
 
 		/* Get the WDEF.  If the one we’re looking for doesn’t exist, get id = 0. */
 		{
@@ -1188,7 +1197,7 @@ NewWindowCommon(register Ptr wStorage, register const Rect *boundsRect, const St
 			WindowPtr newFront = ActiveWindow();
 			if (newFront != oldFront) {
 				if (oldFront != nil)
-					MakeDeactiveGlue(oldFront);
+					romMakeDeactive(oldFront); /* <Sys7.1> */
 				if (newFront != nil)
 					((WindowPeek) newFront)->hilited = true;
 					CurActivate = (WindowPeek) newFront;
@@ -1220,7 +1229,7 @@ NewWindowCommon(register Ptr wStorage, register const Rect *boundsRect, const St
 			((WindowPeek) wStorage)->titleWidth = StringWidth(title);
 		}
 
-		CallWindowGlue((WindowPeek) wStorage, wNew, 0);
+		romCallWindow((WindowPeek) wStorage, wNew, 0); /* <Sys7.1> */
 
 		if (autoPosition) {
 			struct	AutoWindowPosition *info = (struct AutoWindowPosition *) &(boundsRect->left);
@@ -1245,7 +1254,7 @@ NewWindowCommon(register Ptr wStorage, register const Rect *boundsRect, const St
 	 * If it is a visible window, it can also affect the structure of the layers it is contained in
 	 * and needs to be drawn and obscure other windows.
 	 */
-	CallWindowCalcGlue((WindowPeek) wStorage);
+	romCallWindowCalc((WindowPeek) wStorage); /* <Sys7.1> */
 	if (visible && !FastIsLayer(wStorage)) {
 		ActivatePalette((WindowPtr) wStorage);
 		PaintOne((WindowPeek) wStorage, ((WindowPeek) wStorage)->strucRgn);
@@ -1520,7 +1529,7 @@ __InitLayers(void)
 #if hasLayerlessAppsINIT
 	InitWindows();
 #else
-	InitWindowsGuts();
+	oldInitWindows(); /* <Sys7.1> */
 #endif
 
 	/* Create the two layers (one for system stuff). */
@@ -1572,7 +1581,7 @@ CalcAncestorRgns(WindowPtr window)
 	{
 		LayerPeek layer = __GetParent(window);
 		while (layer != nil) {
-			CallWindowCalcGlue((WindowPeek) layer);
+			romCallWindowCalc((WindowPeek) layer); /* <Sys7.1> */
 			layer = layer->parent;
 		}
 	}
@@ -1638,13 +1647,15 @@ __CheckUpdate(EventRecord *event)
 
 /* If window is a layer, BeginUpdate will correctly paint and calculate visRgns for its children. */
 pascal void
-BeginUpdateOfLayersChildren(WindowPtr window)
+__BeginUpdate(WindowPtr window) /* <Sys7.1> */
 {
 	if (FastIsLayer(window)) {
 		PaintOne((WindowPeek) window, ((WindowPeek) window)->updateRgn);
 		/* Note that only the children of window really need CalcVis. */
 		CalcVis((WindowPeek) window);
 	}
+
+	oldBeginUpdate((WindowPeek) window); /* <Sys7.1> was not being treated as a wrapper */
 }
 
 #if !hasLayerlessApps
@@ -1668,7 +1679,7 @@ __ClipAbove(WindowPeek window)
 
 		/* Call the old ClipAbove (set the current layer for it). */
 		__SetCurLayer(parent);
-		ClipAboveGuts(window);
+		oldClipAbove(window); /* <Sys7.1> */
 
 		/* Jump up a layer. */
 		window = (WindowPeek) parent;
@@ -1757,7 +1768,7 @@ PaintAction(WindowPeek window, LayerPeek, PaintInfoPtr paintInfo)
 		/* Call the old PaintOne for real windows only in normal loops and when a palette update
 		 * is necessary.
 		 */
-		PaintOneGuts(window, paintInfo->clobberedRgn);
+		oldPaintOne(window, paintInfo->clobberedRgn); /* <Sys7.1> */
 	}
 
 	return noErr;
@@ -1770,11 +1781,11 @@ PaintAction(WindowPeek window, LayerPeek, PaintInfoPtr paintInfo)
  */
 void CalcAncestorRgnsForPaintActions(WindowPtr window)
 {
-	ExpandMemRec *emRec = ExpandMem;
-	if (GetExpandMemAncestorRgnsCalced() == 0)
+	ExpandMemRec *emRec = GetExpandMem(); /* <Sys7.1> */
+	if (emRec->emAncestorRgnsCalced == 0) /* <Sys7.1> */
 		CalcAncestorRgns(window);		// calculate the regions if the one-shot is off
 	else
-		SetExpandMemAncestorRgnsCalced(0);		// reset the one-shot
+		emRec->emAncestorRgnsCalced = 0;		// reset the one-shot /* <Sys7.1> */
 }
 #endif
 
@@ -2078,7 +2089,7 @@ __CloseWindow(WindowPtr window)
 	}
 
 	/* Call the old CloseWindow. */
-	CloseWindowGuts(window);
+	oldCloseWindow(window); /* <Sys7.1> */
 
 	/* Restore the current layer. */
 	__SetCurLayer(saveLayer);
@@ -2105,9 +2116,9 @@ ShowWindowAction(WindowPeek window, LayerPeek layer, PaintInfoPtr)
 	if (!window->visible)
 		return skipChildren;
 	if (!FastIsLayer(window)) {
-		CallWindowCalcGlue(window);
+		romCallWindowCalc(window); /* <Sys7.1> */
 		if (window->nextWindow == nil)					/* calculate parent only after the last child of a layer */
-			CallWindowCalcGlue((WindowPeek) layer);
+			romCallWindowCalc((WindowPeek) layer); /* <Sys7.1> */
 	}
 	return noErr;
 }

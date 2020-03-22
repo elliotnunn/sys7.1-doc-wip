@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <LW2>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		WindowList.a
 ;
 ;	Contains:	The assembly language glue used to patch layer and window manager to implement
@@ -258,7 +265,7 @@ DoOld				MOVE.L		(SP)+, A1
 wlBringToFront		PatchProc	_BringToFront
 
 					MOVE.L		4(SP), -(SP)
-					CLR.W		DragFlag										<LW2>
+					CLR.B		DragFlag										<LW2> <Sys7.1>
 					IMPORT		BringToFrontGuts
 					LEA			BringToFrontGuts, A0
 					IMPORT		TwoByFour

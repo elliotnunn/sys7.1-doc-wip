@@ -1,3 +1,10 @@
+{
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM3>, preventing PICTs going into the system heap.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+}
+
 {__________________________________________________________________________________________________
 	File:		BalloonPACK.p
 
@@ -2185,7 +2192,6 @@ FUNCTION  __HMCalculateBalloon(	aHelpMsg: HMMessageRecord;
 		tix				: LongInt;
 		sloppy			: BOOLEAN;
 		hasColorQD		: BOOLEAN;
-		oldZone			: THz;				{ <SM2> }
 			
 	BEGIN
 		__HMCalculateBalloon	:= hmBalloonAborted;		{ make default case aborted }
@@ -2326,15 +2332,12 @@ FUNCTION  __HMCalculateBalloon(	aHelpMsg: HMMessageRecord;
 												inPort	:= @picPort;
 											end;
 											
-										oldZone := GetZone;		{ get the current heap zone }	{ <SM2> }										
-										SetZone(SystemZone);	{ point at the system heap } 	{ <SM2> }
-										          												{ <SM2> }
+										{ ex<SM2> <Sys7.1> don't open pict in the system heap }
+
 										pic := OpenPicture(visibleRect);
 										TEUpdate(visibleRect,aTE);
 										ClosePicture;
 
-										SetZone(oldZone);										{ <SM2> }
-																								{ <SM2> }
 										with aTE^^ do
 											inPort := tPort;
 									end;
@@ -2343,15 +2346,11 @@ FUNCTION  __HMCalculateBalloon(	aHelpMsg: HMMessageRecord;
 						otherwise
 							if aTE<>NIL then
 								begin
-									oldZone := GetZone;		{ get the current heap zone }		{ <SM2> }										
-									SetZone(SystemZone);	{ point at the system heap } 		{ <SM2> }
-																								{ <SM2> }
+									{ ex<SM2> <Sys7.1> don't open pict in the system heap }
+
 									pic := OpenPicture(visibleRect);
 									TEUpdate(visibleRect,aTE);
 									ClosePicture;
-																								{ <SM2> }
-									SetZone(oldZone);											{ <SM2> }
-																								{ <SM2> }
 								end;
 					end;
 

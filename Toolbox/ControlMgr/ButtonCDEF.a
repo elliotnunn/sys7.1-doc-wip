@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM2> word branch.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ButtonCDEF.a
 ;
 ;	Contains:	Standard Button Definition Procedure for the MacIntosh Control Manager
@@ -159,7 +166,7 @@ FrameSize		EQU	 -58
 
 			CMP.W	#$3FFF,ROM85		; do we have color QD?
 			SLS		IsColor(A6)			; set boolean depending on color or B&W system
-			BHI		@BWSys				; no, this system has B&W QD <SM2> CSS 
+			BHI.S	@BWSys				; no, this system has B&W QD <SM2> CSS <Sys7.1>
 
 ; save the current port’s colors and textMode						<C59/30Jun86> DAF
 

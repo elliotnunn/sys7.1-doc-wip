@@ -1,4 +1,16 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Patched the entire FontMgr and the 'standard' QD text routines via the
+#							lpch lib. (Color and B&W versions built separately from the same source
+#							and then linked together.) Added DiskCachePatches.a to the lpch lib (vs
+#							having it rolled into the SuperMario ROM Memory Manager). Removed
+#							FontFolderExtension.a from this lpch lib, to be linked in separately
+#							elsewhere.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		FontMgr.make
 #
 #	Contains:	Makefile for the Font Manager.
@@ -31,7 +43,10 @@ FntIncOpts			= 	-i "{FontLibIfDir}"		∂
 
 
 
-FontMgrObjs							=	"{ObjDir}fnt.c.o"							∂
+FontMgrObjs							=	"{ObjDir}BWDrawText.a.o"		# <Sys7.1>	∂
+										"{ObjDir}BWText.a.o"			# <Sys7.1>	∂
+										"{ObjDir}BWFontMgr.a.o"			# <Sys7.1>	∂
+										"{ObjDir}fnt.c.o"							∂
 										"{ObjDir}FSglue.c.o"						∂
 										"{ObjDir}embeddedBitmap.c.o"				∂
 										"{ObjDir}OutlineMetrics.a.o"				∂
@@ -57,7 +72,9 @@ FontMgrObjs							=	"{ObjDir}fnt.c.o"							∂
 										"{ObjDir}DiskCacheExtensions.c.o"			∂
 										"{ObjDir}DiskCacheList.c.o"					∂
 										"{ObjDir}DiskCacheMap.c.o"					∂
-										"{ObjDir}FontFolderExtension.a.o" 			∂
+										"{ObjDir}DiskCachePatches.a.o"	# <Sys7.1>	∂
+										"{ObjDir}DrawText.a.o"			# <Sys7.1>	∂
+										"{ObjDir}Text.a.o"				# <Sys7.1>	∂
 										"{ObjDir}FontMgr.a.o" 						
 
 
@@ -370,6 +387,36 @@ FontMgrObjs							=	"{ObjDir}fnt.c.o"							∂
 										"{FontMgrDir}Bass_Cache.h"					∂
 										"{FontCachIfDir}DiskCacheExtensions.h"
 	C {StdCOpts} -o "{Targ}" {FntIncOpts} "{FontCachDir}Source:DiskCacheMap.c" -i "{FontMgrDir}"
+
+
+# <Sys7.1>
+"{ObjDir}DiskCachePatches.a.o"		ƒ	"{FontCachDir}Source:DiskCachePatches.a"
+	Asm {StdAOpts} -o "{Targ}" {FntIncOpts} "{FontCachDir}Source:DiskCachePatches.a"
+
+
+# <Sys7.1>
+"{ObjDir}BWFontMgr.a.o"				ƒ	"{FontMgrDir}FontMgrShell.a" "{FontMgrDir}FontMgr.a"
+	Asm {StdAOpts} -o "{Targ}" "{FontMgrDir}FontMgrShell.a" -i "{ColorQDDir}" -d NOT_68000=0 -d HAS_COLOR=0 -i "{FontMgrDir}"
+
+
+# <Sys7.1>
+"{ObjDir}DrawText.a.o"				ƒ	"{ColorQDDir}DrawTextShell.a" "{ColorQDDir}DrawText.a"
+	Asm {StdAOpts} -d hasCQD=1 -d NOT_68000=1 -d NEED_JSTDTXMEAS=TRUE -o {Targ} -i "{ColorQDDir}" -i "{FontMgrDir}" "{ColorQDDir}DrawTextShell.a"
+
+
+# <Sys7.1>
+"{ObjDir}BWDrawText.a.o"			ƒ	"{ColorQDDir}DrawTextShell.a" "{ColorQDDir}DrawText.a"
+	Asm {StdAOpts} -d hasCQD=0 -d NOT_68000=0 -d NEED_JSTDTXMEAS=FALSE -o {Targ} -i "{ColorQDDir}" -i "{FontMgrDir}" "{ColorQDDir}DrawTextShell.a"
+
+
+# <Sys7.1>
+"{ObjDir}Text.a.o"					ƒ	"{ColorQDDir}TextShell.a" "{ColorQDDir}Text.a"
+	Asm {StdAOpts} -d hasCQD=1 -d NOT_68000=1 -d NEED_JSTDTXMEAS=TRUE -o {Targ} -i "{ColorQDDir}" -i "{FontMgrDir}" "{ColorQDDir}TextShell.a"
+
+
+# <Sys7.1>
+"{ObjDir}BWText.a.o"				ƒ	"{ColorQDDir}Classic:Text.m.a"
+	Asm {StdAOpts} -o "{Targ}" -i "{FontMgrDir}" "{ColorQDDir}Classic:Text.m.a"
 
 
 

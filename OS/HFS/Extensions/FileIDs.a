@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FileIDs.a
 ;
 ;	Contains:	This file contains the high level calls for FileIDs. It sets up calls for the
@@ -115,30 +122,30 @@ FileIDs		PROC	EXPORT
 ;_______________________________________________________________________
 
 CreateFileIDRef:
-			jsrROM  FSQUEUE   			; first wait our turn
+			jsrROM  ROMFSQUEUE			; first wait our turn															ex<SM1><Sys7.1> Put back "ROM"
 
-			jsrROM 	FNDFILNAME   		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID
+			jsrROM 	ROMFNDFILNAME		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID					ex<SM1><Sys7.1> Put back "ROM"
 										;  D7=cathint A1=volBuffer A2=vcb A3=WDCB A4=cname A5=fileDirEntry)
 			BNE.S	@Exit
 
-			jsrROM	EXTOFFLINCK   		; is the volume online and used by us (not ExtFS)? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMEXTOFFLINCK		; is the volume online and used by us (not ExtFS)? (IN: A2=vcb OUT: D0=err)		ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit
 
-			jsrROM	TFSVCBTST   		; it better be an HFS volume (IN: A2=vcb)
+			jsrROM	ROMTFSVCBTST		; it better be an HFS volume (IN: A2=vcb)										ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@NotHFSErr
 
 			MOVEA.L A0, A3				; sure paramblock ptr for later
-			jsrROM 	PUSHCNAME   		; Put name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)
+			jsrROM 	ROMPUSHCNAME		; Put name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)				ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.W	D2,-(A6)			; Save rounded source name length
 
-			jsrROM	CVFLGS   			; is the volume writable? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMCVFLGS			; is the volume writable? (IN: A2=vcb OUT: D0=err)								ex<SM1><Sys7.1> Put back "ROM"
 			BEQ.S	@DoCreate
 
 			MOVE.W	D0, D7				; save the error
 			MOVE.L	D6, D0				; dirID or parent dirID
 			JSR		FIDGetID			; get the ID (IN: A0=cname D0=dirID A2=vcb OUT: D0=err D1=fthd)
 			MOVE.W	(A6)+,D2			; Recover rounded source length
-			jsrROM 	POPCNAME   			; Remove dest. name string (IN: A6=string D2=rndLen OUT: D2=len)
+			jsrROM 	ROMPOPCNAME			; Remove dest. name string (IN: A6=string D2=rndLen OUT: D2=len)				ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	D1, ioFileID(A3) 	; set the fileID back in the paramblock ptr
 			TST.W	D0
 			BEQ.S	@existsErr			; the fileID exists on the locked volume
@@ -150,7 +157,7 @@ CreateFileIDRef:
 @DoCreate	MOVE.L	D6, D0				; dirID or parent dirID
 			JSR		FIDCreateID			; and do it (IN: A0=cname D0=dirID A2=vcb OUT: D0=err D1=fthd)
 			MOVE.W	(A6)+,D2			; Recover rounded source length
-			jsrROM 	POPCNAME   			; Remove dest. name string (IN: A6=string D2=rndLen OUT: D2=len)
+			jsrROM 	ROMPOPCNAME			; Remove dest. name string (IN: A6=string D2=rndLen OUT: D2=len)				ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	D1, ioFileID(A3) 	; set the fileID back in the paramblock ptr
 			TST.W	D0
 			BEQ.S	@Exit				; no errors, get out
@@ -169,7 +176,7 @@ CreateFileIDRef:
 			BRA.S	@Exit
 @NotHFSErr	MOVEQ	#wrgVolTypErr, D0
 
-@Exit		jmpROM	CMDDONE   				; will also put the D0 result in ioResult(A0)
+@Exit		jmpROM	ROMCMDDONE				; will also put the D0 result in ioResult(A0)								ex<SM1><Sys7.1> Put back "ROM"
 
 
 ;_______________________________________________________________________
@@ -188,17 +195,17 @@ CreateFileIDRef:
 
 DeleteFileIDRef:
 
-			jsrROM 	FSQUEUE   			; first wait our turn
+			jsrROM 	ROMFSQUEUE			; first wait our turn															ex<SM1><Sys7.1> Put back "ROM"
 
-			jsrROM 	DTRMV3   			; get the vcb by vrefnum or name(IN: A0=prmblk OUT:A2=vcb D0=err)
+			jsrROM 	ROMDTRMV3			; get the vcb by vrefnum or name(IN: A0=prmblk OUT:A2=vcb D0=err)				ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit				;   D2=nameLen? D3=volName? A3=WDCB A4=pathName)
 
-			jsrROM	CVFLGS   			; is the volume writable? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMCVFLGS			; is the volume writable? (IN: A2=vcb OUT: D0=err)								ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit
-			jsrROM	EXTOFFLINCK   		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMEXTOFFLINCK		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)		ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit
 
-			jsrROM	TFSVCBTST   		; it better be an HFS volume (IN: A2=vcb)
+			jsrROM	ROMTFSVCBTST		; it better be an HFS volume (IN: A2=vcb)										ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@NotHFSErr
 
 			MOVE.L	ioFileID(A0), D0	; file id
@@ -219,7 +226,7 @@ DeleteFileIDRef:
 			BRA.S	@Exit
 @NotHFSErr	MOVEQ	#wrgVolTypErr, D0
 
-@Exit		jmpROM	CMDDONE   			; will also put the D0 result in ioResult(A0)
+@Exit		jmpROM	ROMCMDDONE			; will also put the D0 result in ioResult(A0)									ex<SM1><Sys7.1> Put back "ROM"
 
 ;_______________________________________________________________________
 ;
@@ -237,14 +244,14 @@ DeleteFileIDRef:
 
 ResolveFileIDRef:
 
-			jsrROM 	FSQUEUE   			; first wait our turn
+			jsrROM 	ROMFSQUEUE			; first wait our turn															ex<SM1><Sys7.1> Put back "ROM"
 
-			jsrROM 	DTRMV3   			; get the vcb by vrefnum or name (IN: A0=prmblk OUT:A2=vcb D0=err)
+			jsrROM 	ROMDTRMV3			; get the vcb by vrefnum or name (IN: A0=prmblk OUT:A2=vcb D0=err)				ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit1				; <SM2> CSS   D2=nameLen? D3=volName? A3=WDCB A4=pathName?)
-			jsrROM	EXTOFFLINCK   		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMEXTOFFLINCK		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)		ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@Exit1				; <SM2> CSS
 
-			jsrROM	TFSVCBTST   		; it better be an HFS volume (IN: A2=vcb)
+			jsrROM	ROMTFSVCBTST		; it better be an HFS volume (IN: A2=vcb)										ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@NotHFSErr
 
 			MOVEA.L	A0, A3				; save paramblock ptr for later
@@ -265,7 +272,7 @@ ResolveFileIDRef:
 			BRA		@Exit1
 
 @Exit		MOVE.L	D1, ioSrcDirID(A3)	; put it back in paramblock
-@Exit1		jmpROM	CMDDONE   			; will also put the D0 result in ioResult(A0)
+@Exit1		jmpROM	ROMCMDDONE			; will also put the D0 result in ioResult(A0)									ex<SM1><Sys7.1> Put back "ROM"
 
 ;_______________________________________________________________________
 ;
@@ -289,9 +296,9 @@ PBHExchangeFiles:
 ;	A2 = vcb, A3 = destName, A4 = cmvars/scratch, A5 = srcName
 ;	D2 = srcCatHint, D3 = destCatHint, D4 = destFileNum, D5 = srcFileNum, D6 = destDirID, D7 = srcDirID
 
-			jsrROM 	FSQUEUE   			; first wait our turn
+			jsrROM 	ROMFSQUEUE			; first wait our turn															ex<SM1><Sys7.1> Put back "ROM"
 
-			jsrROM 	FNDFILNAME   		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID
+			jsrROM 	ROMFNDFILNAME		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID					ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@Exit				;  D7=cathint A1=volBuffer A2=vcb A3=WDCB A4=cname A5=fileDirEntry)
 			MOVE.L	D6, D1				; save src dirID for later
 			MOVE.L	D2, D5				; save the rounded source name length for later
@@ -302,7 +309,7 @@ PBHExchangeFiles:
 			move.l	ioSrcDirID(a0), -(a6)		; save caller's ioSrcDirID value		<bb/dnf 8>
 			MOVE.L	ioDestNamePtr(A0), ioFileName(A0)
 			MOVE.L	ioDestDirID(A0), ioSrcDirID(A0)
-			jsrROM 	FNDFILNAME   		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID
+			jsrROM 	ROMFNDFILNAME		; parse pathname(IN: A0=prmblk OUT: D0=err D2.L=namLen D6=dirID					ex<SM1><Sys7.1> Put back "ROM"
 										;  D7=cathint A1=volBuffer A2=vcb A3=WDCB A4=cname A5=fileDirEntry)
 			move.l	(a6)+, ioSrcDirID(a0)		; restore caller's ioSrcDirID value		<bb/dnf 8>
 			move.l	(a6)+, ioFileName(a0)		; restore caller's ioFileName value		<dd/dnf 8>
@@ -314,22 +321,22 @@ PBHExchangeFiles:
 			CMP.L	A2, A3				; better be the same volumes if specified by pathnames
 			BNE		@difVolErr
 
-			jsrROM	CVFLGS   			; is the volume writable? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMCVFLGS			; is the volume writable? (IN: A2=vcb OUT: D0=err)								ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@PopAndErr			; no ->
-			jsrROM	EXTOFFLINCK   		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)
+			jsrROM	ROMEXTOFFLINCK		; is the volume online and used by us (notExtFS)? (IN: A2=vcb OUT: D0=err)		ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@PopAndErr
-			jsrROM	TFSVCBTST   		; and it better be an HFS volume (IN: A2=vcb)
+			jsrROM	ROMTFSVCBTST		; and it better be an HFS volume (IN: A2=vcb)									ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@NotHFSErr
 
 ; set up the names properly
 
 			MOVE.L	(A6)+, A5			; get the src name off the A6 stack before it changes
-			jsrROM  PUSHCNAME   		; Put dest name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)
+			jsrROM  ROMPUSHCNAME		; Put dest name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)			ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	A0, A3				; save the dest name
 			MOVE.L	A5, A4				; get the src name
 			MOVE.L	D2,-(A6)			; Save dest rounded name length
 			MOVE.L	D5, D2				; get the src name length
-			jsrROM 	PUSHCNAME   		; Put src name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)
+			jsrROM 	ROMPUSHCNAME		; Put src name on A6 stack (IN: A4=name D2.W=len OUT: A0=name D2=len)			ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	D2,-(A6)			; Save rounded name length
 
 ; grab the File ID numbers to use later for fcb searching on open files
@@ -340,7 +347,7 @@ PBHExchangeFiles:
 			MOVEA.L	A0, A5				; keep the src name
 			MOVE.L	D7,	D0			    ; set the src dir ID
 			MOVEQ	#0, D2				; no cat hint
-			jsrROM	LOCCREC   			; search the catalog (IN: A2=vcb A4=cmvars A0=name D0=dirID D2=catHInt
+			jsrROM	ROMLOCCREC			; search the catalog (IN: A2=vcb A4=cmvars A0=name D0=dirID D2=catHInt			ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExchErr			;   OUT: D0=err D1=size D2=catHint A0=ckr A1=cdr)
 			MOVE.L	D2, D4				; save the src cat hint
 		    MOVE.L	filFlNum(A1), D5	; save src file ID
@@ -348,7 +355,7 @@ PBHExchangeFiles:
 			MOVEA.L	A3, A0				; set the dest name
 			MOVE.L	D6, D0				; set the dest dir ID
 			MOVEQ	#0, D2				; no cat hint
-			jsrROM	LOCCREC   			; search the catalog (IN: A2=vcb A4=cmvars A0=name D0=dirID D2=catHInt
+			jsrROM	ROMLOCCREC			; search the catalog (IN: A2=vcb A4=cmvars A0=name D0=dirID D2=catHInt			ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExchErr			;   OUT: D0=err D1=size D2=catHint A0=ckr A1=cdr)
 			MOVE.L	D2, D3				; save the dest cat hint
 
@@ -370,7 +377,7 @@ PBHExchangeFiles:
 
 ; FINE TUNING: Flag if either file is open. THEN after FidExchangeFiles, if none, skip fcb walking.
 
-			jsrROM	GT1STFCB   			; get the first fcb (uses A1, D1)
+			jsrROM	ROMGT1STFCB			; get the first fcb (uses A1, D1)												ex<SM1><Sys7.1> Put back "ROM"
 @loop		CMP.L	fcbVPtr(A1, D1), A2	; better be correct volume
 			BNE.S	@nxtFCB
 			CMP.L	fcbFlNm(A1, D1), D5
@@ -390,10 +397,10 @@ PBHExchangeFiles:
 										; update the file number in the buffer header after the exchange
 			MOVE.L	VCBBufAdr(A2), A1
 			ST		CacheFlag		 	; really flush
-			jsrROM	FLUSHCACHE   		; release the buffers to free buffer pool
+			jsrROM	ROMFLUSHCACHE		; release the buffers to free buffer pool										ex<SM1><Sys7.1> Put back "ROM"
 			movem.L	(a6)+, a1/d1		; restore refnum and FCBSPtr after flush	<dnf 5>
 
-@nxtFCB		jsrROM	GTNXTFCB   
+@nxtFCB		jsrROM	ROMGTNXTFCB			;																				ex<SM1><Sys7.1> Put back "ROM"
 			BCS.S	@loop 				; loop thru them all
 
 ; we are almost ready to roll...FINALLY!...
@@ -419,7 +426,7 @@ PBHExchangeFiles:
 
 ; exchange fcb info (file number, file name, and file parID only!)
 
-			jsrROM	GT1STFCB   			; get the first fcb (uses A1, D1)
+			jsrROM	ROMGT1STFCB			; get the first fcb (uses A1, D1)												ex<SM1><Sys7.1> Put back "ROM"
 @loop1		CMP.L	fcbVPtr(A1, D1), A2	; better be correct volume
 			BNE.S	@nxtFCB1
 			CMP.L	fcbFlNm(A1, D1), D5
@@ -455,7 +462,7 @@ PBHExchangeFiles:
 			MOVEA.L A4, A1				; Restore A1
 
 
-@nxtFCB1	jsrROM	GTNXTFCB   
+@nxtFCB1	jsrROM	ROMGTNXTFCB			;																				ex<SM1><Sys7.1> Put back "ROM"
 			BCS.S	@loop1 				; loop thru them all
 
 			BRA.S	@PopAndExit
@@ -480,11 +487,11 @@ PBHExchangeFiles:
 
 @PopAndExit	ADD		#lenCMVars, A6		; get the temp storage back needed by LocCRec
 			MOVE.L	(A6)+,D2			; Recover rounded length
-			jsrROM 	POPCNAME   			; Remove src name string (IN: A6=string D2=rndLen OUT: D2=len)
+			jsrROM 	ROMPOPCNAME			; Remove src name string (IN: A6=string D2=rndLen OUT: D2=len)					ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	(A6)+,D2			; Recover rounded length
-			jsrROM 	POPCNAME   			; Remove dest name string (IN: A6=string D2=rndLen OUT: D2=len)
+			jsrROM 	ROMPOPCNAME			; Remove dest name string (IN: A6=string D2=rndLen OUT: D2=len)					ex<SM1><Sys7.1> Put back "ROM"
 
-@Exit		jmpROM	CMDDONE   			; will also put the D0 result in ioResult(A0)
+@Exit		jmpROM	ROMCMDDONE			; will also put the D0 result in ioResult(A0)									ex<SM1><Sys7.1> Put back "ROM"
 
 
 

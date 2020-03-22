@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FileIDsSvcs.a
 ;
 ;	Contains:	This file implements the low level File IDs facility by making a new
@@ -141,14 +148,14 @@ FIDCreateID:
 			MOVEM.L	FIDCrRegs, -(A6)	; save registers
 			MOVE.L	D0,D6				; save the par ID
 			MOVEA.L	A0,A3				; save the cname ptr
-			jsrROM 	CMSETUP   			; set up key storage pointed to by A4
+			jsrROM 	ROMCMSETUP			; set up key storage pointed to by A4		ex<SM1><Sys7.1> Put back "ROM"
 			MOVEQ	#0,D5				; clear fileID, in case we return early due to errors
 			CLR.L	VCBDirIDM(A2)		; invalidate current DirID marker
 ;				
 ; locate the file record
 ;
 			MOVEQ 	#0,D2				; no catalog hint
-			jsrROM 	LOCCREC   			
+			jsrROM 	ROMLOCCREC			;											ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@CrExit				; it's not there, just exit with what's in D0
 			CMPI.B	#cdrFilRec, cdrType(A1); better be a file (type=2)
 			BNE.S	@CrNotAFileErr
@@ -161,7 +168,7 @@ FIDCreateID:
 			MOVE.L	D0,D5				; keep fileID for later
 			SUBA.L	A0,A0				; use NULL for fthread key name
 			LEA 	ckrOff(A4), A1		; use this storage for the fthread key
-			jsrROM 	BUILDKEY   			; fill in the key
+			jsrROM 	ROMBUILDKEY			; fill in the key							ex<SM1><Sys7.1> Put back "ROM"
 ;
 ; and do the data of the file thread 
 ;			
@@ -176,7 +183,7 @@ FIDCreateID:
 			
 			MOVEA.L	A3, A0				; the cname ptr
 			LEA		thdCName(A1), A1
-			jsrROM 	UPDCNAME   			
+			jsrROM 	ROMUPDCNAME			;											ex<SM1><Sys7.1> Put back "ROM"
 ;
 ; Insert the file thread in the catalog btree
 ;
@@ -184,7 +191,7 @@ FIDCreateID:
 			MOVE.W	#lenthd, D1			
 			LEA		cdrOff(A4), A1
 			LEA		ckrOff(A4), A0
-			jsrROM 	BTINSERT   
+			jsrROM 	ROMBTINSERT			;											ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@CrBTErr			; could be disk full, so stop
 ;
 ; finally, turn on thread flag in file CNode. Too bad, gotta find it again
@@ -192,16 +199,16 @@ FIDCreateID:
 			MOVE.L	D4, D2				; use saved cat hint
 			MOVE.L	D6, D0				; dirID or parent dirID
 			MOVEA.L	A3, A0				; CName pointer
-			jsrROM 	LOCCREC   			; we know it's there
+			jsrROM 	ROMLOCCREC			; we know it's there						ex<SM1><Sys7.1> Put back "ROM"
 			BSET	#fThreadFlag,FilFlags(A1); set the flag
 			
 			MOVE.W	VCBCtRef(A2),D0		; refnum of catalog file
-			jsrROM 	BTUPDATE   			
+			jsrROM 	ROMBTUPDATE			;											ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@CRExit				; if there was an error, catalog could be shot!
 ;
 ; get it out to disk 
 ;
-			jsrROm	CMFLUSH   			; flush the catalog
+			jsrROm	ROMCMFLUSH			; flush the catalog							ex<SM1><Sys7.1> Put back "ROM"
 			BRA.S	@CrExit
 ;
 ; handle errors			
@@ -217,7 +224,7 @@ FIDCreateID:
 			MOVE.L	D5,D0				; file number								<11Jan91 #10>
 			SUBA.L	A0,A0				; no Cname									<11Jan91 #10>
 			MOVEQ	#0,D2				; no hint									<11Jan91 #10>
-			jsrROM	LOCCREC   			; locate thread record						<11Jan91 #10>
+			jsrROM	ROMLOCCREC			; locate thread record						<11Jan91 #10> ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@7					; bad time for error						<11Jan91 #10>
 		
 			CMP.B	#cdrfThdRec,cdrType(A1) ; file thread type?						<11Jan91 #10>
@@ -247,9 +254,9 @@ FIDCreateID:
 @5			TST.W	D3					; have we changed the file?					<11Jan91 #10>
 			BNE.S	@7					; no										<11Jan91 #10>
 @6			MOVE.W	VCBCtRef(A2),D0		; refnum of catalog file (input = D0/D2)	<11Jan91 #10>
-			jsrROM 	BTUPDATE   			; mark the node (D2) dirty					<11Jan91 #10>
+			jsrROM 	ROMBTUPDATE			; mark the node (D2) dirty					<11Jan91 #10> ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@CrExit				; bad time for error						<11Jan91 #10>
-			jsrROm	CMFLUSH   			; flush the catalog	(input = A2)			<11Jan91 #10>
+			jsrROm	ROMCMFLUSH			; flush the catalog	(input = A2)			<11Jan91 #10> ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@CrExit				; bad time for error						<11Jan91 #10>
 
 @7			MOVE.W	#CMExists,D0		; Translate error "CMExists = cnode already there"
@@ -270,7 +277,7 @@ FIDCreateID:
 ;			A3 = user's file name
 ; Output:	BEQ if 2 names are the same
 			LEA		thdCName(A1), A1
-			jsrROM 	UPDCNAME   	
+			jsrROM 	ROMUPDCNAME			;											ex<SM1><Sys7.1> Put back "ROM"
 
 
 ;_________________________________________________________________________________
@@ -299,7 +306,7 @@ FIDDeleteID:
 ;
 			MOVE.L	(SP)+,-(A6)			; save return address on A6 stack
 			MOVEM.L	FIDDelRegs,-(A6)	; save registers
-			jsrROM  CMSETUP   			; set up key storage pointed to by A4
+			jsrROM  ROMCMSETUP			; set up key storage pointed to by A4		ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	D0, D5				; save fileID
 			MOVEQ	#0, D7				; save error in here, if CNode for file is missing
 			CLR.L	VCBDirIDM(A2)		; invalidate current DirID marker
@@ -308,7 +315,7 @@ FIDDeleteID:
 ;
 			MOVEQ 	#0, D2				; no catalog hint
 			SUBA.L	A0, A0				; use NULL for fthread key. 
-			jsrROM 	LOCCREC   			
+			jsrROM 	ROMLOCCREC			;											ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@DlNoThdErr			; it's not there
 			CMPI.B	#cdrFThdRec, cdrType(A1); better be a file
 			BNE.S   @DlNotAFileErr
@@ -318,7 +325,7 @@ FIDDeleteID:
 			MOVEQ	#0, D2				; no catalog hint 
 			MOVE.L	thdParID(A1), D0	; get file's dir id from fthread data
 			LEA		thdCName(A1), A0	; and it's name
-			jsrROM 	LOCCREC   	
+			jsrROM 	ROMLOCCREC			;											ex<SM1><Sys7.1> Put back "ROM"
 			BEQ.S	@DlUnsetFlg
 			MOVE.W	D0, D7				; need to return the error later
 			BNE.S	@DlDelThd			; whoops, it's not there...well, delete the thread
@@ -329,7 +336,7 @@ FIDDeleteID:
 ;
 @DlUnsetFlg	BCLR	#fThreadFlag,FilFlags(A1) 
 			MOVE.W	VCBCtRef(A2), D0	; refnum of catalog file
-			jsrROM 	BTUPDATE   			; tell the btree
+			jsrROM 	ROMBTUPDATE			; tell the btree							ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@DlExit				; if there's an error, the catalog could be shot!
 ;
 ; Delete the file thread in the catalog btree
@@ -337,17 +344,17 @@ FIDDeleteID:
 @DlDelThd	MOVE.L  D5, D0				; file id
 			SUBA.L	A0,A0				; use NULL for fthread key			
 			LEA		ckrOff(A4), A1 		; use this storage for fthread key
-			jsrROM 	BUILDKEY   			; fill in the key
+			jsrROM 	ROMBUILDKEY			; fill in the key							ex<SM1><Sys7.1> Put back "ROM"
 			
 			LEA		ckrOff(A4), A0 	; get the storage again
 			MOVE.W	VCBCtRef(A2), D0	; refnum of catalog file
-			jsrROM 	BTDELETE   			; delete file thread
+			jsrROM 	ROMBTDELETE			; delete file thread						ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@DlExit				; we know it exists, so must be IOError...
 										; ...Oh well, leave the cnode's fthread flag off.					
 ;
 ; get it out to disk. 
 ;
-			jsrROM 	CMFLUSH   			; flush the catalog
+			jsrROM 	ROMCMFLUSH			; flush the catalog							ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.W	D7, D0				; should be clear, unless file CNode was missing
 			BRA.S	@DlExit
 ;
@@ -397,14 +404,14 @@ FIDGetID:
 ;
 			MOVE.L	(SP)+,-(A6)			; save return address on A6 stack
 			MOVEM.L	FIDGtRegs, -(A6)	; save registers
-			jsrROM 	CMSETUP   			; set up key storage pointed to by A4
+			jsrROM 	ROMCMSETUP			; set up key storage pointed to by A4		ex<SM1><Sys7.1> Put back "ROM"
 			MOVEQ	#0,	D5				; clear fileID, in case we return early due to errors
 			CLR.L	VCBDirIDM(A2)		; invalidate current DirID marker
 ;				
 ; locate the file record
 ;
 			MOVEQ 	#0, D2				; no catalog hint
-			jsrROM 	LOCCREC   			
+			jsrROM 	ROMLOCCREC			;											ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@GtExit				; it's not there, just exit with what's in D0
 			CMPI.B	#cdrFilRec, cdrType(A1); better be a file
 			BNE.S	@GtNotAFileErr
@@ -462,7 +469,7 @@ FIDResolveID:
 			MOVE.L	(SP)+,-(A6)			; save return address on A6 stack
 			MOVEM.L	FIDResRegs,-(A6)	; save registers
 			MOVE.L	D0,D3				; save fileID
-			jsrROM 	CMSETUP   			; set up key record and data storage
+			jsrROM 	ROMCMSETUP			; set up key record and data storage	ex<SM1><Sys7.1> Put back "ROM"
 			MOVEA.L A0, A3				; save cName ptr
 			CLR.L	VCBDirIDM(A2)		; invalidate current DirID marker
 ;					
@@ -470,7 +477,7 @@ FIDResolveID:
 ;
 		;;	MOVEQ 	#0, D2				; no catalog hint					<23Aug90>
 			SUBA.L	A0, A0				; use NULL for file name. 
-			jsrROM 	LOCCREC   			
+			jsrROM 	ROMLOCCREC			;									ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@RsExit				; it's not there, pass error on up
 			CMPI.B	#cdrFThdRec, cdrType(A1); better be a file
 			BNE.S   @RsNotAFileErr
@@ -480,7 +487,7 @@ FIDResolveID:
 			LEA		thdCName(A1), A0	; and it's name
 			MOVEM.L	D0/D2/A0,-(A6)		; save dirID/hint/name				<23Aug90>
 			MOVEQ 	#0, D2				; no catalog hint					<23Aug90>
-			jsrROM 	LOCCREC   			; does the file exist?				<23Aug90>
+			jsrROM 	ROMLOCCREC			; does the file exist?				<23Aug90> ex<SM1><Sys7.1> Put back "ROM"
 			MOVEM.L	(A6)+,D1/D2/A0		; restore dirID/hint/name			<23Aug90>
 			BNE.S	@dangling			; it's not there					<23Aug90>
 
@@ -489,7 +496,7 @@ FIDResolveID:
 			BNE.S	@dangling			; it's not							<21Sep90>
 		
 			MOVEA.L A3, A1				; the cname ptr
-			jsrROM 	UPDCNAME   		
+			jsrROM 	ROMUPDCNAME			;									ex<SM1><Sys7.1> Put back "ROM"
 			MOVEQ	#0, D0				; to be safe
 ;
 ; cleanup and exit
@@ -577,7 +584,7 @@ FIDExchangeFiles:
 ; locate the source file, test for extents in extent file, and copy the cat record for later
 ;
 			CLR.W	extFlgsOff(A4)		; assume no extents in extents file
-			jsrROM 	LOCCREC   			; A0, D0, D2 already set up from input
+			jsrROM 	ROMLOCCREC			; A0, D0, D2 already set up from input		ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExExit				; either CNode not there or io error
 			CMPI.B	#cdrFilRec, cdrType(A1); better be a file
 			BNE		@ExNotAFileErr
@@ -608,7 +615,7 @@ FIDExchangeFiles:
 			MOVE.L	D7, D2				; catalog hint
 			MOVE.L	destDIDOff(A4), D0	; it's dir id
 			MOVEA.L	A3, A0				; it's name
-			jsrROM 	LOCCREC   			; keep the cat hint in D2 for the BTUpdate later
+			jsrROM 	ROMLOCCREC			; keep the cat hint in D2 for the BTUpdate later	ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExExit				; either CNode not there or io error (callee knows it's there!)
 			CMPI.B	#cdrFilRec, cdrType(A1); better be a file
 			BNE		@ExNotAFileErr
@@ -689,14 +696,14 @@ FIDExchangeFiles:
 @ExGetOut	MOVE.L	D6, D2				; catalog hint
 			MOVEA.L	A5,A0				; it's name
 			MOVE.L	srcDIDOff(A4), D0	; it's dir id
-			jsrROM 	LOCCREC   				
+			jsrROM 	ROMLOCCREC			;												ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExBusted	 
 			
 			LEA		destCNode(A4), A0 	; from saved dest (A0) to memory src (A1)
 			BSR		CopyCNodeInfo
 			
 			MOVE.W	VCBCtRef(A2), D0
-			jsrROM 	BTUPDATE   			; tell the btree
+			jsrROM 	ROMBTUPDATE			; tell the btree								ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExExit				; if there's an error, the catalog could be shot!
 
 ;
@@ -705,14 +712,14 @@ FIDExchangeFiles:
 			MOVE.L	D7, D2				; catalog hint
 			MOVEA.L	A3, A0				; it's name
 			MOVE.L	destDIDOff(A4), D0	; it's dir id
-			jsrROM 	LOCCREC   			; keep cat hint in D2 for the BTUpdate later
+			jsrROM 	ROMLOCCREC			; keep cat hint in D2 for the BTUpdate later	ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExBusted
 			
 			LEA		srcCNode(A4), A0 	; from saved src (A0) to memory dest (A1)
 			BSR		CopyCNodeInfo
 			
 			MOVE.W	VCBCtRef(A2), D0
-			jsrROM	BTUPDATE   			; tell the btree
+			jsrROM	ROMBTUPDATE			; tell the btree								ex<SM1><Sys7.1> Put back "ROM"
 			BNE		@ExExit				; if there's an error, the catalog could be shot!
 			BRA.S   @ExFinishUp
 			
@@ -757,8 +764,8 @@ FIDExchangeFiles:
 ; STEP 5: ALL DONE....ALMOST...
 ;
 @ExFinishErr	
-			jsrROM	CMFLUSH   			; flush the catalog
-			jsrROM 	XFFLUSH   			; flush the extent file (unneeded for common case, but it's cheap)			
+			jsrROM	ROMCMFLUSH			; flush the catalog							ex<SM1><Sys7.1> Put back "ROM"
+			jsrROM 	ROMXFFLUSH			; flush the extent file (unneeded for common case, but it's cheap)			
 			MOVE.W	#dskFulErr, D0		; well, report the original error even if the flushes croaked.
 			BRA.S	@ExExit
 @ExNotAFileErr
@@ -771,8 +778,8 @@ FIDExchangeFiles:
 ;
 @ExFinishUp
 			MOVEQ	#0, D0				; no errors....yet...
-			jsrROM 	CMFLUSH   			; flush the catalog
-			jsrROM 	XFFLUSH   			; flush the extent file (unneeded for common case, but it's cheap)	
+			jsrROM 	ROMCMFLUSH			; flush the catalog							ex<SM1><Sys7.1> Put back "ROM"
+			jsrROM 	ROMXFFLUSH			; flush the extent file (unneeded for common case, but it's cheap)	
 @ExExit		ADD 	#lenFIDSwapVars,A6	; de-allocate memory for CM vars
 			MOVEM.L (A6)+, FIDExchRegs	; restore regs
 
@@ -932,18 +939,18 @@ DeleteExts:
 @DXNxtDelete 
 			MOVEQ	#0, D2				; no hint (after BTDelete)			<09Aug90>
 			MOVE.W	VCBXTRef(A2), D0	; extents file refnum
-			jsrROM 	BTSEARCH   			; search BTree for extent record
+			jsrROM 	ROMBTSEARCH			; search BTree for extent record	ex<SM1><Sys7.1> Put back "ROM"
 			CMP.W	#BTNotFound, D0
 			BNE.S	@DXExit				; has to be an ioerror!
 			MOVEQ	#0,	D1				; get what it's pointing at
 			MOVE.W	VCBXTRef(A2), D0	; extents file refnum
-			jsrROM	BTGETRECORD   		; this is the first record we want for this file
+			jsrROM	ROMBTGETRECORD		; this is the first record we want for this file	ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@DXBtErr
 			CMP.L	xkrFNum(A0), D6
 			BNE.S	@DXExit				; Yippie!!! We're done!
 			
 			MOVE.W	VCBXTRef(A2), D0	; extent file's refnum
-			jsrROM 	BTDELETE   			; and delete from btree (AO has key)
+			jsrROM 	ROMBTDELETE			; and delete from btree (AO has key)	ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@DXExit
 			
 			LEA		tempKeyOff(A4), A0	; look again
@@ -1010,7 +1017,7 @@ extSize		EQU		lenxkr+lenxdr
 
 @MvNextBatch MOVE.W	VCBXTRef(A2), D0	; extents file refnum
 			MOVEQ	#0, D2				; no hint
-			jsrROM	BTSEARCH   			; search BTree for extent record. 
+			jsrROM	ROMBTSEARCH			; search BTree for extent record. 					ex<SM1><Sys7.1> Put back "ROM"
 			CMP.W	#BtNotFound, D0		; it won't exist the first time thru the loop
 			BEQ.S	@MvGoOn
 			TST.W	D0
@@ -1022,7 +1029,7 @@ extSize		EQU		lenxkr+lenxdr
 			LEA		extOff(A4), A3 		; extent ptr
 			
 @MvNextRec	MOVE.W	VCBXTRef(A2), D0	; extents file refnum
-			jsrROM	BTGETRECORD   		; this is the first record we want for this file
+			jsrROM	ROMBTGETRECORD		; this is the first record we want for this file	ex<SM1><Sys7.1> Put back "ROM"
 			CMP.W	#BtNotFound, D0		; if xkrFNum(A0) is cleared on this error, then this test is bogus!
 			BEQ.S	@MvNoMoreExts
 			TST.W	D0
@@ -1050,7 +1057,7 @@ extSize		EQU		lenxkr+lenxdr
 			MOVEQ	#lenxdr, D1			; data length 
 @2			MOVE.L	D7, xkrFNum(A0)		; change only the id in the key to dest ID
 			MOVE.W	VCBXTRef(A2), D0	; extent file's refnum
-			jsrROM 	BTINSERT    		; insert in btree
+			jsrROM 	ROMBTINSERT 		; insert in btree									ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@MvBTInsertErr
 			ADDA.W	#extSize, A0
 			ADDA.W	#extSize, A1

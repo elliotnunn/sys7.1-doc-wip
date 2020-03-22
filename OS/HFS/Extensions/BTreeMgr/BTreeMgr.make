@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Gently reordered BTreeMgrObjects.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		BTreeMgr.make
 #
 #	Contains:	Makefile to build the B-Tree library.
@@ -12,12 +19,12 @@
 #	   <SM1>	12/14/92	CSS		Checkout to add BTreeGlue.a build which is required by DictionaryMgr.rsrc.
 
 
-BTreeMgrObjects	=	"{ObjDir}BTreeAlloc.a.o"	∂
-					"{ObjDir}BTreeFuncs.a.o"	∂
+BTreeMgrObjects	=	"{ObjDir}BTreeFuncs.a.o"	∂
+					"{ObjDir}BTreeAlloc.a.o"	∂
 					"{ObjDir}BTreeMaint1.a.o"	∂
 					"{ObjDir}BTreeMaint2.a.o"	∂
-					"{ObjDir}BTreeQueue.a.o"	∂
-					"{ObjDir}BTreeSvcs.a.o"	
+					"{ObjDir}BTreeSvcs.a.o"		∂
+					"{ObjDir}BTreeQueue.a.o"
 
 
 "{LibDir}BTreeMgr.lib"			ƒ	{BTreeMgrObjects}

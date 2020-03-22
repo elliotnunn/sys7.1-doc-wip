@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <7> and <8> by restoring the simple jsr (a3) call to plain
+;							BlockMove, without needing to save/set/restore d1 to hold the
+;							BlockMoveData trap word. Also reverted the one BlockMoveData trap.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:			Switch.a
 ;
 ;	Contains:		Assembler support routines required for process switching.
@@ -264,7 +273,7 @@ saveInfo
 				movea.l	saveArea(a1),a1					; get the handle
 				movea.l	(a1),a1							; (destination) get pointer heap block
 				movea.l	sp,a0							; (source) get pointer to stacked info
-				_BlockMoveData							; copy the data
+				_BlockMove								; copy the data <Sys7.1>
 
 ; cleanup up and leave
 leaveNow
@@ -287,8 +296,8 @@ dummyvbl		PROC	EXPORT
 ; save_lmemtab.  Copy the switchable lomem into a safe area.
 save_lmemtab	PROC	EXPORT
 				IMPORT	(switchTabPtr, blockTrapAddr):DATA
-SaveRegs		REG		a2-a4/d1-d2
-SaveRegSize		EQU		5*4
+SaveRegs		REG		a2-a4/d2						; ex<8> <Sys7.1> No need to save D1
+SaveRegSize		EQU		4*4								; ex<8> <Sys7.1>
 
 				movem.l	SaveRegs,-(sp)					; save work registers
 				move.l	SaveRegSize+4(sp),a4			; get pointer to PCB storage
@@ -348,12 +357,7 @@ SaveOneLoop
 UseBlockMove		
 				move.l	a4,a1							; a1 = destination
 				add.l	d0,a4							; update our storage address
-	if not(PsychicTV) then
-				move.w	#$A22E,d1						; <8>
-				jsr		(a3)
-	else
-				_BlockMove								; <8>
-	endif
+				jsr		(a3)							; ex<7> ex<8> <Sys7.1> unadorned BlockMove
 				
 				bra.s	SaveAllLoop						; now get next entry
 
@@ -368,8 +372,8 @@ AllSaved
 ; restore_lmemtab.  Copy the saved switchable lomem back into lomem.
 restore_lmemtab	PROC	EXPORT
 				IMPORT	(switchTabPtr, blockTrapAddr):DATA
-SaveRegs		REG		a2-a4/d1-d2
-SaveRegSize		EQU		5*4
+SaveRegs		REG		a2-a4/d2						; ex<8> <Sys7.1> No need to save D1
+SaveRegSize		EQU		4*4								; ex<8> <Sys7.1>
 
 				movem.l	SaveRegs,-(sp)					; save work registers
 				move.l	SaveRegSize+4(sp),a4			; get pointer to PCB storage
@@ -429,12 +433,7 @@ RestoreOneLoop
 UseBlockMove		
 				move.l	a4,a0							; setup source pointer for blockmove
 				add		d0,a4							; and increment pointer by count
-	if not(PsychicTV) then
-				move.w	#$A22E,d1						; <8>
-				jsr		(a3)
-	else
-				_BlockMove								; <8>
-	endif
+				jsr		(a3)							; ex<7> ex<8> <Sys7.1> unadorned BlockMove
 				
 				bra.s	RestoreAllLoop					; now get next entry
 		

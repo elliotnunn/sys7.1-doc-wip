@@ -1,4 +1,14 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Removed the common ulong/ushort/uchar typedefs from this file to work
+							around the ones added to Types.h 9/29/93 <SMG2>. This was the only
+							remaining incompatible file, so changing it was the simplest thing to
+							do.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 
  	File:		DiskInitBadBlock.c
 	
@@ -98,9 +108,10 @@
 #include <HFSDefs.h>
 #include <Disks.h>
 
-typedef	unsigned long	ulong;				/* idiosyncrasy of the author */
-typedef	unsigned short	ushort;
-typedef	unsigned char	uchar;
+//	<Sys7.1> Commented out for compatibility with Types.h
+//	typedef	unsigned long	ulong;				/* idiosyncrasy of the author */
+//	typedef	unsigned short	ushort;
+//	typedef	unsigned char	uchar;
 
 #define	BUFSIZE		18				/* test buffer size, in sectors (mb >=18) */ 
 							/* 18 is bad 'cause it's greater than a track (KSCT) */

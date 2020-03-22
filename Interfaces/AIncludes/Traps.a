@@ -1,3 +1,11 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored SwapMMUMode/StripAddress/Translate24To32 to OPWORDs, as they
+;							were before <SM9>.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ; Version: 3.29
 ; Created: Friday, October 20, 1989 at 10:06:13 PM
 ;
@@ -2110,17 +2118,9 @@ _HGetState		OPWORD  	$A069
 _HSetState		OPWORD  	$A06A
 _InitFS   		OPWORD  	$A06C
 _InitEvents   	OPWORD  	$A06D
-
-	Macro							; SuperMario is a 32-bit only ROM
-	_SwapMMUMode
-	EndM
-	Macro							; SuperMario is a 32-bit only ROM
-	_StripAddress
-	EndM
-	Macro							; SuperMario is a 32-bit only ROM
-	_Translate24To32
-	EndM
-
+_SwapMMUMode	OPWORD  	$A05D			; ex<SM9> <Sys7.1>
+_StripAddress	OPWORD  	$A055			; ex<SM9> <Sys7.1>
+_Translate24To32 OPWORD  	$A091			; ex<SM9> <Sys7.1>
 _SetAppBase   	OPWORD  	$A057
 _SlotVInstall 	OPWORD  	$A06F
 _SlotVRemove  	OPWORD  	$A070

@@ -1,4 +1,14 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted Horror (except <H2>) and SuperMario changes
+							Constants used instead of boxFlag equates for clarity
+							GetBacklightInfo/SaveBacklightInfo recreated from disassembly
+							ChargerAdjust/LowTable put back into PWM.c
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		backlight.c
 
 	Contains:	driver for backlight.
@@ -166,19 +176,15 @@ cpuDependentInfoPtr	GetBkltPrimInfo();
  ***************************************************************************************************
  */
 
+/* <Sys7.1> many changes */
 pascal OSErr DRVROpen(CntrlParam *ctlPB,DCtlPtr dCtl)				/* 'open' entry point */
 
 {
 #pragma	unused (ctlPB)
 	register driverGlobalPtr	globalPtr;							/* pointer to globals */
 	PmgrGlobals					**pmgrglobalhdl;					/* handle to power manager globals */
-	OSErr						error;
-	cpuDependentInfoType 		*cpuinfo;
-	OSErr						(*openProc)();
+	char						boxFlag;
 	
-	cpuinfo = GetBkltPrimInfo();
-	if (!cpuinfo) return(openErr);
-
   	globalPtr	= (driverGlobalPtr) NewPtrSysClear(sizeof(driverGlobaltypes));	
 	if (!globalPtr) return(openErr);								/* not enough memory, return error */
 
@@ -188,45 +194,25 @@ pascal OSErr DRVROpen(CntrlParam *ctlPB,DCtlPtr dCtl)				/* 'open' entry point *
 /* setup variables */
 	globalPtr->version			= DRIVERVERSION;					/* driver version number, in globals for easy patching */
 
-	*((unsigned int *)(((int)&(globalPtr->version)) + sizeof(globalPtr->version))) =  cpuinfo->bkltinfo->flags;
-	globalPtr->lowThreshold			= cpuinfo->bkltinfo->lowThreshold; 		/*low hysteresis threshold */
-	globalPtr->hiThreshold			= cpuinfo->bkltinfo->hiThreshold;			/* high hysteresis threshold */
-	globalPtr->userInputSampleRate 	= cpuinfo->bkltinfo->userInputSampleRate;	/* sample every 160ms */
+  	globalPtr->vbl_ok = true;
 
 	globalPtr->lastLevel		= (*pmgrglobalhdl)->LastLevel;		/* get current power level */
 //	globalPtr->userRange		= 0;								/* allow full power level */
 	globalPtr->powerRange		= Larger(globalPtr->lastLevel,globalPtr->userRange);
 
-/* initialize tables */	
-	globalPtr->maximumTable			= (short *) (cpuinfo->bkltroutines->maxTable);							
-	globalPtr->settingTableLow		= (setTableType *) (cpuinfo->bkltroutines->lowTable); /* <H8> */						
-	globalPtr->settingTableHigh		= (setTableType *) (cpuinfo->bkltroutines->hiTable);	/* <H8> */						
-	globalPtr->settingTable			= globalPtr->settingTableHigh;							
-
-/* initialize vectors */	
-	globalPtr->setlevelproc			= (intFunction) (cpuinfo->bkltroutines->setProc);			/* proc to set level */						
-	globalPtr->userInputProc		= (intFunction) (cpuinfo->bkltroutines->getProc);		/* proc to read user input */
-	openProc						= (osFunction) (cpuinfo->bkltroutines->open);	/* routine to close pwm hardware */
-	globalPtr->closeProc			= (intFunction) (cpuinfo->bkltroutines->close);	/* routine to close pwm hardware */
-	globalPtr->controlProc			= (osFunction) (cpuinfo->bkltroutines->control);		/* passed control routine */
-	globalPtr->statusProc			= (osFunction) (cpuinfo->bkltroutines->status);	/* passed status routine */
-	globalPtr->hardwareDependentPtr = (Ptr) (cpuinfo->bkltroutines->hwDependentVar);
-	globalPtr->tableProc 			= (voidFunction) (cpuinfo->bkltroutines->tableProc);	
-
-
-/* call custom initialization routine */	
-	if (openProc) 
+	/* <Sys7.1> */
+	boxFlag = *(char *)0xCB3;
+	switch (boxFlag)
 		{
-		error = (*openProc)(globalPtr);
-		if (error)
-			{
-			DisposPtr((Ptr) globalPtr);									/* release memory */
-			dCtl->dCtlStorage 	= NULL;	
-			return(error);												/* clear out saved value for next open */
-			};
-		};
-
-
+		case 4: // Portable
+			InitRegControls(globalPtr);
+			break;
+		case 15: // PowerBook 170, TIM
+		case 18: // PowerBook 100, Asahi
+		default:
+			InitPWMControls(globalPtr);
+			break;
+		}
 
 	globalPtr->brightnessVbl.globals 			= (Ptr) globalPtr;
 	globalPtr->brightnessVbl.vblpb.qType 		= vType;
@@ -257,7 +243,6 @@ pascal OSErr DRVRClose(CntrlParam *ctlPB,DCtlPtr dCtl)			/* 'open' entry point *
 
 	globalPtr			= (driverGlobalPtr) dCtl->dCtlStorage;	/* set context to my global data area */
 
-	globalPtr->slewChange	= false;							/* always turn off slew during close <H6> */					
 	VRemove((QElemPtr) &globalPtr->brightnessVbl.vblpb);		/* remove vbl task */
 	if (globalPtr->closeProc != NULL) 							/* if hw close proc … */
 		(*globalPtr->closeProc)(globalPtr);						/* … call close proc */
@@ -375,6 +360,7 @@ OSErr GenericControl(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)
  *
  ***************************************************************************************************
  */
+/* <Sys7.1> removed kGetUserInput/kGetScreenBrightness/kGetBrightnessRange/kGetMaximum */
 pascal OSErr DRVRStatus(CntrlParam *ctlPB,DCtlPtr dCtl)			/* 'open' entry point */
 
 {
@@ -390,25 +376,8 @@ pascal OSErr DRVRStatus(CntrlParam *ctlPB,DCtlPtr dCtl)			/* 'open' entry point 
 	globalPtr->vbl_ok = false;									/* disable vbl task */
 	switch(ctlPB->csCode) 
 		{
-		case kGetUserInput:
-			ctlPB->csParam[0] = globalPtr->
-						userInputProc( globalPtr );				/* Get the button inputs	*/
-			break;
-
 		case KGetVersion:												
 			ctlPB->csParam[0] = globalPtr->version;				/* return current driver version */
-			break;
-
-		case kGetScreenBrightness:								/* <H4> return current saved brightness */
-			ctlPB->csParam[0] = globalPtr->userBrightness;
-			break;
-
-		case kGetBrightnessRange:								/* <H4> return range of brightness values */
-			ctlPB->csParam[0] = globalPtr->settingTable->maximum;/* <H4> using new tables, return max setting */
-			ctlPB->csParam[1] = globalPtr->settingTable->minimum;/* <H4> using new tables, return min setting */
-			break;
-		case kGetMaximum:										/* <H4> */
-			ctlPB->csParam[0] = globalPtr->maximumTable[globalPtr->powerRange];
 			break;
 
 		default:
@@ -526,7 +495,7 @@ PowerChange  (driverGlobalPtr	globalPtr, int currentPowerLevel)
 		{
 		if (!globalPtr->flyByWire && userInput)					/* if only software controls and backlight on */
 			{
-			userInput >>= 1;									/* reduce power by 1/2 */
+			userInput = globalPtr->userBrightness >> 1;			/* reduce power by 1/2 */
 			if (!userInput) userInput = 1;						/* insure at least on */
 			};
 		};
@@ -539,47 +508,22 @@ PowerChange  (driverGlobalPtr	globalPtr, int currentPowerLevel)
  *
  ***************************************************************************************************
  */
-
-/*page
- ***************************************************************************************************
- *
- *
- ***************************************************************************************************
- */
-unsigned int LowTable  (driverGlobalPtr	globalPtr)
-
+/* <Sys7.1> from scratch */
+int GetBacklightInfo(short mask, short shift)
 {
-	PmgrGlobals					**pmgrglobalhdl;				/* handle to power manager globals */
-	Boolean						wasLowTable;					/* current table being used */
-	Boolean						hiTable;						/* use hi level table  now */
+	unsigned char buf;
+	ReadXPram(0x74, sizeof(buf), &buf);
+	return (buf & mask) >> shift;
+}
 
-	pmgrglobalhdl 	= (PmgrGlobals **) 0x0D18;					/* handle to power manager globals */
-
-	wasLowTable		= globalPtr->lowTable;						/* current table */
-	hiTable 		= false;									/* assume low table */
-	if ((wasLowTable && ((*pmgrglobalhdl)->BatAvg >= globalPtr->hiThreshold)) ||
-		(!wasLowTable && ((*pmgrglobalhdl)->BatAvg >= globalPtr->lowThreshold)))
-		{
-		hiTable = (*pmgrglobalhdl)->Charger & 0x01;				/* qualify table with charger */
-		};
-	return(hiTable ? 0 : 1);									/* return 1 if low table, 0 if high */
-};
-
-/*page
- ***************************************************************************************************
- *
- *
- ***************************************************************************************************
- */
-void ChargerAdjust  (driverGlobalPtr	globalPtr)
-{		
-	unsigned int				oldTable;
-
-	oldTable			= globalPtr->lowTable;					/* save the current table being used */
-	globalPtr->lowTable =  LowTable(globalPtr);					/* get the new table to use */
-	if (globalPtr->lowTable == oldTable) return;				/* are we changing tables ???, no exit */
-
-	globalPtr->slewChange		= true;							/* if change, set tmp slew on */					
-	globalPtr->settingTable		= globalPtr->lowTable ? globalPtr->settingTableLow :globalPtr->settingTableHigh ;							
-};
+/* <Sys7.1> from scratch */
+void SaveBacklightInfo(short new, short mask, short shift)
+{
+	int addr = 0x70;
+	unsigned char buf;
+	ReadXPram(addr + 4, sizeof(buf), &buf);
+	buf &= ~mask;
+	buf |= (new << shift) & mask;
+	WriteXPram(addr + 4, sizeof(buf), &buf);
+}
 

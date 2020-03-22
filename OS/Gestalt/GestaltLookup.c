@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted the <SM4> fix.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		GestaltLookup.c
 
 	Contains:	Gestalt data structure manipulation routines.
@@ -247,7 +254,7 @@ findLong(ulong selector, int* index)
 	min = 0;
 	max = GestaltPtr->slotsUsed-1;
 	do {
-		i = min + ((max - min) >> 1);		/* get middle of range */
+		i = min + ((max - min) > 1);		/* get middle of range ex<SM4> <Sys7.1> */
 		if (tablePtr[i][0] > selector)		/* are we too high? (is that possible?) */
 			max = i;
 		else if (tablePtr[i][0] < selector)	/* are we too low? */

@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Added extra CLRs to ensure spId/spTBMask is initialized for the SlotMgr.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		VideoPatch.a
 ;
 ;	Contains:	Patches to fix problems in various Apple Video Drivers.
@@ -481,7 +488,9 @@ ROMMinVer		Equ		$12								; Offset from ROMBase to RAM Major version word.
 StartDAFB		
 				Move.l	A3,A0							; Get spBlock ptr into A0.
 				Clr.b	spSlot(A0)						; We only care about Slot $0.
+				Clr.b	spId(A0)						;											<Sys7.1>
 				Clr.b	spExtDev(A0)					; (No external device.)
+				Clr.b	spTBMask(A0)					;											<Sys7.1>
 				Move.w	#catDisplay,spCategory(A0)		; Look for:	Display,
 				Move.w	#typVideo,spCType(A0)			;  			Video,
 				Move.w	#drSwApple,spDrvrSW(A0)			;  			Apple,
@@ -970,6 +979,7 @@ StartJMFB
 				Move.b	D3,spSlot(A0)					; Set the slot number to search in.
 				Clr.b	spId(A0)						; Begin at id 0.
 				Clr.b	spExtDev(A0)					; No external device.
+				Clr.b	spTBMask(A0)					;											<Sys7.1>
 				Move.w	#catDisplay,spCategory(A0)		; Look for:	Display,
 				Move.w	#typVideo,spCType(A0)			;  			Video,
 				Move.w	#drSwApple,spDrvrSW(A0)			;  			Apple,

@@ -1,4 +1,20 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM22>/<MC3>: removed check for FONT<->NFNT conflicts, and
+;							changed some branches back to shorts
+;							Reverted <SM19>-<SM21>/<MC2>: put Begin/EndSystemMode back in
+;							Reverted <SM17>: IsThisASystemResource is true for 0 and kSystemProcess
+;							Reverted <SM16>: changed size back to 30 from 32
+;							Reverted <SM15>: restored (apparently buggy) word test
+;							<SM14>: Removed a line labelled <SM14> that didn't match the log entry
+;							Reverted <SM12>: Don't set TwoDeepBit bit in MakeOverrideMap
+;							Reverted <SM11>: Move the EXG instruction back down
+;							Reverted <SM7>: brought patches back from ResourceMgrPatches.a
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ResourceMgrExtensions.a
 ;
 ;	Contains:	Extensions to Resource Manager: partial resources & resource overrides
@@ -901,8 +917,8 @@ ValidateFontResourceIDs	Proc	Export
 				bsr		FindIDInFromToList				; <57> Go find the ID
 				move.w	(sp)+,d2						; <57> FindIDInFromList will return the ID to renumber to, or -1 if this ID wasn’t in the table
 				cmpi.w	#-1,d2							; <57> Did we get back a -1?
-				bne		@changeFATEntry					; <57> This font was already renumbered.  Just change the font association table entry.
-				bra		@nextTableEntry					; <57> A -1 means that this ID isn’t in our list, so this 'FOND' entry is probably bad.
+				bne.s	@changeFATEntry					; <57> ex<mc3> <Sys7.1> This font was already renumbered.  Just change the font association table entry.
+				bra.s	@nextTableEntry					; <57> ex<mc3> <Sys7.1> A -1 means that this ID isn’t in our list, so this 'FOND' entry is probably bad.
 				
 ;
 ; See if the ID conflicts with a font resource in the main chain.
@@ -916,31 +932,7 @@ ValidateFontResourceIDs	Proc	Export
 				move.w	4(a3),-(sp)						; Look for this ID.
 				_GetResource							; Does it exist?
 				move.l	(sp)+,d0
-				bne.s	@conflictOccured				; This number is used
-
-				cmpi.l	#'FONT',d3						; <mc3> If it is a FONT, also check for NFNT conflicts 
-				beq.s	@checkForNFNTs					; <mc3> 
-				cmpi.l	#'NFNT',d3						; <mc3> If it is a NFNT, also check for FONT conflicts
-				beq.s	@checkForFONTs					; <mc3> 
-				bra.s	@nextTableEntry					; <mc3> If it is a sfnt or other, go on to the next one.
-
-@checkForFONTs
-				subq	#4,sp							; <mc3>
-				move.l	#'FONT',-(sp)					; <mc3> Look for FONT type in the main chain
-				move.w	4(a3),-(sp)						; <mc3> Look for this ID.
-				_GetResource							; <mc3> Does it exist?
-				move.l	(sp)+,d0						; <mc3>
-				bz.s	@nextTableEntry					; <mc3> This number is fine
-				bra.s	@conflictOccured
-
-@checkForNFNTs
-				subq	#4,sp							; <mc3>
-				move.l	#'NFNT',-(sp)					; <mc3> Look for NFNT type in the main chain
-				move.w	4(a3),-(sp)						; <mc3> Look for this ID.
-				_GetResource							; <mc3> Does it exist?
-				move.l	(sp)+,d0						; <mc3>
-				bz.s	@nextTableEntry					; <mc3> This number is fine
-
+				bz.s	@nextTableEntry					; ex<mc3> <Sys7.1> This number is fine
 @conflictOccured
 				move.l	d0,a0							; <46>
 				btst	#kDeanBit,kBrianBits			; <53> See if we loaded the resource
@@ -1116,7 +1108,7 @@ FontResourceTypes
 ReleaseTheFont	Proc	Export
 				With	ConflictStackFrame
 				move.l	(sp)+,d1						; Save the return address
-				tst.b	fontAlreadyLoaded(a6)			; <46> See if we loaded the font <SM15>
+				tst.w	fontAlreadyLoaded(a6)			; <46> See if we loaded the font ex<SM15> <Sys7.1>
 				bz.s	@weLoadedTheFont				; <46> If we did, then unload it
 				addq	#4,sp							; <46> If it was already loaded when we got our hands on it, leave it alone.
 				clr.w	fontAlreadyLoaded(a6)			; <46> And clear this flag for the next time.
@@ -1289,6 +1281,7 @@ retAddr			ds.l	1
 A6Link			ds.l	1
 catInfoRec		ds.b	ioHFQElSiz						; Parameter block for _GetCatInfo call
 currentZone		ds.l	1								; Current zone
+systemMode		ds.w	1								; ex<SM19> <Sys7.1>
 realCurMap		ds.w	1								; Current resource map
 openingFontFile	ds.w	1								; <34> Non zero if this file is a font file
 localSize		equ		*
@@ -1301,6 +1294,7 @@ localSize		equ		*
 				
 				move.w	#-1,fileRefNum(a6)				; Be pessimistic and assume we’ll fail
 				clr.w	openingFontFile(a6)				; <34> Assume it’s not a font file.
+				clr.w	systemMode(a6)					; ex<SM19> <Sys7.1> 
 				
 ; Get the file type and creator of this file.
 				
@@ -1339,6 +1333,16 @@ localSize		equ		*
 				move.l	TheZone,currentZone(a6)			; Save the current zone
 				move.l	SysZone,TheZone					; Make sure map is opened in the system heap
 				
+; ex<SM19> <Sys7.1> Open the file in System Mode (if OSDispatch is available)
+				move.l	ExpandMem,a0
+				tst.w	ExpandMemRec.emProcessMgrExists(a0)	; See if Process Manager is around so _BeginSystemMode exists
+				bz.s	@noBeginSystemMode					; It’s not.  Don’t call BeginSystemMode
+				st		systemMode(a6)
+				subq	#2,sp
+				_BeginSystemMode							; The file was opened in system mode, so it needs to be closed that way.
+				addq	#2,sp
+@noBeginSystemMode
+
 				move.l	TopMapHndl,a3					; Remember current top resource map
 				subq	#2,sp
 				move.l	fileSpec(a6),-(sp)				; Pass file descriptor
@@ -1365,10 +1369,15 @@ localSize		equ		*
 				move.l	ExpandMem,a0					; <34> This was a font file
 				add.w	#1,ExpandMemRec.emOpenFontFiles(a0)
 @markFileOwner
-				move.w	fileRefNum(a6),d0
-				bsr		MarkFileAsOwnedByTheSystem		; <62<mc2>> Do this instead of opening in system mode
 				
 @restoreHeap
+; ex<SM19> <Sys7.1> End System Mode (if we entered it)
+				tst.b	systemMode(a6)				; See if Process Manager is around so _BeginSystemMode exists
+				bz.s	@noEndSystemMode				; It’s not.  Don’t call EndSystemMode
+				subq	#2,sp
+				_EndSystemMode
+				addq	#2,sp
+@noEndSystemMode
 				move.l	currentZone(a6),TheZone			; Restore the current heap
 @exit
 				move.w	realCurMap(a6),CurMap			; <19> Restore CurMap
@@ -1518,7 +1527,12 @@ IsThisASystemResourceMap	Proc	Export
 
 				move.l	(a0)+,d0						; Get high long of PSN
 				bnz.s	@exit							; If not zero, it can’t be kSystemProcess
-				cmpi.l	#kSystemProcess,(a0)			; <62><mc2> Check low word of PSN.
+
+; ex<SM17> ex<SM18> ex<SM19> <Sys7.1>...
+				move.l	(a0),d0							; <Sys7.1> Treat kNoProcess (0) like kSystemProcess (1)
+				beq.s	@isSystemResource
+				cmpi.l	#kSystemProcess,d0				; <62> Check low word of PSN.
+
 				bne.s	@exit
 @isSystemResource
 				move.w	#-1,4(sp)						; This is a system resource map
@@ -1550,28 +1564,7 @@ GetPSNFromParallelFCB	Proc	Export
 				EndProc
 
 ; MarkFileAsOwnedByTheSystem
-;
-;	If a file is considered to be a “system file” if the PSN of the process that opened
-;	the file is kSystemProcess.  Under 7.1, we also considered files with a PSN of 0
-;	to be a system file.  This caused problems for extensions that opened files and
-;	wanted to load resources into their own heap instead of the system heap.  In 7.2
-;	and later, this is no longer the case, so we need to explicitly set the PSN in the
-;	parallel FCB array to kSystemProcess for font files and override maps.  This is what
-;	this routine does.
-;
-;	Input:	D0	Reference number of file to mark
-;
-
-MarkFileAsOwnedByTheSystem	Proc	Export
-				Import	GetPSNFromParallelFCB
-				
-				move.l	a0,-(sp)						; Preserve A0
-				bsr		GetPSNFromParallelFCB
-				clr.l	(a0)+							; Clear high word of PSN
-				move.l	#kSystemProcess,(a0)			; Set the low word
-				move.l	(sp)+,a0						; Restore A0
-				rts
-				EndProc
+; ex<SM19> <Sys7.1> deleted
 				
 				
 ;_______________________________________________________________________________
@@ -1892,7 +1885,7 @@ MakeOverrideMap	Proc	Export
 		
 				move.l	d0,-(sp)						; save handle for ReleaseResource later
 		
-				moveq	#32,d0							; Space for header, map info, and type count
+				moveq	#30,d0							; Space for header, map info, and type count			ex<SM16> <Sys7.1>
 				_NewHandle ,Sys,Clear					; Create a new map
 				move.l	a0,a4							; Keep handle to new map in A4
 				move.l	(a0),a0
@@ -1909,9 +1902,8 @@ MakeOverrideMap	Proc	Export
 				move.w	#mNames+4,(a0)+					; Point to after resource map for name list
 				move.w	#-1,(a0)+						; Nothing in the resource map
 				clr.w	(a0)							; No names in the map
-				move.l	(a4),a1							; get map pointer in a1										<SM12> rb
-				bset	#twoDeepBit,mInMemoryAttr(a1)	; mark for extended search									<SM12> rb
-				bset	#overrideNextMapBit,mInMemoryAttr(a1) ; mark as an override map								<SM14> rb
+; ex<SM12> <Sys7.1> Don't set the TwoDeepBit attribute
+; ex<SM14> <Sys7.1> Don't set the OverrideNextMapBit attribute
 				
 				move.l	(sp),a1							; get rovm resource handle
 				move.l	(a1),a1							; get rovm resource pointer
@@ -1957,12 +1949,12 @@ MakeOverrideMap	Proc	Export
 ; If this resource has a name, add the name to the override map
 ;
 
-				exg		a1,a2							; Get entry pointer back in A2						<SM11> rb
 				move.w	rNameOff(a0),d0					; Get offset to resource name
 				bmi.s	@noName							; If negative, this resource has no name
 				move.l	(a5),a0							; Dereference ROM map handle
 				add.w	MNames(a0),a0					; Get to resource name list
 				add.l	d0,a0							; A0 now points to the name for this resource
+				exg		a1,a2							; Get entry pointer back in A2						ex<SM11> rb <Sys7.1>
 				jsrROM	AddName							; Let the Resource Manager do the hard part
 
 ;
@@ -2090,9 +2082,7 @@ InsertOverrideMap	Proc	Export
 				clr.w	ResErr							; No error if we got this far
 
 ; <62><mc2> Mark override map as being owned by the system
-
-				move.w	mRefNum(a1),d0					; Get file reference number
-				bsr		MarkFileAsOwnedByTheSystem
+; ex<mc2> <Sys7.1> Removed call to MarkFileAsOwnedByTheSystem
 				
 ; Clear emLastMapOverridden to force a resynchronization of the override maps.
 
@@ -2333,6 +2323,247 @@ localSize		equ		*
 				moveq	#0,a0
 				rts										; Return
 				EndProc
+
+; brought patches back from ResourceMgrPatches.a (rest of file) ex<SM7> <Sys7.1>
+
+;____________________________________________________________________________________________________
+; StdDirIDExit
+;
+; This is a way out of Resource Mgr patches that clears the dirID global.
+; It does very little of what StdExit in the Resource Manager does:
+; For example, it does not restore saved registers.
+
+StdDirIDExit	PROC	EXPORT
+
+		move.l	ExpandMem,a0			; point to extended low-memory
+		clr.l	ExpandMemRec.resourceMgrDirID(a0)	; get rid of special dirID (done in StdExit on newer ROMs)
+
+		move.l	(sp)+,a0				; get return address in A0
+		add.l	d0,sp					; pop off parameters
+		jmp		(a0)					; return
+
+		endproc	
+	
+	
+	
+	
+;____________________________________________________________________________________________________
+; CreateResFile(fileName: Str255);
+
+CreateResFileDirIDExit PatchProc	_CreateResFile,(Plus,SE,II,Portable,IIci)
+		import	StdDirIDExit
+
+		move.l	4(sp),-(sp)				; pass file name
+	If forRom Then													; <2> kc.start
+		Import	CreateResFile
+		jsr		CreateResFile
+	Else
+		jsrOld							; create resource file
+	Endif															; <2> kc.end
+
+		moveq	#4,d0					; get size of parameters
+		jmp		StdDirIDExit			; clear the dirID and exit (done by StdExit on newer ROMs)
+
+		endproc
+
+;____________________________________________________________________________________________________
+; HCreateResFile(vRefNum: INTEGER; dirID: LONGINT; fileName: Str255);
+; This procedure needs to be named differently to get linked into LinkedPatches.rsrc by LinkPatch.
+
+CreateDirIDResFile PatchProc	_HCreateResFile,(Plus,SE,II,Portable,IIci)
+		import	StdDirIDExit
+
+		move.l	ExpandMem,a0			; point to extended low-memory
+		move.l	4+4(sp),ExpandMemRec.resourceMgrDirID(a0)	; jam in the dirID
+
+		move.w	4+4+4(sp),d0			; get the vRefNum
+
+		move.l	4(sp),-(sp)				; pass file name
+		pea		ReturnHere				; start doing a CreateResFile
+		jsrROM	StdZEntry				; save registers, etc. (D0 is saved across this call)
+		move.w	d0,ioStkFrame+ioVRefNum(a6)	; stuff vRefNum into parameter block
+		jmpROM	AfterStdZEntryInCreateResFile	; join CreateResFile
+ReturnHere
+
+		moveq	#4+4+2,d0				; get size of parameters
+		jmp		StdDirIDExit			; clear the dirID and exit (done by StdExit on newer ROMs)
+
+		endproc
+
+;____________________________________________________________________________________________________
+; OpenResFile(fileName: Str255): INTEGER;
+
+OpenResFileDirIDExit PatchProc	_OpenResFile,(Plus,SE,II,Portable,IIci)
+		import	StdDirIDExit
+
+		subq	#2,sp					; make room for result
+		move.l	2+4(sp),-(sp)			; pass file name
+	If forRom Then													; <2> kc.start
+		Import	OpenResFile
+		jsr		OpenResFile
+	Else
+		jsrOld							; open resource file
+	Endif															; <2> kc.end
+		move.w	(sp)+,4+4(sp)			; propagate result out
+
+		moveq	#4,d0					; get size of parameters
+		jmp		StdDirIDExit			; clear the dirID and exit (done by StdExit on newer ROMs)
+
+		endproc
+
+;____________________________________________________________________________________________________
+; OpenRFPerm(fileName: Str255; vRefNum: INTEGER; permission: SignedByte): INTEGER;
+
+OpenRFPermDirIDExit PatchProc	_OpenRFPerm,(Plus,SE,II,Portable,IIci)
+		import	StdDirIDExit
+
+		subq	#2,sp					; make room for result
+		move.l	2+4+2+2(sp),-(sp)		; pass file name
+		move.w	4+2+4+2(sp),-(sp)		; pass vRefNum
+		move.b	2+4+2+4(sp),-(sp)		; pass permission
+
+		jsrOld							; open resource file
+
+		move.w	(sp)+,4+2+2+4(sp)		; propagate result out
+
+		moveq	#2+2+4,d0				; get size of parameters
+		jmp		StdDirIDExit			; clear the dirID and exit (done by StdExit on newer ROMs)
+
+		endproc
+
+;____________________________________________________________________________________________________
+; HOpenResFile(vRefNum: INTEGER; dirID: LONGINT; fileName: Str255; permission: SignedByte): INTEGER;
+; This procedure needs to be named differently to get linked into LinkedPatches.rsrc by LinkPatch.
+
+OpenDirIDResFile PatchProc	_HOpenResFile,(Plus,SE,II,Portable,IIci)
+		import	StdDirIDExit
+
+		move.l	ExpandMem,a0			; point to extended low-memory
+		move.l	4+2+4(sp),ExpandMemRec.resourceMgrDirID(a0)	; jam in the dirID
+
+		subq	#2,sp					; make room for result
+		move.l	2+4+2(sp),-(sp)			; pass file name
+		move.w	4+2+4+2+4+4(sp),-(sp)	; pass vRefNum
+		move.b	2+4+2+4(sp),-(sp)		; pass permission
+		jsrROM	ROMOpenRFPerm			; open resource file
+		move.w	(sp)+,4+2+4+4+2(sp)		; propagate result out for HOpenResFile
+
+		moveq	#2+4+4+2,d0				; get size of parameters
+		jmp		StdDirIDExit			; clear the dirID and exit (done by StdExit on newer ROMs)
+
+		endproc
+
+;____________________________________________________________________________________________________
+; patch to Create to use dirID
+;
+; This patch should only apply to the Create call in CreateResFile.
+; Since come-from patches are a pain, instead we assume that the “resourceMgrDirID”
+; global will be zero, except for some cases when Create is called from CreateResFile.
+;
+; Come-from patches are now cake with linked patches, so this routine has been changed into
+; a proper come-from patch.  <2>  DTY 6/27/90
+
+
+NewCreate ComeFromPatchProc	_Create,AfterCreateInCreateResFile,(Plus,SE,II,Portable,IIci)
+		move.l	a0,-(sp)				; save pointer to the old parameter block
+
+		sub		#ioHQElSize,sp			; make room for new parameter block
+
+		move.l	ioFileName(a0),ioFileName(sp)	; use the same file name
+		move.w	ioVRefNum(a0),ioVRefNum(sp)		; use the same vRefNum
+		move.b	ioFileType(a0),ioFileType(sp)	; use the same “file type”
+		move.l	ExpandMem,a1					; point to extended low-memory
+		move.l	ExpandMemRec.resourceMgrDirID(a1),d0	; get the dirID
+		move.l	d0,ioDirID(sp)					; put in the dirID
+
+		move.l	sp,a0					; use the new parameter block
+		or.w	#newHFS,d1				; set the HFS bit in the trap word (passed by dispatcher)
+		jsrOld							; Call old _Create
+
+		add		#ioHQElSize,sp			; get rid of the parameter block
+
+		move.l	(sp)+,a0				; get pointer to the old parameter block
+		move.w	d0,ioResult(a0)			; put result in the old parameter block
+
+		rts
+
+		endproc
+
+;____________________________________________________________________________________________________
+; patch to OpenRF to use dirID
+;
+; This patch should only apply to the OpenRF call in ORFCommon.
+; Since come-from patches are a pain, instead we assume that the “resourceMgrDirID”
+; global will be zero, except for some cases when OpenRF is called from ORFCommon.
+;
+; Come-from patches are now cake with linked patches, so this routine has been changed into
+; a proper come-from patch.  <2>  DTY 6/27/90
+
+NewOpenRF ComeFromPatchProc	_OpenRF,AfterOpenRFInORFCommon,(Plus,SE,II,Portable,IIci)
+		move.l	a0,-(sp)				; save pointer to the old parameter block
+
+		sub		#ioHQElSize,sp			; make room for new parameter block
+
+		move.l	ExpandMem,a1			; point to extended low-memory
+		move.l	ExpandMemRec.resourceMgrDirID(a1),d0	; get the dirID
+		move.l	d0,ioDirID(sp)			; put in the dirID
+
+		move.l	ioFileName(a0),ioFileName(sp)	; use the same file name
+		move.w	ioVRefNum(a0),ioVRefNum(sp)		; use the same vRefNum
+		move.b	ioFileType(a0),ioFileType(sp)	; use the same “file type”
+		move.b	ioPermssn(a0),ioPermssn(sp)		; use the same permissions
+		move.l	ioOwnBuf(a0),ioOwnBuf(sp)		; and the same file buffer
+
+		move.l	sp,a0					; use the new parameter block
+		or.w	#newHFS,d1				; set the HFS bit in the trap word (passed by dispatcher)
+		jsrOld							; Call old _OpenRF routine
+
+		move.w	ioRefNum(sp),d1			; get the refNum result into a register
+
+		add		#ioHQElSize,sp			; get rid of the parameter block
+
+		move.l	(sp)+,a0				; get pointer to the old parameter block
+		move.w	d0,ioResult(a0)			; put result in the old parameter block
+		move.w	d1,ioRefNum(a0)			; put refNum in the old parameter block
+
+		rts
+
+		endproc
+
+;____________________________________________________________________________________________________
+; Un-implement (de-announce) _AddReference and _RmveReference traps
+
+InstallResourceMgrExtensions	InstallProc	(Plus,SE,II,Portable,IIci)
+
+		move.w	#$9f,d0
+		_GetTrapAddress newTool			; get the address of the Unimplemented trap
+		move.w	#$1AC,d0
+		_SetTrapAddress newTool			; nuke AddReference
+		move.w	#$1AE,d0
+		_SetTrapAddress newTool			; nuke RmveReference
+
+		rts
+
+		EndProc
+
+;____________________________________________________________________________________________________
+; patch to _SetEOF inside CheckGrow to check for resource file too large
+;
+; CheckGrow is called by AddResource, ChangedResource, SetResInfo, and (more or less) by
+; SetResourceSize above. It calls _SetEOF to grow the file to accomodate these operations.
+; Unfortunately, while the File Mgr supports files > 16 meg, the Resource Mgr does not.
+; This patch checks if the size passed to _SetEOF is too big, and returns eofErr (for lack of
+; a better error) in this case.
+
+ValidateFileSizeInCheckGrow ComeFromPatchProc _SetEOF,AfterSetEOFInCheckGrow,(Plus,SE,II,Portable,IIci)
+	
+		tst.b	(a1)					; get new size of file set up by CheckGrow (a1 points to ioLEOF inside param block)
+										; note: 16 meg = $01000000, so if any bits are set in first byte it’s >= 16 meg
+		beqOld							; no, grow the file as usual
+		move.w	#eofErr,d0				; yes, return an error (not really an eofErr, but it is the end of the resource fork)
+		rts
+
+		endproc
 
 
 		End

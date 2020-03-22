@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM5>/<SM6>: restored the simple SndPlay to DoSound
+							Reverted <SM4>: removed early-return speedup from NMTask
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		NotificationMgr.c
 
 	Contains:	Notification Manager
@@ -658,13 +666,11 @@ RotateIcon(NMRecPtr theNMRec, int /*procLevel*/)
 }
 
 /* Play a sound */
+/* ex<SM5> ex<SM6> <Sys7.1> */
 void
 DoSound(NMRecPtr theNMRec, int procLevel)
 {
 	register Handle	theSound = theNMRec->nmSound;
-	SndChannelPtr		chan = nil;	// <SM6>
-	long				sysBeepVolume = 0;
-	SndCommand			cmd;
 
 	theNMRec->nmFlags |= fSndPlayed;
 	if (theSound) 
@@ -674,16 +680,7 @@ DoSound(NMRecPtr theNMRec, int procLevel)
 			SysBeep(3);
 		else 
 		{
-			if ( SndNewChannel(&chan, 0, 0, nil) == noErr )
-			{
-				GetSysBeepVolume(&sysBeepVolume);
-					cmd.cmd = volumeCmd;
-					cmd.param2 = sysBeepVolume;
-					SndDoImmediate(chan, &cmd);
-				
-				SndPlay(chan, theSound, false);
-				SndDisposeChannel(chan, true);
-			}
+			SndPlay(NULL, theSound, false);
 		}
 	}
 }
@@ -823,23 +820,20 @@ NMGNEFilter(void)
 }
 
 /* Called by SystemTask in the topmost layer */
+/* ex<SM4> <Sys7.1> */
 pascal void
 NMTask(void)
 {
 	register int	procLevel;
 	short	selector[4];
 	
-	/* NOTE: If this code seems buggy, take this 'if' statement and move it below after the call to AddIconRec() */
-	if (NMQHdr->requests.qHead == nil)
-		return;
-
-	selector[0] = MoveSICNToPM;
-	selector[1] = MoveICSToPM;
-	selector[2] = MoveSICNToAM;
-	selector[3] = MoveICSToAM;
-	
 	procLevel = disable();
  
+	selector[3] = MoveICSToAM;
+	selector[2] = MoveSICNToAM;
+	selector[1] = MoveICSToPM;
+	selector[0] = MoveSICNToPM;
+	
 	{
 		/* Find the first queue element that needs attention.
 		 * Note that the response proc is the last thing done.

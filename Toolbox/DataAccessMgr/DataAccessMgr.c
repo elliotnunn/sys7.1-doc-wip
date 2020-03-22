@@ -1,4 +1,13 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM2>
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+
+	Clean diff against SuperMario
+*/
+
+/*
 	File:		DataAccessMgr.c
 
 	Contains:	C routines for the Data Access Manager (codename SnarfMan).
@@ -286,8 +295,7 @@ SMInitDBPack(short version)
 				get unlocked and/or purged at the wrong
 				time by PACKHelper.
 			*/
-			*((short*) RomMapInsert) = mapTrue;
-			
+			/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 			resH = GetResource(COMPCODERESTYPE, COMPCODERESID);
 			if (resH != NULL)
 			{
@@ -384,8 +392,7 @@ InstallDefaultHandlers(snarfGlobPtr	glob)
 	if (rc == noErr)
 	{
 		/* get the 'rtt#' */
-		*((short*) RomMapInsert) = mapTrue;
-		
+		/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 		resH = GetResource(RTTLISTRESTYPE, RTTLISTID);
 		if (resH != NULL)
 		{
@@ -406,9 +413,7 @@ InstallDefaultHandlers(snarfGlobPtr	glob)
 			resP += sizeof(short);
 
 			/* load in 'proc' */
-			
-			*((short*) RomMapInsert) = mapTrue;
-			
+			/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 			handlerH = GetResource(RTTCODERESTYPE, handlerID);
 			if (handlerH != NULL)
 			{
@@ -2184,8 +2189,7 @@ SMGetNewQuery(short queryID, QueryHandle *query)
 	*query = NULL;
 
 	/* get the 'qrsc' */
-	*((short*) RomMapInsert) = mapTrue;
-	
+	/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 	resH = (queryRes**)GetResource(QRSCRESTYPE, queryID);
 
 	if (!resH)
@@ -2251,8 +2255,7 @@ SMGetNewQuery(short queryID, QueryHandle *query)
 				/* get qdef proc - id 0 means no qdef */
 				if (resP->qdefID != 0)
 				{
-					*((short*) RomMapInsert) = mapTrue;
-					
+					/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 					queryP->queryProc = GetResource(QDEFRESTYPE, resP->qdefID);
 					if (!queryP->queryProc)
 					{
@@ -2278,8 +2281,7 @@ SMGetNewQuery(short queryID, QueryHandle *query)
 
 					for (i = 0; i < resP->numQueries; i++)
 					{
-						*((short*) RomMapInsert) = mapTrue;
-						
+						/* ex<SM2> <Sys7.1> GetResource not to use ROM map */
 						*queries = GetResource(QUERYRESTYPE, *wstrID);
 						if (*queries)
 						{

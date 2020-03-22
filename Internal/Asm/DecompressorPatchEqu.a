@@ -1,0 +1,5 @@
+;
+;	Shim to point source to a compatible include file
+;
+
+	INCLUDE		'Decompression.a'

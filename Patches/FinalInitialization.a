@@ -1,0 +1,86 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Disassembled from scratch
+;
+
+			LOAD	'StandardEqu.d'
+			INCLUDE	'SysPrivateEqu.a'
+			INCLUDE	'Slots.a'
+			INCLUDE	'LinkedPatchMacros.a'
+
+
+InitADBDrvr		ROMBind	(SE,$03C9E),(II,$07724),(Portable,$05BEE),(IIci,$0A7B0)
+OpenSlots		ROMBind	(II,$01370),(IIci,$02240)
+
+
+; Pieced together from StartBoot.a:InitSys7Toolbox
+
+
+									MakeInstall	AddFontsToChain,(Plus,SE,II,Portable,IIci)
+
+
+VMFinalInitialization				InstallProc	(Plus,SE,II,Portable,IIci,notAUX)
+	; If VM loaded, we need to call MemoryDispatch with selector (-1) so VM can hold the system heap,
+	; unhold the boot stack, patch the cursor task, and enable user mode.
+
+			MOVE.L	#$5C,D0							; _MemoryDispatch
+			_GetOSTrapAddress
+			MOVE.L	A0,D1
+			MOVE	#$9F,D0							; _Unimplemented
+			_GetToolTrapAddress
+			CMP.L	A0,D1							; Has VM installed itself?
+			BEQ.S	@noVM							; -> No.  No Memory Dispatch
+
+@hasVM		MOVEQ	#-1,D0							; Finish VM initialization selector
+			_MemoryDispatch							; Call VM.
+
+@noVM		RTS										; Return to boot3 (or Gibbly)
+
+	
+ADBSecondaryInitialization			InstallProc	(SE,II,Portable,IIci,notAUX)
+			JMPROM	InitADBDrvr						; Another reinit
+
+
+SlotMgrSecondaryInitializationII	InstallProc	(II,notAUX)
+			IMPORT	Secondary_Init
+
+			SUB.W	#spBlock.spBlockSize,SP			; Make room for a slot parameter block on the stack
+			MOVEA.L	SP,A0							; Point A0 to the record
+			BSET	#fWarmStart,spBlock.spFlags(A0)	; Set warm start flag
+			JSR		Secondary_Init					; Wake everybody up again
+			ADD.W	#spBlock.spBlockSize,SP			; Remove the param block from the stack
+			JMPROM	OpenSlots						; Open all slot drivers...
+
+
+SlotMgrSecondaryInitializationIIci	InstallProc	(IIci,notAUX)
+			SUB.W	#spBlock.spBlockSize,SP			; Make room for a slot parameter block on the stack
+			MOVEA.L	SP,A0							; Point A0 to the record
+			BSET	#fWarmStart,spBlock.spFlags(A0)	; Set warm start flag
+			_SecondaryInit							; Wake everybody up again
+			ADD.W	#spBlock.spBlockSize,SP			; Remove the param block from the stack
+			JMPROM	OpenSlots						; Open all slot drivers...
+
+
+ColorQDSecondaryInitialization		InstallProc	(II,IIci)
+			IMPORT	DavesRandomVideoStuff
+
+			JSR		DavesRandomVideoStuff			; re-do CheckDevices and video driver patching.
+			MOVE.L	(a5),-(sp)						; point to the same globals we are using now
+			_InitGraf								; catch all the new devices
+			_InitPalettes	,autoPop				; me too...
+
+
+SetUpIconCluts						InstallProc	(Plus,SE,II,Portable,IIci)
+			IMPORT	MakeIconData
+
+			MOVE.L	ExpandMem,a0
+			PEA		ExpandMemRec.emIconCluts(a0)
+			JSR		MakeIconData
+			RTS
+
+
+FontMgrSecondaryInitialization		InstallProc	(Plus,SE,II,Portable,IIci)
+			_InitFonts	,autoPop					; Reinit the font manager (in case a new one's just been loaded)
+
+			END

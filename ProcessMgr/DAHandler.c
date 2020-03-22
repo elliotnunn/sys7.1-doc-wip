@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <16> by using the non-standard "MyGestalt" glue for an init-
+							time Gestalt call, and for freeing the Init code segment.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		DAHandler.c
 
 	Contains:	The System Desk Accessory Handler application
@@ -392,7 +400,7 @@ main(void)
 	// <12> Now that DAHandler is up and running, it’s Init and %A5Init segments can be
 	//		unloaded.
 	
-	UnloadSeg((Ptr) StartupCode);			// <12> Unload Init
+	UnloadSeg((Ptr) MyGestalt);				// <12> ex<16> <Sys7.1> Unload Init
 	UnloadSeg((Ptr) _DataInit);				// <12> Unload %A5Init
 	
 	/* The event loop */
@@ -509,7 +517,7 @@ InitConfig(void)
 	Colorized = false;
 	Has32BitQD = false;
 	
-	if (Gestalt(gestaltQuickdrawVersion,&qdInfo) == noErr)
+	if (MyGestalt(gestaltQuickdrawVersion,&qdInfo) == noErr)	// ex<16> <Sys7.1>
 		{
 		qdInfo &= 0xFFFF;
 		Colorized = (qdInfo >= gestalt8BitQD);

@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM4>/<64>: removed check for NIL before DisposeHandle
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		StandardMDEF.a
 ;
 ;	Contains:	Standard text menu definition procedure.
@@ -442,9 +449,7 @@ MDEFSaveReg	REG		D3-D7/A2-A4
 			move.l	a3, a0				; get menuHandle
 			_HUnlock					; and unlock it before we leave
 
-			move.l	arrowHandle(a6),d0	; the arrow handle or NIL					<48><64>
-			beq.s	@skipDispose		; Don't bother if already NIL				<64>
-			move.l	d0,a0				; Get ready for DisposeHandle				<64>
+			move.l	arrowHandle(a6),a0	; the arrow handle or NIL					<48> ex<64> <Sys7.1>
 			_DisposeHandle				; DisposeHandle can deal with NIL			<48>
 @skipDispose
 

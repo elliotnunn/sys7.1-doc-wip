@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM4> expectation of PACK 14 in ROM.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		BalloonExtensions.a
 ;
 ;	Contains:	Extensions to the Balloon Help Manager used by both the ROM and System.
@@ -145,7 +152,7 @@ BSaveReg		REG		A3/A4
 				subq	#4,sp									; room for package
 				move.l	#'PACK',-(sp)							; we want the package resource
 				move	#14,-(sp)								; of ID = 14
-				MOVE.W	#MapTrue,RomMapInsert					; look in ROM first							<SM4> rb
+																; ex<SM4> <Sys7.1> no RomMapInsert
 				_GetResource
 				move.l	(sp)+,d0								; did we get it?
 				beq.s	done									; no, so exit w/o putting up icon

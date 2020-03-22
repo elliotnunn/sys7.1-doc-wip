@@ -1,3 +1,9 @@
+/*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Worked around accRun double define in Devices.h and Desk.h
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
 
 /************************************************************
 
@@ -45,7 +51,9 @@ Created: Saturday, July 27, 1991 at 2:53 PM
 enum {
 
  accEvent = 64,
+#ifndef __DEVICES__				// <Sys7.1>
  accRun = 65,
+#endif
  accCursor = 66,
  accMenu = 67,
  accUndo = 68,

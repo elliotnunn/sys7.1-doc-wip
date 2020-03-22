@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <23>: restored '…' to About Keyboards strings.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		International.r
 
 	Contains:	Rez-format international resources for the System file
@@ -646,7 +653,7 @@
 
 	resource 'STR#' (kKeybdMenuItemsID, sysHeap, purgeable) { {			// strings for menu items			<x121><25>
 		"\0x00";														// marker for default keybd			<2><9>
-		"About Keyboards";												//									<2><23>
+		"About Keyboards…";												//									<2> ex<23> <Sys7.1>
 //		"Next Script";													// currently not used
 //		"Next Keyboard in Script";										// currently not used
 	} };
@@ -740,7 +747,7 @@
 			{14, 15, 46, 447},
 			StaticText {
 				disabled,
-				"About Keyboards"										//	<23>
+				"About Keyboards…"										//	ex<23> <Sys7.1>
 			}
 		}
 	};
@@ -763,7 +770,7 @@
 			{14, 17, 44, 422},
 			StaticText {
 				disabled,
-				"About Keyboards"										//	<23>
+				"About Keyboards…"										//	ex<23> <Sys7.1>
 			}
 		}
 	};
@@ -792,7 +799,7 @@
 			{14, 15, 46, 447},
 			StaticText {
 				disabled,
-				"About Keyboards"					
+				"About Keyboards…"										// ex<23> <Sys7.1>
 			}
 		}
 	};

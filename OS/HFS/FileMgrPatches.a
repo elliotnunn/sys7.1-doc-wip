@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes. Rolled in the 6/22/92
+;							<R58> change that was made to the TFSRFN2.a version of ClosePatch:
+;							namely, disabled the patch with a short branch.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FileMgrPatches.a
 ;
 ;	Contains:	Patches to the file system.
@@ -274,48 +283,48 @@ BuildHFS70Init	default		0
 
 romAfterExtFSHook	ROMBind (Plus,$029f2), (SE,$04434), (II,$07edc), (IIci,$0f0e0), (Portable, $096e0)
 romBTFlush		ROMBind	(Plus,$068c2), (SE,$08398), (II,$0be5c), (IIci,$13242), (Portable, $0d802)
-BUILDKEY   		ROMBind	(Plus,$065d8), (SE,$080a0), (II,$0BB64), (IIci,$12f40), (Portable, $0d50a)
-BTDELETE   		ROMBind	(Plus,$0671c), (SE,$081e6), (II,$0bcaa), (IIci,$13090), (Portable, $0d650)
-BTGETRECORD   	ROMBind	(Plus,$06928), (SE,$083fc), (II,$0bec0), (IIci,$132A6), (Portable, $0d866)
-BTINSERT   		ROMBind	(Plus,$069ea), (SE,$084b4), (II,$0bf78), (IIci,$1335E), (Portable, $0d91e)
-BTSEARCH   		ROMBind	(Plus,$06d4a), (SE,$0880c), (II,$0c2d0), (IIci,$136B6), (Portable, $0dc76)
-BTUPDATE   		ROMBind	(Plus,$06dd6), (SE,$08896), (II,$0c35a), (IIci,$13740), (Portable, $0dd00)
-CACHERDIP   	ROMBind	(Plus,$07b2a), (SE,$0967e), (II,$0d13e), (IIci,$1459C), (Portable, $0eb44)
+ROMBUILDKEY		ROMBind	(Plus,$065d8), (SE,$080a0), (II,$0BB64), (IIci,$12f40), (Portable, $0d50a)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMBTDELETE		ROMBind	(Plus,$0671c), (SE,$081e6), (II,$0bcaa), (IIci,$13090), (Portable, $0d650)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMBTGETRECORD	ROMBind	(Plus,$06928), (SE,$083fc), (II,$0bec0), (IIci,$132A6), (Portable, $0d866)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMBTINSERT		ROMBind	(Plus,$069ea), (SE,$084b4), (II,$0bf78), (IIci,$1335E), (Portable, $0d91e)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMBTSEARCH		ROMBind	(Plus,$06d4a), (SE,$0880c), (II,$0c2d0), (IIci,$136B6), (Portable, $0dc76)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMBTUPDATE		ROMBind	(Plus,$06dd6), (SE,$08896), (II,$0c35a), (IIci,$13740), (Portable, $0dd00)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMCACHERDIP	ROMBind	(Plus,$07b2a), (SE,$0967e), (II,$0d13e), (IIci,$1459C), (Portable, $0eb44)			;ex<SM1><Sys7.1> Put back "ROM"
 romChgMFlLock	ROMBind	(Plus,$046de), (SE,$06812), (II,$0a2e8), (IIci,$11694), (Portable, $0bc7c)
-CHKNODE   		ROMBind	(Plus,$072c2), (SE,$08e22), (II,$0c8e6), (IIci,$13D42), (Portable, $0e2ec)
+ROMCHKNODE		ROMBind	(Plus,$072c2), (SE,$08e22), (II,$0c8e6), (IIci,$13D42), (Portable, $0e2ec)			;ex<SM1><Sys7.1> Put back "ROM"
 romCkExtFS		ROMBind	(Plus,$03638), (SE,$050be), (II,$08b80), (IIci,$0fefa), (Portable, $0a4e2)
 romCkFilMod		ROMBind	(Plus,$0497a), (SE,$06420), (II,$09eec), (IIci,$11298), (Portable, $0b880)
-CMDDONE   		ROMBind	(Plus,$0295e), (SE,$043a0), (II,$07e48), (IIci,$0f04c), (Portable, $0964c)
-CMFLUSH   		ROMBind	(Plus,$06606), (SE,$080ce), (II,$0BB92), (IIci,$12f6e), (Portable, $0d538)
-CMGETCN   		ROMBind	(Plus,$06238), (SE,$07d04), (II,$0b7c8), (IIci,$12ba2), (Portable, $0d16e)
-CMSETUP   		ROMBind	(Plus,$065a0), (SE,$08068), (II,$0bb2c), (IIci,$12f06), (Portable, $0d4d2)
+ROMCMDDONE		ROMBind	(Plus,$0295e), (SE,$043a0), (II,$07e48), (IIci,$0f04c), (Portable, $0964c)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMCMFLUSH		ROMBind	(Plus,$06606), (SE,$080ce), (II,$0BB92), (IIci,$12f6e), (Portable, $0d538)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMCMGETCN		ROMBind	(Plus,$06238), (SE,$07d04), (II,$0b7c8), (IIci,$12ba2), (Portable, $0d16e)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMCMSETUP		ROMBind	(Plus,$065a0), (SE,$08068), (II,$0bb2c), (IIci,$12f06), (Portable, $0d4d2)			;ex<SM1><Sys7.1> Put back "ROM"
 romCMUpdateCN	ROMBind	(Plus,$0656c), (SE,$08036), (II,$0bafa), (IIci,$12ed4), (Portable, $0d4a0)
-CVFLGS   		ROMBind	(Plus,$03a76), (SE,$05502), (II,$08FCA), (IIci,$10344), (Portable, $0a92c)
+ROMCVFLGS		ROMBind	(Plus,$03a76), (SE,$05502), (II,$08FCA), (IIci,$10344), (Portable, $0a92c)			;ex<SM1><Sys7.1> Put back "ROM"
 romDtrmV1		ROMBind	(Plus,$03650), (SE,$050e2), (II,$08ba4), (IIci,$0ff1e), (Portable, $0a50c)
-DTRMV3   		ROMBind	(Plus,$03642), (SE,$050ce), (II,$08b90), (IIci,$0ff0a), (Portable, $0a4f8)
-EXTOFFLINCK   	ROMBind	(Plus,$04aba), (SE,$06560), (II,$0A02C), (IIci,$113d8), (Portable, $0b9c0)
+ROMDTRMV3		ROMBind	(Plus,$03642), (SE,$050ce), (II,$08b90), (IIci,$0ff0a), (Portable, $0a4f8)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMEXTOFFLINCK	ROMBind	(Plus,$04aba), (SE,$06560), (II,$0A02C), (IIci,$113d8), (Portable, $0b9c0)			;ex<SM1><Sys7.1> Put back "ROM"
 romFindDrive	ROMBind	(Plus,$03414), (SE,$04e9A), (II,$08956), (IIci,$0FC6C), (Portable, $0A258)
-FNDFILNAME   	ROMBind	(Plus,$04990), (SE,$06436), (II,$09f02), (IIci,$112ae), (Portable, $0b896)
+ROMFNDFILNAME	ROMBind	(Plus,$04990), (SE,$06436), (II,$09f02), (IIci,$112ae), (Portable, $0b896)			;ex<SM1><Sys7.1> Put back "ROM"
 romFSAsync		ROMBind	(Plus,$02912), (SE,$04354), (II,$07dfc), (IIci,$0f000), (Portable, $09600)
-FSQUEUESYNC   	ROMBind	(Plus,$028a6), (SE,$042e8), (II,$07d90), (IIci,$0ef94), (Portable, $09594)
-FSQUEUE   		ROMBind	(Plus,$028aa), (SE,$042ec), (II,$07d94), (IIci,$0ef98), (Portable, $09598)
+ROMFSQUEUESYNC	ROMBind	(Plus,$028a6), (SE,$042e8), (II,$07d90), (IIci,$0ef94), (Portable, $09594)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMFSQUEUE		ROMBind	(Plus,$028aa), (SE,$042ec), (II,$07d94), (IIci,$0ef98), (Portable, $09598)			;ex<SM1><Sys7.1> Put back "ROM"
 romGt1stMatch	ROMBind	(Plus,$04002), (SE,$05a9c), (II,$0955c), (IIci,$108d6), (Portable, $0aebe)
 romLocCNode		ROMBind	(Plus,$06678), (SE,$0813e), (II,$0BC02), (IIci,$12FDE), (Portable, $0d5a8)
-LOCCREC   		ROMBind	(Plus,$06698), (SE,$0815e), (II,$0bc22), (IIci,$12FFE), (Portable, $0d5c8)
-LOCREC   		ROMBind	(Plus,$07538), (SE,$0908c), (II,$0cb50), (IIci,$13FAC), (Portable, $0e556)
+ROMLOCCREC		ROMBind	(Plus,$06698), (SE,$0815e), (II,$0bc22), (IIci,$12FFE), (Portable, $0d5c8)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMLOCREC		ROMBind	(Plus,$07538), (SE,$0908c), (II,$0cb50), (IIci,$13FAC), (Portable, $0e556)			;ex<SM1><Sys7.1> Put back "ROM"
 romMarkVCB		ROMBind	(Plus,$02d1e), (SE,$04766), (II,$0820e), (IIci,$0F524), (Portable, $09b10)
 romMarkVCBTime	ROMBind	(Plus,$02d20), (SE,$04768), (II,$08210), (IIci,$0F526), (Portable, $09b12)
-POPCNAME   		ROMBind	(Plus,$04288), (SE,$05d28), (II,$097EA), (IIci,$10b96), (Portable, $0b17e)
-PUSHCNAME   	ROMBind	(Plus,$04258), (SE,$05cf8), (II,$097BA), (IIci,$10b66), (Portable, $0b14e)
+ROMPOPCNAME		ROMBind	(Plus,$04288), (SE,$05d28), (II,$097EA), (IIci,$10b96), (Portable, $0b17e)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMPUSHCNAME	ROMBind	(Plus,$04258), (SE,$05cf8), (II,$097BA), (IIci,$10b66), (Portable, $0b14e)			;ex<SM1><Sys7.1> Put back "ROM"
 romRfnCall		ROMBind	(Plus,$05352), (SE,$06e04), (II,$0a8c8), (IIci,$11C86), (Portable, $0c26e)
-TFSVCBTST   	ROMBind	(Plus,$04ec6), (SE,$06968), (II,$0a43e), (IIci,$117ea), (Portable, $0bdd2)
-UPDCNAME   		ROMBind	(Plus,$066c2), (SE,$0818c), (II,$0BC50), (IIci,$1302C), (Portable, $0d5f6)
+ROMTFSVCBTST	ROMBind	(Plus,$04ec6), (SE,$06968), (II,$0a43e), (IIci,$117ea), (Portable, $0bdd2)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMUPDCNAME		ROMBind	(Plus,$066c2), (SE,$0818c), (II,$0BC50), (IIci,$1302C), (Portable, $0d5f6)			;ex<SM1><Sys7.1> Put back "ROM"
 romUpdRtCnts	ROMBind	(Plus,$065be), (SE,$08086), (II,$0BB4A), (IIci,$12f24), (Portable, $0d4f0)
 romUpdVCnts		ROMBind	(Plus,$065ae), (SE,$08076), (II,$0BB3A), (IIci,$12f14), (Portable, $0d4e0)
-XFFLUSH   		ROMBind	(Plus,$05ed0), (SE,$0799a), (II,$0B45E), (IIci,$1282a), (Portable, $0ce04)
-GT1STFCB   		ROMBind	(Plus,$03ff2), (SE,$05a8c), (II,$0954c), (IIci,$108c6), (Portable, $0aeae)
-GTNXTFCB   		ROMBind	(Plus,$03ffa), (SE,$05a94), (II,$09554), (IIci,$108ce), (Portable, $0aeb6)
-FLUSHCACHE   	ROMBind	(Plus,$076c6), (SE,$0921a), (II,$0ccdc), (IIci,$1413a), (Portable, $0e6e2)
+ROMXFFLUSH		ROMBind	(Plus,$05ed0), (SE,$0799a), (II,$0B45E), (IIci,$1282a), (Portable, $0ce04)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMGT1STFCB		ROMBind	(Plus,$03ff2), (SE,$05a8c), (II,$0954c), (IIci,$108c6), (Portable, $0aeae)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMGTNXTFCB		ROMBind	(Plus,$03ffa), (SE,$05a94), (II,$09554), (IIci,$108ce), (Portable, $0aeb6)			;ex<SM1><Sys7.1> Put back "ROM"
+ROMFLUSHCACHE	ROMBind	(Plus,$076c6), (SE,$0921a), (II,$0ccdc), (IIci,$1413a), (Portable, $0e6e2)			;ex<SM1><Sys7.1> Put back "ROM"
 
 ; The following addresses are needed for ROM B*Tree writecount patch:			<2.3 kst>
 romBuildIRec	ROMBind	(Plus,$072a0), (SE,$08E00), (II,$0C8C4), (IIci,$13D20), (Portable,$0E2CA)
@@ -581,8 +590,8 @@ A60DispTbl:	proc
 ;________________________________________________________________________________
 ; This routine was rolled into into the file TFS.a.						<SM1>
 VolumeCall:	proc
-			jsrROM	FSQUEUE   			; Patiently wait our turn
-            jsrROM	DTRMV3              ; Determine the volume being referred to
+			jsrROM	ROMFSQUEUE			; Patiently wait our turn				ex<SM1><Sys7.1> Put back "ROM"
+            jsrROM	ROMDTRMV3           ; Determine the volume being referred to	ex<SM1><Sys7.1> Put back "ROM"
 			bne		ToCmdDone			; Punt at the slightest hint of trouble
 
 			move.l	a2,ReqstVol         ; Point to the volume being referred to
@@ -602,7 +611,7 @@ VolumeCall:	proc
 			entry	RefNumCall
 RefNumCall:
 			import	RefNumCheck
-			jsrROM	FSQUEUE   			; chill in line
+			jsrROM	ROMFSQUEUE			; chill in line							ex<SM1><Sys7.1> Put back "ROM"
             move.w  ioRefNum(a0),d0		; Pick up the refNum
             jsr		RefNumCheck			; Check the refNum supplied
             bne		ToCmdDone			; Punt at first hint of trouble
@@ -629,7 +638,7 @@ RefNumCall:
 ; This routine was rolled into into the file TFS.a.						<SM1>
 			entry	UnknownCall
 UnknownCall:
-			jsrROM	FSQUEUE   			; Wait our turn
+			jsrROM	ROMFSQUEUE			; Wait our turn							ex<SM1><Sys7.1> Put back "ROM"
 ; <REALLY Fudge ReqsVol here later...>
 			movea.l	VCBQHdr+qHead, a2	; Pick up pointer to first VCB
 			move.l	a2, ReqstVol		; Point someplace semi-innocuous
@@ -649,8 +658,8 @@ UnknownCall:
 			entry	OpenCall
 OpenCall:
 			import	OpenAttemptHook
-			jsrROM	FSQUEUE   			; Wait our turn
-            jsrROM  DTRMV3              ; Determine the volume being referred to
+			jsrROM	ROMFSQUEUE			; Wait our turn							ex<SM1><Sys7.1> Put back "ROM"
+            jsrROM  ROMDTRMV3           ; Determine the volume being referred to	ex<SM1><Sys7.1> Put back "ROM"
             bne.s	ToCmdDone			; Punt at the slightest hint of trouble
 
 			move.l	a2,ReqstVol         ; Point to the volume being referred to
@@ -658,10 +667,10 @@ OpenCall:
 			beq.s	ParamErrExit		; It's an unknown trap for a local volume
 
 			bsr		OpenAttemptHook		; let ourselves know we're trying				<38>
-			jsrROM	GT1STFCB   			; get (A1,D1) pointing to first FCB
+			jsrROM	ROMGT1STFCB			; get (A1,D1) pointing to first FCB		ex<SM1><Sys7.1> Put back "ROM"
 @1			tst.l	FCBFlNm(a1,d1)		; FCB unused
 			beq.s	@90					; br if so
-			jsrROM	GTNXTFCB   			; get next one until we run out
+			jsrROM	ROMGTNXTFCB			; get next one until we run out			ex<SM1><Sys7.1> Put back "ROM"
 			bcs.s	@1
 
 			moveq.l	#TMFOErr,d0 		; too many files open
@@ -678,7 +687,7 @@ ParamErrExit:
 			moveq.l	#paramErr, d0		; It's an unknown trap for a local volume
 
 ToCmdDone:
-			jmpROM	CMDDONE             ; And call it a day.
+			jmpROM	ROMCMDDONE          ; And call it a day.					ex<SM1><Sys7.1> Put back "ROM"
 
 			endproc
 
@@ -771,17 +780,17 @@ OpenDF:		proc
 SetFilLock:	proc	export
 			export	RstFilLock
 
-			JSRRom 	FSQUEUE    			; wait our turn
+			JSRRom 	ROMFSQUEUE 			; wait our turn							ex<SM1><Sys7.1> Put back "ROM"
 			ST		FLckUnlck			; want to lock it
 			BRA.S	SRFLck
 
 RstFilLock:
-			jsrROM 	FSQUEUE   
+			jsrROM 	ROMFSQUEUE			;										ex<SM1><Sys7.1> Put back "ROM"
 			CLR.B	FLckUnlck
 
 SRFLck		jsrROM 	romCkFilMod			; look for file and see if we can mod it
 										; (doesn't return on errors)
-			JSRROM 	TFSVCBTST   		; Are we dealing with a TFS volume? 	<01Oct85>
+			JSRROM 	ROMTFSVCBTST		; Are we dealing with a TFS volume? 	<01Oct85> ex<SM1><Sys7.1> Put back "ROM"
 			BNEROM 	romChgMFlLock		; Nope - do it the old fashioned way
 			MOVEQ	#FNFErr,D0			; Expect the worst
 			CMP.B	#cdrFilRec,cdrType(A5) ; Is this a file entry?
@@ -804,7 +813,7 @@ SRFLXit1	MOVE.L	D7,D2				; Get a hold of the catalog hint
 			BRA.S	SRFLXit3			; If EQ, we're all set.
 
 SRFLXit2	MOVEQ	#0,D0
-SRFLXit3	jmpROM 	CMDDONE   
+SRFLXit3	jmpROM 	ROMCMDDONE			;										ex<SM1><Sys7.1> Put back "ROM"
 
 			endproc
 
@@ -823,7 +832,7 @@ GetParallelFCBFromRefnum	proc	export
 			import	ParallelFCBFromRefnum
 			import	RefNumCheck
 			
-			jsrROM 	FSQUEUE    			; wait our turn
+			jsrROM 	ROMFSQUEUE 			; wait our turn							ex<SM1><Sys7.1> Put back "ROM"
 			
 			move.w	ioRefNum(a0),d0		; Get the file reference number
 			move.w	d0,d1				; Keep a copy in another register
@@ -835,7 +844,7 @@ GetParallelFCBFromRefnum	proc	export
 			move.l	a1,ioFDirIndex(a0)	; Return the pointer in ioMisc
 			moveq	#noErr,d0			; No error
 @exitGetParallelFCB
-			jmpROM	CMDDONE   			; outa here
+			jmpROM	ROMCMDDONE			; outa here								ex<SM1><Sys7.1> Put back "ROM"
 			endproc
 
 ;________________________________________________________________________________
@@ -906,6 +915,15 @@ ClosePatch		PatchProc _Close
 
 			movem.l	@ClosePatchRegs,-(sp)		; save regs we use
 			movea.l	sp,a2						; for safe, quick stack pointer restore
+
+			; <Sys7.1>:
+			; *** NOTE: THIS PATCH IS DISABLED ***												; <R58>
+			; This patch was broken in System 7, and fixed with change <53>. The fix			; <R58>
+			; causes some third-party applications (QuicKeys, Retrospect Remote) to stop		; <R58>
+			; working because they are unable to close files. For Cube-E, we’ll re-break this	; <R58>
+			; patch and revisit the entire issue later.											; <R58>
+																								; <R58>
+			bra.s	@DoClosePop					; <58> Disable this patch						; <R58>
 
 ; check the refnum for validity. and locate the parallel FCB array element
 			move.w	ioRefNum(a0),d0				; get refnum being closed
@@ -1063,7 +1081,7 @@ AccumulateDiskSwitchRectIntoUpdateRect comefrompatchproc _SetPort, DSExit
 ; Here we fix case 1 - rename of a volume. Fixed at the head of Rename:
 ; This patch was rolled into TFSDIR2.a											<SM1>
 FixVolumeRenames	PatchProc	_Rename
-		jsrROM	FSQUEUE    			; what a queue command!
+		jsrROM	ROMFSQUEUE 			; what a queue command!						ex<SM1><Sys7.1> Put back "ROM"
 
 		move.l	ioNewName(a0),d2	; check out the new name
 		jsrROM	DtrmV2				; find what volume the new name is on
@@ -1079,7 +1097,7 @@ FixVolumeRenames	PatchProc	_Rename
 
 RNmVol:
 		cmp.w	#nsvErr,d0			; make sure it's no-such-vol error
-		bneROM	CMDDONE   
+		bneROM	ROMCMDDONE			;											ex<SM1><Sys7.1> Put back "ROM"
 		tst.w	d2					; name length should be zero
 		bne.s	BadNewNam
 RNmVol1:
@@ -1088,25 +1106,25 @@ RNmVol1:
 		jmpROM	RNmVol1				; go let'em do it like they used to
 
 		tst.w   d3			        ; Volume name must have been specified
-		beqROM  CMDDONE   
-		jsrROM	DTRMV3   			; Check source volume
-		bneROM  CMDDONE   			; Punt if no such thing
-		jsrROM  CVFLGS   			; Can it be modified?
-		bneROM  CMDDONE   			; Nope - punt now.
-		jsrROM	TFSVCBTST   		; Is it a  TFS volume?
+		beqROM  ROMCMDDONE			;											ex<SM1><Sys7.1> Put back "ROM"
+		jsrROM	ROMDTRMV3			; Check source volume						ex<SM1><Sys7.1> Put back "ROM"
+		bneROM  ROMCMDDONE			; Punt if no such thing						ex<SM1><Sys7.1> Put back "ROM"
+		jsrROM  ROMCVFLGS			; Can it be modified?						ex<SM1><Sys7.1> Put back "ROM"
+		bneROM  ROMCMDDONE			; Nope - punt now.							ex<SM1><Sys7.1> Put back "ROM"
+		jsrROM	ROMTFSVCBTST		; Is it a  TFS volume?						ex<SM1><Sys7.1> Put back "ROM"
 		beq.s	@checkExtFS			; Yes - make sure it's not ext. FS
 		tst.w   vcbDrvNum(a2)       ; Volume on-line?
-		beqROM  CMDDONE   			; No - just forget it
+		beqROM  ROMCMDDONE			; No - just forget it						ex<SM1><Sys7.1> Put back "ROM"
 		jmpROM  RNMVol@70			; Yes - go and rename it
 
 @checkExtFS:
-		jsrROM	EXTOFFLINCK         ; Our file system, on-line volume?
-        bneROM  CMDDONE      	    ; If not, get out now
+		jsrROM	ROMEXTOFFLINCK      ; Our file system, on-line volume?			ex<SM1><Sys7.1> Put back "ROM"
+        bneROM  ROMCMDDONE   	    ; If not, get out now						ex<SM1><Sys7.1> Put back "ROM"
 		jmpROM	RNMVol@70	        ; Otherwise, same as ever
 
 BadNewNam:
 		moveq.l	#bdNamErr,d0		; get the error code
-		jmpROM	CMDDONE   			; outa here
+		jmpROM	ROMCMDDONE			; outa here									ex<SM1><Sys7.1> Put back "ROM"
 
 		endproc
 
@@ -1115,12 +1133,12 @@ BadNewNam:
 ; bugs where we formerly didn’t rename the root directory and allowed a '' name.
 
 SetVolInfoPatch	proc
-		jsrROM 	FSQUEUE   			; Wait our turn
+		jsrROM 	ROMFSQUEUE			; Wait our turn								ex<SM1><Sys7.1> Put back "ROM"
 		jsrROM	romDtrmV1			; Determine volume by drvnum/refnum
 		bne		SVIDone				; Punt on errors
-		jsrROM	CVFLGS   			; Check if volume can be modified
+		jsrROM	ROMCVFLGS			; Check if volume can be modified			ex<SM1><Sys7.1> Put back "ROM"
 		bne		SVIDone	 			; Give up easily
-		jsrROM	EXTOFFLINCK    		; Check if volume is on-line, non ext. FS
+		jsrROM	ROMEXTOFFLINCK 		; Check if volume is on-line, non ext. FS	ex<SM1><Sys7.1> Put back "ROM"
 		bne		SVIDone	 			; Be a wimp - give up now.
 
 		move.l	ioVNPtr(a0),d2		; New name specified?
@@ -1166,7 +1184,7 @@ SetUserFields:
 
 		move.l	ioVNPtr(a0), d1				; grab ptr to caller's name
 
-		jsrROM	TFSVCBTST   				; Is it a  TFS volume?
+		jsrROM	ROMTFSVCBTST				; Is it a  TFS volume?				ex<SM1><Sys7.1> Put back "ROM"
 		bne.s	@skipHFS					; br if not - MFS VCBs don't have this info
 		move.l	ioVClpSiz(a0),vcbClpSiz(a2) ; Volume clump size
 		move.l	ioVBkup(a0),vcbVolBkup(a2)	; Last backup date
@@ -1187,7 +1205,7 @@ SetUserFields:
 		move.b	d0, (a1)+					; jam our length byte
 		_BlockMove							; change the name
 
-		jsrROM  TFSVCBTST   				; Are we dealing with an MFS volume?
+		jsrROM  ROMTFSVCBTST				; Are we dealing with an MFS volume?	ex<SM1><Sys7.1> Put back "ROM"
 		bne.s	@skipRootRename				; if so, no root to rename
 
 ; rename the root
@@ -1204,7 +1222,7 @@ SetUserFields:
 		moveq.l	#noErr,d0					; All went well...
 
 SVIDone:
-		jmpROM	CMDDONE   
+		jmpROM	ROMCMDDONE					;									ex<SM1><Sys7.1> Put back "ROM"
 		endproc
 
 ;__________________________________________________________________________________
@@ -1301,12 +1319,12 @@ myCMSetUp	PatchProc		jCMSetup,(Plus,SE,II,IIci,Portable)
 @BugOut		; clean up A6 & A7 stacks and jump back to rom
 			addq.w	#4,A7									; remove return addr to Rename
 			move.l	(A6)+,D2								; recover rounded string length
-			jsrRom	POPCNAME   								; remove name from A6 stack
+			jsrRom	ROMPOPCNAME								; remove name from A6 stack		ex<SM1><Sys7.1> Put back "ROM"
 			
 @RNmExit 	cmp.w	#BTExists,D0							; B*-Tree error?
 			bne.s	@FinalExit
 			moveq	#dupFNErr,D0							; If entry exists, give better error code
-@FinalExit	jmpRom	CMDDONE   								; and now back to our regularly scheduled broadcast...
+@FinalExit	jmpRom	ROMCMDDONE								; and now back to our regularly scheduled broadcast...	ex<SM1><Sys7.1> Put back "ROM"
 
 
 ; CMSvcs calls "MarkVCBTime", which only set the mod time but doesn't mark VCB dirty.
@@ -1521,7 +1539,7 @@ dirCreateTrapWord	equ		selectDirCreate
 			suba.l	a0, a0				; go after the parent
 			move.l	(a6)+,d0			; retrieve target parent directory
 
-			jsrROM	LOCCREC   
+			jsrROM	ROMLOCCREC			;										ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	@dirNotFound
 			cmpi.b	#cdrThdRec,cdrType(a1) 	; is it a directory thread?
 			beq.s	@fileNotFound		; yes, so it was just the leaf that was missing
@@ -1664,7 +1682,7 @@ OpenAttemptHook:	proc
 ; This patch was rolled into TFSDIR1.a
 PreflightFileOpen	proc
 
-			jsrROM	FSQUEUE   						; serialize things
+			jsrROM	ROMFSQUEUE						; serialize things				ex<SM1><Sys7.1> Put back "ROM"
 			bsr		OpenAttemptHook					; tell'em we're trying
 			ST		RegRsrc 						; open regular part of file		<39>
 			jmpROM	FOpen1
@@ -1685,7 +1703,7 @@ PreflightFileOpen	proc
 ; This patch was rolled into TFSDIR1.a
 PreflightOpenRF		PatchProc	_OpenRF
 
-			jsrROM	FSQUEUE   						; serialize things
+			jsrROM	ROMFSQUEUE						; serialize things				ex<SM1><Sys7.1> Put back "ROM"
 			bsr		OpenAttemptHook					; tell'em we're trying
 			clr.b	RegRsrc 						; open resource part of file	<39>
 			jmpROM	FOpen1
@@ -1733,7 +1751,7 @@ PreflightOpenRF		PatchProc	_OpenRF
 AllocateFCBs	proc
 			import	MoreFCBs
 
-			jsrROM 	FSQUEUE    					; wait our turn
+			jsrROM 	ROMFSQUEUE 					; wait our turn					ex<SM1><Sys7.1> Put back "ROM"
 
 			moveq.l	#-1,d0						; more FCBs than we'll ever have
 			bsr		CountFCBs					; count all of them
@@ -1757,7 +1775,7 @@ AllocateFCBs	proc
 			move.w	d3,d2						; otherwise, just grow as much as we can
 
 @grow:
-			bsr		MoreFCBs					; try to get the FCBs
+			jsr		MoreFCBs					; try to get the FCBs			ex<SM1><Sys7.1> Put back "ROM"
 			beq.s	@gotSome					; leave with a smile
 
 			asr.w	#1,d2						; try to get half that many
@@ -1778,7 +1796,7 @@ AllocateFCBs	proc
 			beq.s	@noFCBsAvailable			; if none are left, report the problem
 			moveq.l	#noErr,d0					; if some are left, we're happy
 
-@exit:		jmpROM 	CMDDONE   
+@exit:		jmpROM 	ROMCMDDONE					;								ex<SM1><Sys7.1> Put back "ROM"
 
 @noFCBsAvailable:
 			moveq.l	#tmfoErr,d0
@@ -1945,7 +1963,7 @@ FixDtrmV3:	PatchProc		jDtrmV3,(II,IIci,Portable)
 ; This patch was rolled into TFSVOL.a
 MountVolFor1991	PatchProc   _MountVol
 
-			jsrROM	FSQUEUESYNC   
+			jsrROM	ROMFSQUEUESYNC			;									ex<SM1><Sys7.1> Put back "ROM"
 
 			movea.l	a0, a5					; save caller's pb
 			move.w	ioDrvNum(a5), d2		; where FindDrive likes it
@@ -2030,7 +2048,7 @@ Remount:
 			move.w	d2,vcbDrvNum(a2)		; drive number
 			move.w	d1,vcbDRefNum(a2)		; driver RefNum
 
-			jsrROM	TFSVCBTST   			; remounted a TFS volume?						<32>
+			jsrROM	ROMTFSVCBTST			; remounted a TFS volume?						<32> ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	NoErrExit				; Nope - don't mess with the MDB				<33>
 			btst.b	#vcbWrProt,vcbAtrb+1(a2); Is volume write protected?					<32>
 			bne.s	NoErrExit				; If so, don't try to flush the MDB				<33>
@@ -2053,7 +2071,7 @@ EarlyExit:
 			btst.b	#fsNoAllocate, FSVars.fsFlags(a1)
 			beqROM	OldMtVolAfterFSQueue	; join the ROM (BTW, skipping the _Offline heroics)
 @1:
-			jmpROM	CMDDONE   
+			jmpROM	ROMCMDDONE				;									ex<SM1><Sys7.1> Put back "ROM"
 			endproc
 
 ;_______________________________________________________________________
@@ -2076,18 +2094,18 @@ EarlyExit:
 ; These patches were rolled into TFSVOL.a
 NoCloseOnOffline	PatchProc	_Offline
 			import	OfflineEjectCommon
-			jsrROM	FSQUEUESYNC    			; wait until all current calls are done
+			jsrROM	ROMFSQUEUESYNC 			; wait until all current calls are done	ex<SM1><Sys7.1> Put back "ROM"
 			st		NoEject 				; -1 = send offline but don't eject
 			jmp 	OfflineEjectCommon		; share code with Eject
 			endproc
 
 NoCloseOnEject		PatchProc	_Eject
 			export	OfflineEjectCommon
-			jsrROM	FSQUEUESYNC    			; wait until all current calls are done
+			jsrROM	ROMFSQUEUESYNC 			; wait until all current calls are done	ex<SM1><Sys7.1> Put back "ROM"
 			clr.b	NoEject 				; 0 = offline + eject
 
 OfflineEjectCommon
-			jsrROM	DTRMV3   				; check name, drive number, etc.
+			jsrROM	ROMDTRMV3				; check name, drive number, etc.		ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	ejectNotMounted			; br if drive not mounted (why flush?)
 			jsrROM	romCkExtFS 				; see if it's for an external fs
 			bne.s	EjectDone				; exit if so
@@ -2103,7 +2121,7 @@ ejectDrvNum:
 			beqROM 	EjectIt 				; OK, OK; it's going already...
 
 ejectDone:
-			jmpROM	CMDDONE    				; we're done . . .
+			jmpROM	ROMCMDDONE 				; we're done . . .						ex<SM1><Sys7.1> Put back "ROM"
 
 ejectMounted:
 			lea.l	vcbDrvNum(a2),a1		; point into VCB at drive number
@@ -2138,13 +2156,13 @@ ejectOnLine:
 @5:			st		FlushOnly				; only flushing (don't close . . .)
 			jsrROM	FlushVFiles 			; flush all files on this volume
 
-			jsrROM	TFSVCBTST   				; Are we dealing with a TFS volume?
+			jsrROM	ROMTFSVCBTST				; Are we dealing with a TFS volume?			ex<SM1><Sys7.1> Put back "ROM"
 			bneROM	OfflineEjectCallsMFSFlush	; Nope, so join ROM to do MFS right
 
 ; note that the following line is the opposite of the ROM code.  We only want to flush
 ; these files, since _Unmount will close them later.  However, we do want to mark the
 ; vcb consistent as it goes offline.
-			jsrROM	CVFLGS   				; Is volume write protected?					<31>
+			jsrROM	ROMCVFLGS				; Is volume write protected?					<31> ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	@1						; If so, don't try to mark it dirty				<31>
 			bset.b	#vcbAtVOK,vcbAtrb(a2)	; Indicate vol was unmounted ok					<31>
 			jsrROM 	MarkVCBDirty			; mark VCB dirty so it will be written			<31>
@@ -2240,15 +2258,15 @@ DesktopCloseDownProc:	proc
 ;_______________________________________________________________________
 UnmountForTheNineties:	PatchProc	_UnMountVol
 
-			bsr		DesktopCloseDownProc	; go take care of the desktop database <36>
+			jsr		DesktopCloseDownProc	; go take care of the desktop database <36> ex<SM1><Sys7.1>
 
 ; The desktop file hack should no longer be necessary for the 7.0 version of the AppleShare client.
 IncludeAppleShareDesktopHack	equ		0
 
-			jsrROM	FSQUEUESYNC   			; Get in sync...
+			jsrROM	ROMFSQUEUESYNC			; Get in sync...					ex<SM1><Sys7.1> Put back "ROM"
 			clr.b	FlushOnly				; Setup same as UnmountVol
-			jsrROM	DTRMV3   				; Call DtrmV3 to do setup stuff
-			bneROM	CMDDONE   				; and split on errors
+			jsrROM	ROMDTRMV3				; Call DtrmV3 to do setup stuff		ex<SM1><Sys7.1> Put back "ROM"
+			bneROM	ROMCMDDONE				; and split on errors				ex<SM1><Sys7.1> Put back "ROM"
 
 			moveq	#0,d0					; Initialize result code
 			btst	#HFSBit,ioTrap(a0)		; Unconditional unmount?
@@ -2292,19 +2310,19 @@ IncludeAppleShareDesktopHack	equ		0
 @5
 			movem.l	(sp)+,a1/d1/d2			; Restore regs
 			tst.w	d0						; Were files open?
-			bneROM	CMDDONE   				; and quit on errors
+			bneROM	ROMCMDDONE				; and quit on errors				ex<SM1><Sys7.1> Put back "ROM"
 
 FlUnMnt:
 			jsrROM	romCkExtFS 				; see if it's for an external fs
-			bneROM	CMDDONE   				; and split on errors
+			bneROM	ROMCMDDONE				; and split on errors				ex<SM1><Sys7.1> Put back "ROM"
 
 			jsrROM	FlushVFiles 			; flush all files on this volume
-			bneROM	CMDDONE   				; and split on errors
+			bneROM	ROMCMDDONE				; and split on errors				ex<SM1><Sys7.1> Put back "ROM"
 
 ; All files on this volume are flushed now.  Update the volume information as
 ; appropriate, depending on the file structure:
 
-			jsrROM 	TFSVCBTST   			; is this a TFS volume?
+			jsrROM 	ROMTFSVCBTST			; is this a TFS volume?				ex<SM1><Sys7.1> Put back "ROM"
 			beq.s	@1						; br if so
 			jmpROM	FlUnMntAfterMFSCheck	; the ROM has is right for MFS volumes
 
@@ -2342,7 +2360,7 @@ BackInFlUnMnt:
 			moveq.l	#noErr,d0				; no error
 
 FlVolExit
-			jmpROM	CMDDONE   
+			jmpROM	ROMCMDDONE				;									ex<SM1><Sys7.1> Put back "ROM"
 			endproc
 
 
@@ -3029,7 +3047,7 @@ ProcessMgrExists	proc	export
 
 TagFileWithPSN
 ; Open traps can be (and are!) called before Process Mgr is init'd
-			bsr		ProcessMgrExists	; is Process Mgr ready?
+			jsr		ProcessMgrExists	; is Process Mgr ready?					ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	@CantRecord			; Process Mgr is not ready yet
 
 ; find the current PSN
@@ -3089,7 +3107,7 @@ FSCleanupRegs		REG		A2-A3/D2-D6
 			MOVE	cbPBufULen(A2),D4		; D4=ext. FCB unit size
 			LEA		fcbPBufData(A2),A2		; A2=ext. fcb array
 			MOVE	FSFCBLen,D5				; D5=FCB len
-			jsrROM	GT1STFCB   				; A1=FCB, D1=1st RefNum
+			jsrROM	ROMGT1STFCB				; A1=FCB, D1=1st RefNum				ex<SM1><Sys7.1> Put back "ROM"
 
 ; First close all the open files belong to this process:
 ;	A1=FCBptr, A2=Ext. FCBptr, D1.W=RefNum, D2=id2, D3.W=loop index,
@@ -3187,8 +3205,8 @@ clearPB		MOVEA.L	A0,A3				; A3=A0=iopb
 ;_______________________________________________________________________________________
 ; This patch was rolled into TFSVOL.a
 OpenWDPatch	Proc	export
-			jsrROM 	FSQUEUE    			; Wait for our turn to come
-			jsrROM 	FNDFILNAME   		; Look for the indicated directory
+			jsrROM 	ROMFSQUEUE 			; Wait for our turn to come				ex<SM1><Sys7.1> Put back "ROM"
+			jsrROM 	ROMFNDFILNAME		; Look for the indicated directory		ex<SM1><Sys7.1> Put back "ROM"
 			BEQ.S	@1					; Br if found
 			CMP.W	#BdNamErr,D0		; Was it a bad filename?				<21Sep85>
 			BNE.S	opnWDExit			; If not, there's no more hope          <21Sep85>
@@ -3211,7 +3229,7 @@ OpenWDPatch	Proc	export
 @2			MOVE.W	VCBVRefNum(A2),ioVRefNum(A0) ; Return the VRefNum as WDRfn	<21Sep85>
 
 opnWDOK 	MOVEQ	#0,D0				; Call it a success 					<21Sep85>
-opnWDExit	jmpROM 	CMDDONE    			; we're finished . . .
+opnWDExit	jmpROM 	ROMCMDDONE 			; we're finished . . .					ex<SM1><Sys7.1> Put back "ROM"
 
 ; Look for a matching working directory, starting with the third (the first two are
 ; reserved to hold the system-wide volume and directory defaults).
@@ -4018,7 +4036,7 @@ DontTruncateMultiForks	ComeFromPatchProc	$A0DB,,(Plus,SE,II,Portable,IIci)	;	<11
 			MOVE.L	FCBFlNm(A1,D3.W),D2		; D2.L = our file number				<11Dec90 #17>
 			move.b	fcbMdRByt(a1,d3.w),d4	; d4.b = our fork's misc info			<44>
 
-			jsrROM	GT1STFCB   				; get (A1,D1) pointing to first FCB		<11Dec90 #17>
+			jsrROM	ROMGT1STFCB				; get (A1,D1) pointing to first FCB		<11Dec90 #17> ex<SM1><Sys7.1> Put back "ROM"
 @1			CMP.W	D1,D3					; same FCB?								<11Dec90 #17>
 			BEQ.S	@3						; skip ourself if it is					<11Dec90 #17>
 			CMP.L	FCBFlNm(A1,D1),D2		; file numbers match?					<11Dec90 #17>
@@ -4029,7 +4047,7 @@ DontTruncateMultiForks	ComeFromPatchProc	$A0DB,,(Plus,SE,II,Portable,IIci)	;	<11
 			eor.b	d4,d0					; see how it compares against ours		<44>
 			btst.l	#fcbRscBit,d0			; are we the same?						<44>
 			beq.s	@7						; if so, then there's another open path	<44>
-@3			jsrROM	GTNXTFCB   				; get next one until we run out			<11Dec90 #17>
+@3			jsrROM	ROMGTNXTFCB				; get next one until we run out			<11Dec90 #17> ex<SM1><Sys7.1> Put back "ROM"
 			BCS.S	@1						; continue if more						<11Dec90 #17>
 
 ; No second open path found, so do the truncate
@@ -4741,7 +4759,7 @@ BDUpdDepth
 
 			MOVEQ	 #0,D1				; locate key and data for 1st record <10Oct85>
 			MOVEA.L  A3,A1				;
-			jsrRom 	 LOCREC    			; ... in node				  <10Oct85>
+			jsrRom 	 ROMLOCREC 			; ... in node				  <10Oct85> ex<SM1><Sys7.1> Put back "ROM"
 			MOVE.L	 (A1),BTCRoot(A4)	; new root = child node 	  <10Oct85>
 ;
 ; release the previous root node
@@ -4905,13 +4923,13 @@ GetVolParms:		proc export
 @GetVolRegs			reg			d2/d3/a1-a4
 
 			bclr	#asyncTrpBit, ioTrap(a0)	; force synchronous  (wrong.  See note, above)
-			jsrRom 	FSQUEUE    					; Patiently wait our turn in line
+			jsrRom 	ROMFSQUEUE 					; Patiently wait our turn in line			ex<SM1><Sys7.1> Put back "ROM"
 			movem.l	@GetVolRegs, -(a6)			; save regs on FS stack
 			suba.w	@VolParmsBufferSize, a6		; allocate a GetVolParms buffer on the stack
 ;
 ; Find the VCB in question:
 ;
-			jsrRom	DTRMV3   					; find vol using ioNamePtr & ioVRefNum (D023/A234 trashed)
+			jsrRom	ROMDTRMV3					; find vol using ioNamePtr & ioVRefNum (D023/A234 trashed)	ex<SM1><Sys7.1> Put back "ROM"
 			bne.s	@GetVolParmsExit			; (DtrmV3 puts VCBPtr in A2)
 
 			tst.w	vcbFSID(a2) 				; Check: external file system?  (•• TFSVCBTst?)
@@ -4961,7 +4979,7 @@ GetVolParms:		proc export
 
 @GetVolParmsExit:
 			movem.l	(a6)+, @GetVolRegs			; restore regs
-			jmpROM	CMDDONE   					; Go home
+			jmpROM	ROMCMDDONE					; Go home						ex<SM1><Sys7.1> Put back "ROM"
 
 ; This buffer contains the appropriate values for local HFS volumes.
 @HFSVolParmsBuffer:
@@ -5057,7 +5075,7 @@ WriteCountInit
 			MOVE.L	VCBQHdr+QHead,D0	; search the VCB queue
 			BEQ.S	wcEndq				; br if end of queue reached
 CkVol:		MOVE.L	D0,A2				; next VCB pointer
-			jsrRom	TFSVCBTST   			; is this a HFS volume?
+			jsrRom	ROMTFSVCBTST			; is this a HFS volume?				ex<SM1><Sys7.1> Put back "ROM"
 			BNE.S	@6					; No, don't bother
 			TST		vcbFSID(A2)			; internal HFS? (do we need to test this?)
 			BNE.S	@6					; No, don't bother
@@ -5121,7 +5139,7 @@ GrowFileSystemStack:
 
 			moveq.l	#0,d0						; use selector 0
 			move.w	#$a060,d1					; and pretend we're trap _HFSDispatch
-			jsrROM	FSQUEUE   					; and sync up with the file system
+			jsrROM	ROMFSQUEUE					; and sync up with the file system	ex<SM1><Sys7.1> Put back "ROM"
 
 ; first we use the old equate to get the pointer block's base address
 			move.l	HFSStkTop,a0				; current stack top
@@ -5136,7 +5154,7 @@ GrowFileSystemStack:
 			move.l	a0,HFSStkTop				; Store pointer in lo-mem
 
 			moveq.l	#noErr,d0					; success!
-			jmpROM	CMDDONE   
+			jmpROM	ROMCMDDONE					;								ex<SM1><Sys7.1> Put back "ROM"
 
 @bail:
 			moveq.l		#dsMemFullErr, d0		; sys heap is full, so punt
@@ -5237,7 +5255,7 @@ InstallVectors	PROC	export
 			leaResident	vAfterFSQHook, a0	; get addr just past call to fsQueueHook (in fsQueueHook patch)
 			move.l	a0, ExpandMemRec.jAfterFSQHook(a1)
 
-			leaROM	CMDDONE   , a0			; get addr of CmdDone (still in ROM)
+			leaROM	ROMCMDDONE, a0			; get addr of CmdDone (still in ROM)	ex<SM1><Sys7.1> Put back "ROM"
 			move.l	a0, ExpandMemRec.jCmdDone(a1)
 			leaResident	fsGeneralWakeUp, a0	; get addr of general purpose File System kickstart
 			move.l	a0, ExpandMemRec.jDispatchNext(a1)

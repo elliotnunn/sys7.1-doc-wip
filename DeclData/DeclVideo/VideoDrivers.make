@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added rule to build .Display_Video_Apple_TFB DRVR from TFBDriver.a
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		VideoDrivers.make
 #
 #	Contains:	Makefile for Video.
@@ -357,6 +364,10 @@ VideoDriverObjs 				=	"{ObjDir}JMFBDriver.a.o"				∂
 									"{VideoDriverDir}TFBDriver.a"			∂
 									"{IntAIncludes}ComVideoEqu.a"
 	Asm {StdAOpts} -o "{Targ}" "{VideoDriverDir}TFBDriver.a"
+
+# <Sys7.1>
+"{RsrcDir}TFBDriver.a.rsrc"		ƒ	"{ObjDir}TFBDriver.a.o"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o {Targ} "{ObjDir}TFBDriver.a.o"
 
 
 "{ObjDir}TFBPrimaryInit.a.o"	ƒ	"{VideoDriverDir}TFBDepVideoEqu.a"		∂

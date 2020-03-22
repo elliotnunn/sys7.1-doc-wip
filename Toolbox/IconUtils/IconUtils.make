@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added build rules for some System resources.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		IconUtils.make
 #
 #	Contains:	Makefile for the Icon Utilities.
@@ -25,3 +32,13 @@ IconUtilsObjs 	= 					"{ObjDir}IconUtils.a.o"			∂
 
 "{ObjDir}IconUtils.c.o"			ƒ	"{IconUtilsDir}IconUtils.c"
 	C {StdCOpts} -o "{Targ}" "{IconUtilsDir}IconUtils.c"
+
+
+# <Sys7.1> System resources
+"{RsrcDir}IconUtils.rsrc"		ƒ	"{IconUtilsDir}IconUtils.r"
+	Rez {StdROpts} -o "{Targ}" -i {IntCIncludes} "{IconUtilsDir}IconUtils.r"
+
+
+# <Sys7.1> System resources
+"{RsrcDir}GenericIcons.rsrc"	ƒ	"{IconUtilsDir}GenericIcons.r"
+	Rez {StdROpts} -o "{Targ}" "{IconUtilsDir}GenericIcons.r"

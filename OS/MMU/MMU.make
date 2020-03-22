@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added rule for MMUPatches.a, which is separately linked into the lpch.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		MMU.Make
 #
 #	Contains:	Makefile for the MMU stuff.
@@ -47,5 +54,10 @@ MMUObjs 		=					"{ObjDir}MMU.a.o"								∂
 									"{AIncludes}GestaltEqu.a"						∂
 									"{MMUDir}GetReal.a"
 	Asm {StdAOpts} -o "{Targ}"	"{MMUDir}GetReal.a"
+
+
+# <Sys7.1>
+"{ObjDir}MMUPatches.a.o"		ƒ	"{MMUDir}MMUPatches.a"
+	Asm {StdAOpts} -o "{Targ}"	"{MMUDir}MMUPatches.a"
 
 

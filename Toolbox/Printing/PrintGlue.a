@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM4>/<LW2>: removed cache flush for short "stub" PDEFs
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		PrintGlue.a
 ;
 ;	Contains:	This code is the printing glue for 128K ROM printing
@@ -352,18 +359,7 @@ GotPDEF
 		Move.l	d0,a4					; Transfer the handle to an a-reg
 		Move.l	a4,a0					; Lock that baby down
 
-; Some programmers are pretty slimy and load a PDEF that is empty.  They then					<LW2> fau
-; stuff some code into it.  However, since HLOCK does not flush the cache anymore,				<LW2> fau
-; the code that they stuff into it might not get written back to memory.  To solve this,		<LW2> fau
-; we check here whether the PDEF resource size is less than, say, 32 bytes.  If so, we			<LW2> fau
-; assume that they have already loaded the PDEF and modified it, so we flush the cache			<LW2> fau
-; for them.																						<LW2> fau
-
-		_GetHandleSize					; How big is our PDEF Handle					<LW2> fau
-		cmp.l		#32,D0				; Is it "small"									<LW2> fau
-		bhi.s		@RealPDEF			; no, don't flush the cache						<LW2> fau
-		jsr			([jCacheFlush])		; else, flush the caches.						<LW2> fau
-@RealPDEF										;										<LW2> fau
+;ex<LW2> <Sys7.1>
 		_HLock
 ;<22Feb87> JNP Restore curMap before jumping into the print code.
 		Move.w	a3, -(sp)				; <22Feb87> JNP user's resfile refnum

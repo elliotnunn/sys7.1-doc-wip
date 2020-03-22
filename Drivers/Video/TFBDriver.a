@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM2>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		TFBDriver.a
 ;
 ;	Contains:	video driver for TFB card
@@ -811,11 +818,11 @@ SetGamma										; <C522/15Dec86> DAF
 			MOVE.L	D0,A1							; get pointer to new gamma table
 
 			TST.L	GVersion(A1)					; version, type = 0?
-			BNE 	BadCtl							; => no, return error <SM2> CSS
+			BNE.S	BadCtl							; => no, return error <SM2> CSS <Sys7.1>
 			CMP		#8,GDataWidth(A1)				; is data width 8?
-			BNE 	BadCtl							; => no, return error <SM2> CSS
+			BNE.S	BadCtl							; => no, return error <SM2> CSS <Sys7.1>
 			CMP		#256,GDataCnt(A1)				; 256 values per channel?
-			BNE 	BadCtl							; => no, return error <SM2> CSS
+			BNE.S	BadCtl							; => no, return error <SM2> CSS <Sys7.1>
 
 ; if new table is different size, reallocate memory
 

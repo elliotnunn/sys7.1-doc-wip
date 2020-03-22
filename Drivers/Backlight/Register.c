@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted Horror and SuperMario changes
+							Brought ChargerAdjust/LowTable back from backlight.c
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		register.c
 
 	Contains:	Register control for backlight.
@@ -117,7 +125,10 @@ typedef	struct
 	char				keymodifiers;
 	short				unused;
 	} posteventtype, *posteventtypeptr;
-extern setTableType		PortableTbl5V;
+extern posteventtype	postEventData;
+extern unsigned char	PortableTbl5V[];
+extern unsigned char	PortableTable7V[];
+extern short			PortableMaxTbl[];
 
 int		GetBacklightInfo(short	mask, short shift);
 void	SaveBacklightInfo(short new,short	mask, short shift);
@@ -127,21 +138,84 @@ void	SaveBacklightInfo(short new,short	mask, short shift);
 
 /*page
  ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+/* <Sys7.1> verbatim from backlight.c */
+void ChargerAdjust  (driverGlobalPtr	globalPtr)
+{		
+	unsigned int				oldTable;
+
+	oldTable			= globalPtr->lowTable;					/* save the current table being used */
+	globalPtr->lowTable =  LowTable(globalPtr);					/* get the new table to use */
+	if (globalPtr->lowTable == oldTable) return;				/* are we changing tables ???, no exit */
+
+	globalPtr->slewChange		= true;							/* if change, set tmp slew on */					
+	globalPtr->settingTable		= globalPtr->lowTable ? globalPtr->settingTableLow :globalPtr->settingTableHigh ;							
+};
+
+/*page
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+/* <Sys7.1> verbatim from backlight.c */
+unsigned int LowTable  (driverGlobalPtr	globalPtr)
+
+{
+	PmgrGlobals					**pmgrglobalhdl;				/* handle to power manager globals */
+	Boolean						wasLowTable;					/* current table being used */
+	Boolean						hiTable;						/* use hi level table  now */
+
+	pmgrglobalhdl 	= (PmgrGlobals **) 0x0D18;					/* handle to power manager globals */
+
+	wasLowTable		= globalPtr->lowTable;						/* current table */
+	hiTable 		= false;									/* assume low table */
+	if ((wasLowTable && ((*pmgrglobalhdl)->BatAvg >= globalPtr->hiThreshold)) ||
+		(!wasLowTable && ((*pmgrglobalhdl)->BatAvg >= globalPtr->lowThreshold)))
+		{
+		hiTable = (*pmgrglobalhdl)->Charger & 0x01;				/* qualify table with charger */
+		};
+	return(hiTable ? 0 : 1);									/* return 1 if low table, 0 if high */
+};
+
+/*page
+ ***************************************************************************************************
  ** Register control software **********************************************************************
  ***************************************************************************************************
  */
 
-OSErr InitRegControls(driverGlobalPtr	globalPtr)
+/* <Sys7.1> don't return OSErr */
+/* <Sys7.1> reverted to old-style tables despite <H3> */
+void InitRegControls(driverGlobalPtr	globalPtr)
 
 {
 	int					SetBrightness();
 	int					KbdControl();
 	int					RegisterClose();
-	unsigned int		pramBrightness;
+	OSErr				RegisterStatus(CntrlParam *, driverGlobalPtr);
+	OSErr				RegisterControl(CntrlParam *, driverGlobalPtr);
+	int					pramBrightness;
 	void				ShutdownBacklight();
+	posteventtypeptr	postdataptr;
 
 	
-	if (BACKLIGHTSIGREG & TABLE_5V) globalPtr->settingTable = &PortableTbl5V;							
+	postdataptr = &postEventData;
+	postdataptr->keysActive = 0;
+	postdataptr->keymodifiers = 0;
+
+	globalPtr->userInputSampleRate = 1;
+
+	globalPtr->settingTable = (BACKLIGHTSIGREG & TABLE_5V) ? PortableTbl5V : PortableTable7V;
+
+	globalPtr->maximumTable = &PortableMaxTbl;
+	globalPtr->setlevelproc = SetBrightness;
+	globalPtr->userInputProc = KbdControl;
+	globalPtr->closeProc = RegisterClose;
+	globalPtr->statusProc = RegisterStatus;
+	globalPtr->controlProc = RegisterControl;
 
 	globalPtr->keycodes 		= GetPramKeyData();
 	pramBrightness 				= GetPramBrightness();	/* get pram setting */
@@ -149,13 +223,14 @@ OSErr InitRegControls(driverGlobalPtr	globalPtr)
 	setNewKeys(globalPtr->keycodes);
 	if (pramBrightness < 0) 									/* check for valid brightness value */
 		{
-		pramBrightness = globalPtr->settingTable->minimum+1;				/* <H3> load default brightness */
-		SaveBrightness(globalPtr->settingTable->minimum+1);					/* <H3> validate, as save new brightness */
+		pramBrightness = 1;													/* <H3> load default brightness */
+		SaveBrightness(1);													/* <H3> validate, as save new brightness */
 		};
 
 
-	globalPtr->userBrightness 	= globalPtr->settingTable->maximum;			/* <H3> */
-	globalPtr->userBrightness 	= SetBrightness(globalPtr->settingTable->minimum,globalPtr);	/* <H3> initialize pot */
+	globalPtr->userBrightness	= 30;										/* <H3> */
+	globalPtr->lastHWSetting	= globalPtr->settingTable[30];
+	globalPtr->userBrightness 	= SetBrightness(0,globalPtr);				/* <H3> initialize pot */
 	globalPtr->userBrightness 	= SetBrightness(pramBrightness,globalPtr);	/* set brightness level */
 	
 	if (BACKLIGHTSIGREG == BACKLIGHTSIG_UPGRD)
@@ -166,8 +241,6 @@ OSErr InitRegControls(driverGlobalPtr	globalPtr)
 		};
 
 	ShutDwnInstall( (ShutDwnProcPtr) ShutdownBacklight,sdRestartOrPower);	/* install shutdown task */
-
-	return(noErr);
 };
 
 /*page
@@ -266,6 +339,7 @@ TurnOnOff(Boolean on)
  *
  ***************************************************************************************************
  */
+/* <Sys7.1> reverted to old-style tables despite <H3> */
 int SetBrightness(int	new, driverGlobalPtr	globalPtr)
 	{
 	unsigned char	regvalue;
@@ -274,20 +348,16 @@ int SetBrightness(int	new, driverGlobalPtr	globalPtr)
 	char			signature;
 	Boolean			onBitHigh;
 	Boolean			countDownBit;
-	int				current;
 	unsigned char	tablevalue;
 	Boolean			initialize;
 
 
 
 	initialize = (globalPtr->userBrightness < 0);
-	PEG_TO_LIMITS(new, globalPtr->maximumTable[globalPtr->powerRange], globalPtr->settingTable->minimum);	/* <H3> limit value to valid range */
-	current = (initialize)
-				? globalPtr->settingTable->minimum		/* <H3> */
-				: globalPtr->userBrightness;
+	PEG_TO_LIMITS(new, globalPtr->maximumTable[globalPtr->powerRange], 0);	/* <H3> limit value to valid range */
 
-	tablevalue = globalPtr->settingTable->table[new];	/* <H3> look up value from table */
-	if (!initialize && (tablevalue == globalPtr->lastHWSetting) )
+	tablevalue = globalPtr->settingTable[new];		/* <H3> look up value from table */
+	if (tablevalue == globalPtr->lastHWSetting)
 		return(new);								/* nothing to do; 90/05/15 just turn on; 90/07/02 avoid touching */
 
 	/* setup control bits */
@@ -297,13 +367,13 @@ int SetBrightness(int	new, driverGlobalPtr	globalPtr)
 	backlightreg 	= (Ptr) PORTABLE_HW;
 	regvalue		= COUNT_BIT + L_CS_BIT;			/* start with count and CS inactive */
 
-	if ((onBitHigh && (new != globalPtr->settingTable->minimum)) || (!onBitHigh && (new == globalPtr->settingTable->minimum)))  /* <H3> */
+	if ((onBitHigh && new) || (!onBitHigh && !new))	/* <H3> */
 		regvalue |= ON_BIT; 						/* upgrade has opposite polarity */
 
-	if ((countDownBit && (new <= current)) || (!countDownBit && (new >= current)))
+	if ((countDownBit && (new <= globalPtr->userBrightness)) || (!countDownBit && (new >= globalPtr->userBrightness)))
 		regvalue |= COUNTDN_BIT;	/* set the count down bit if new > current */
 
-	strobes = (new == globalPtr->settingTable->minimum)  /* <H3> */
+	strobes = (new == 0)  							/* <H3> */
 				? MAXSTROBECOUNT					/* if minimum, bang against stops */
 				: abs(globalPtr->lastHWSetting - tablevalue);
 
@@ -407,11 +477,12 @@ int KbdControl (driverGlobalPtr	globalPtr)
  *
  ***************************************************************************************************
  */
+/* <Sys7.1> reverted to old-style tables despite <H3> */
 int RegisterClose (driverGlobalPtr	globalPtr)
 
 {
-	globalPtr->userBrightness 	= globalPtr->settingTable->maximum;									/* <H3> */
-	globalPtr->userBrightness 	= SetBrightness(globalPtr->settingTable->minimum,globalPtr);		/* <H3> initialize pot */
+	globalPtr->userBrightness 	= 30;							/* <H3> */
+	globalPtr->userBrightness 	= SetBrightness(0,globalPtr);	/* <H3> initialize pot */
 
 	SleepQRemove(&globalPtr->sleepQelement);					/* remove sleep task */
 	ShutDwnRemove( (ShutDwnProcPtr) ShutdownBacklight);			/* remove shutdown task */
@@ -445,7 +516,7 @@ OSErr RegisterControl(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)		/* 'open' en
 		{
 		case kSetScreenBrightness:										/* set brightness level */
 			tempvalue = ctlPB->csParam[0];
-			globalPtr->userBrightness 	= (*globalPtr->setlevelproc)(tempvalue,globalPtr);
+			globalPtr->userBrightness 	= SetBrightness(tempvalue,globalPtr);	/* <Sys7.1> no proc for this in driver globals */
 			break;
 		case kSaveScreenBrightness:										/* save brightness level */
 			SaveBrightness(globalPtr->userBrightness);
@@ -488,14 +559,24 @@ OSErr RegisterStatus(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)			/* 'open' en
 	error	= noErr;
 	switch(ctlPB->csCode) 
 		{
+		case kGetScreenBrightness:								/* <Sys7.1> */
+			ctlPB->csParam[0] = globalPtr->userBrightness;
+			break;
 		case kGetBrightnessKeys:								/* return current saved brightness */
 			ctlPB->csParam[0] = globalPtr->keycodes;
+			break;
+		case kGetBrightnessRange:								/* <Sys7.1> */
+			ctlPB->csParam[0] = 30;
+			ctlPB->csParam[1] = 0;
 			break;
 		case kGetPBacklight:
 			ctlPB->csParam[0] = GetPramBrightness();
 			break;
 		case kGetPKey:
 			ctlPB->csParam[0] = GetPramKeyData();
+			break;
+		case kGetMaximum:										/* <Sys7.1> */
+			ctlPB->csParam[0] = globalPtr->maximumTable[globalPtr->powerRange];
 			break;
 
 		default:
@@ -508,11 +589,15 @@ setNewKeys(int		keycombo)
 
 {
 	char						newKey;
+	posteventtypeptr			postdataptr;
 
 	newKey			= 0;
 	if (keycombo & 0x01) newKey |= 0x10;
 	if (keycombo & 0x02) newKey |= 0x02;
 	if (keycombo & 0x04) newKey |= 0x08;
 	
+	/* <Sys7.1> would interact with (alas unused) MyPostEvent patch */
+	postdataptr = &postEventData;
+	postdataptr->keymodifiers = newKey;
 };
 

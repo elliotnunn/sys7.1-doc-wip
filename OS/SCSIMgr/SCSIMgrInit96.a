@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted PDM-specific <SM8>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		SCSIMgrInit96.a
 ;
 ;	Contains:	SCSI Manager 53c96 initialization routines
@@ -57,7 +64,7 @@
 										;	don't print includes
 
 			LOAD		'StandardEqu.d'			; from StandardEqu.a and for building ROMs
-			INCLUDE		'HardwareEqu.a'			;													<T2>
+			INCLUDE		'HardwarePrivateEqu.a'			;													<T2>
 			INCLUDE		'SCSI.a'
 			INCLUDE 	'SCSIPriv.a'
 			INCLUDE		'UniversalEqu.a'		; for TestFor										<T2>
@@ -193,11 +200,7 @@ InitMgr_SCSI96
 
 			clr.b	G_bitDREQ(a4)					; initialize bit position of DREQ regr			<H4> thru to next <H4> jab
 
-			TestFor	HMCDecoder						; are we PDM ?									<SM8>
-			beq.s	@notPDM
-			move.b	#bDREQ_PDM,G_bitDREQ(a4)		; setup bit location of DREQ check
-			move.l	#SCSI0_DREQ_PDM,pdma5380(a4)	; setup DREQ location	
-			bra.s	@chk2Bus						;												<SM8>
+			; Removed code to set DREQ register location (G_bitDREQ, pdma5380) on PDM		ex<SM8><Sys7.1>
 
 @notPDM		cmpi.b	#boxQuadra700,BoxFlag			; are we a Quadra 700?
 			beq.s	@wereQuadra						; yes ... set our DREQ location

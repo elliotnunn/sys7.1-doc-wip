@@ -1,3 +1,10 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Recreated gestaltIconUtilities equate (no 'Attr') for compatibility
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;__________________________________________________________________________________________________
 ;
 ;	File:		GestaltEqu.a
@@ -515,6 +522,7 @@ gestaltTranslationAttr		EQU		'xlat'			; Translation manager attributes
 gestaltTranslationMgrExists	EQU		0				; TRUE if translation manager exists
 
 gestaltIconUtilitiesAttr	EQU		'icon'			; Icon Utilities attributes
+gestaltIconUtilities		EQU		'icon'			; Recreated for old code							<Sys7.1>
 gestaltIconUtilitiesPresent	EQU		0				; true if icon utilities are present
 
 gestaltCompressionMgr		EQU		'icmp'			; returns version of the Image Compression Manager

@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Removed <29> fix to the DialogSelect patch.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		DialogMgrPatches.a
 ;
 ;	Contains:	Various fixes to the Dialog Manager
@@ -300,8 +307,8 @@ DSResult		EQU 		DSEvent+4				; function result
 				jmprom		DSAfterClaimEvent		; rejoin the ROM
 @NotValid
 				moveq		#-1,d3
-				move.l		DSItemHit(a6), a0		; get VAR address of user’s item		<29>
-				move.w		d3, (a0)				; Save item number hit					<29>
+;				move.l		DSItemHit(a6), a0		; get VAR address of user’s item		<29> <Sys7.1> Commented out
+;				move.w		d3, (a0)				; Save item number hit					<29> <Sys7.1> Commented out
 				jmprom		DSNotMineExit			; not a dialog event; exit through ROM
 
 				EndProc

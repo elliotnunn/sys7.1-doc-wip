@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Partly reverted <7> by moving back to the array definition of Pattern,
+							requiring a BlockMove instead of a simple assignment to copy.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		WindowMgrPatches.c
 
 	Contains:	Routines which patch the Window Manager traps.
@@ -26,6 +34,7 @@
 
 */
 
+#define dangerousPattern													// ex<7> <Sys7.1>
 #include <QuickDraw.h>
 #include <Windows.h>
 #include <Resources.h>
@@ -71,7 +80,7 @@ c_initwindows(void)
 		DSWNDUPDATE |= ((char)0x80);
 
 		SetPort(WMGRPORT);
-		DESKPATTERN = **GetPattern(deskPatID);
+		BlockMove(*GetPattern(deskPatID), &DESKPATTERN, sizeof(Pattern));	// ex<7> <Sys7.1>
 		ShowCursor();
 
 		olda5 = ProcessMgrA5SimpleSetup();

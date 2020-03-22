@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Changed <26> to treat "useFree" the same as "useATalk".
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		BeforePatches.a (formerly RomAllFix.a)
 ;
 ;	Contains:	patches and patch installation code for all ROMs.
@@ -585,6 +592,7 @@ RAMSysInit	PROC	EXPORT
 
 			move.b	SPConfig,d0				; <26> Get serial port configuration
 			and.b	#$0f,d0					; <26> Mask off Port B bits
+			beq.s	@appleTalkIsActive		; <Sys7.1> Treat "useFree" as AppleTalk=active.
 			cmp.b	#useATalk,d0			; <26> Configured for AppleTalk?
 			beq.s	@appleTalkIsActive		; <26> Yes.  Don’t set emAppleTalkInactiveOnBoot
 

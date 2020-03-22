@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM2> by uncommenting talkCmd and listenCmd
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+;							Clean diff against SuperMario
+;
+
+;
 ;	File:		AppleDeskBusPriv.a
 ;
 ;	Contains:	This file holds equates private to the ADB implementation.  It was separated out from
@@ -48,8 +57,8 @@ __INCLUDINGAPPLEDESKBUSPRIV__	SET	1
 
 maskADBCmd		EQU			$0C					; Mask for ADB command
 resetCmd		EQU			$00					; Command for Bus Reset
-; <SM2> rb	talkCmd   		EQU 		$0C   				; Command for Talk R0
-; <SM2> rb	listenCmd 		EQU 		$08   				; Command for Listen R0 
+talkCmd   		EQU 		$0C   				; Command for Talk R0						ex<SM2> <Sys7.1>
+listenCmd 		EQU 		$08   				; Command for Listen R0 					ex<SM2> <Sys7.1>
 kbdAddr   		EQU 		$02   				; keyboard type device 
 mouseAddr 		EQU 		$03   				; mouse type device 
 numFDBAdr 		EQU 		16   				; number of avaiblae FDB address 

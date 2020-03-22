@@ -1,3 +1,11 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	EXPORT the resident SCSIBusyVector so that install code can set it.
+;							This was broken before, but by which change?
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;_______________________________________________________________________________________
 ;
 ;	File:		SCSILinkPatch.a
@@ -493,6 +501,7 @@ SCSIBusyCommon
 ;
 ; 	In SuperMario, this is part of SCSIGlobals.
 
+				EXPORT	SCSIBusyVector		; <Sys7.1>
 FreeHookPending	dc.l	0					; location of pending free-hook flag
 SCSIBusyVector	dc.l	0
 

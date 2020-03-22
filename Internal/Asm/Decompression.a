@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored the misspelt 'signiture' that was corrected by <19>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+;							Clean diff against SuperMario
+;
+
+;
 ;	File:		Decompression.a
 ;
 ;	Contains:	Equates for patch to Resource Manager's CheckLoad hook for resource decompression.
@@ -195,6 +204,7 @@ maxReplacement		EQU	6		;end of substitution list.
 ;
 ;---------------------------------------------------------------------------------
 ExtendedResource	Record	0
+signiture							;<Sys7.1>
 signature			DS.L	1		;used for robustness.  Tells if data is compressed now.
 headerLength		DS.W	1		;length of this header in bytes.
 headerVersion		DS.B	1		;number of items in this header. ( must be < 128 ).

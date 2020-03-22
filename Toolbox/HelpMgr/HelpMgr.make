@@ -1,4 +1,13 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added Balloonptch28.a back to lpch lib. Linked PasLib into PACK 14 for
+#							arithmetic routines. Created an "adapter" rule to work with the old
+#							System Rez file.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		HelpMgr.make
 #
 #	Contains:	Makefile to build the resources needed for the helpmgr (balloon help).
@@ -17,6 +26,7 @@
 
 BalloonPackObjs					=	"{ObjDir}BalloonPack.a.o"						∂
 									"{ObjDir}BalloonPack.p.o"						∂
+									"{PLibraries}PasLib.o"				# <Sys7.1>	∂
 									"{IfObjDir}interface.o"
 
 
@@ -25,9 +35,11 @@ BalloonWDEFObjs					=	"{ObjDir}BalloonWDEF.a.o"						∂
 
 
 
+# <Sys7.1> Added back Balloonptch28.a
 "{LibDir}HelpMgr.lib"		ƒ	"{ObjDir}BalloonExtensions.a.o" 					∂
+								"{ObjDir}Balloonptch28.a.o" 						∂
 								"{ObjDir}Balloonptch28.p.o"
-	Lib	{StdLibOpts} -o "{Targ}"	"{ObjDir}BalloonExtensions.a.o" "{ObjDir}Balloonptch28.p.o"
+	Lib	{StdLibOpts} -o "{Targ}"	"{ObjDir}BalloonExtensions.a.o" "{ObjDir}Balloonptch28.a.o" "{ObjDir}Balloonptch28.p.o"
 
 "{RsrcDir}HelpMgr.rsrc"			ƒƒ	{BalloonPackObjs}								
 	Link {StdLOpts} {StdAlign} -rt PACK=14 -o "{Targ}" {BalloonPackObjs} || Exit 1
@@ -41,6 +53,16 @@ BalloonWDEFObjs					=	"{ObjDir}BalloonWDEF.a.o"						∂
 									"{RIncludes}BalloonTypes.r"						∂
 									"{HelpMgrDir}Balloon.r"
 	Rez {StdROpts} -a -o "{Targ}" "{HelpMgrDir}Balloon.r" || Exit 1
+
+
+# <Sys7.1> "Adapter" rule to make the diff cleaner
+"{RsrcDir}BalloonPACK.a.rsrc"	ƒ	"{RsrcDir}HelpMgr.rsrc"
+	Duplicate -y "{RsrcDir}HelpMgr.rsrc" "{RsrcDir}BalloonPACK.a.rsrc"
+
+
+# <Sys7.1> Added back to lpch lib
+"{ObjDir}Balloonptch28.a.o"		ƒ 	"{HelpMgrDir}Balloonptch28.a"
+	Asm {StdAOpts} -o "{targ}" "{HelpMgrDir}Balloonptch28.a"
 
 
 "{ObjDir}BalloonPACK.a.o"		ƒ 	"{ObjDir}StandardEqu.d"							∂

@@ -1,3 +1,16 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted all three changes in <73> (<73>.1 etc). Reverted <71> fix to
+;							style search code. Reverted <SM22> change that got ScrnBase directly
+;							from lowmem instead of QD globals. Commented out <SM19> RomMapInserts
+;							for fctb/FOND/NFNT resources. Restored a missing HAS_COLOR conditional
+;							around 'color strike' caching code. Unlengthened one branch, likely from
+;							<SM17>. Unshortened several branches. Made all patch routines self-
+;							installing with separate MakePatch macros on color and B&W machines.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;—————————————————————————————————————————————————————————————————————————————————————————————————————
 ;
 ;	File:		FontMgr.a
@@ -663,6 +676,7 @@ PrNonPortable	EQU 	1						; Needed for patches
 			INCLUDE		'ScriptEqu.a'			; <3.6>
 			INCLUDE		'SysPrivateEqu.a'
 			include		'Private.a'				; <19>
+			INCLUDE		'LinkedPatchMacros.a'	; <Sys7.1>
 		ELSE
 			LOAD		'StandardEqu.d'			; <C206><1.4>
 			INCLUDE		'ColorEqu.a'
@@ -678,6 +692,14 @@ PrNonPortable	EQU 	1						; Needed for patches
 ; with the rest of the world.
 
 		IF forROM or HAS_COLOR THEN
+			MakePatch	InitFonts,_InitFonts,(II,IIci)							; <Sys7.1>
+			MakePatch	SetFontLock,_SetFontLock,(II,IIci)						; <Sys7.1>
+			MakePatch	GetFontName,_GetFName,(II,IIci)							; <Sys7.1>
+			MakePatch	GetFNum,_GetFNum,(II,IIci)								; <Sys7.1>
+			MakePatch	FMSwapFont,_FMSwapFont,(II,IIci)						; <Sys7.1>
+			MakePatch	RealFont,_RealFont,(II,IIci)							; <Sys7.1>
+			MakePatch	FontMetrics,_FontMetrics,(II,IIci)						; <Sys7.1>
+
 FontManager 	PROC	 EXPORT 
 			EXPORT 	InitFonts
 			EXPORT 	SetFontLock
@@ -696,6 +718,17 @@ FontManager 	PROC	 EXPORT
 			EXPORT  FMgrEnd
 			EXPORT	FPointOne					; (so that first reference will be seen.)
 		ELSE
+
+			MakePatch	BWInitFonts,_InitFonts,(Plus,SE,Portable)				; <Sys7.1>
+			MakePatch	BWFMSwapFont,_FMSwapFont,(Plus,SE,Portable)				; <Sys7.1>
+			MakePatch	BWGetFontName,_GetFName,(Plus,SE,Portable)				; <Sys7.1>
+			MakePatch	BWRealFont,_RealFont,(Plus,SE,Portable)					; <Sys7.1>
+			MakePatch	BWGetFNum,_GetFNum,(Plus,SE,Portable)					; <Sys7.1>
+			MakePatch	BWSetFontLock,_SetFontLock,(Plus,SE,Portable)			; <Sys7.1>
+			MakePatch	BWSetFScaleDisable,_SetFScaleDisable,(Plus,SE,Portable)	; <Sys7.1>
+			MakePatch	BWSetFractEnable,_SetFractEnable,(Plus,SE,Portable)		; <Sys7.1>
+			MakePatch	BWFontMetrics,_FontMetrics,(Plus,SE,Portable)			; <Sys7.1>
+
 BWFontManager	PROC	EXPORT
 			EXPORT 	BWInitFonts
 			EXPORT 	BWSetFontLock
@@ -773,7 +806,7 @@ BWInitFonts
 			BNE.S	@doneAlloc				; Check for spline ready
 			MOVE.L	#WidTabSize,D0			; size of table
 			_NewHandle ,SYS					; new handle in sysHeap
-			BNE.S	CantAllocMem			; if an error, skip
+			BNE		CantAllocMem			; if an error, skip					<Sys7.1> Unshortened branch
 
 			MOVE.L	A0,WidthTabHandle		; remember it
 
@@ -798,6 +831,7 @@ BWInitFonts
 			MOVE.L	A0,JSwapFont			; 
 		ENDIF
 
+		IF	HAS_COLOR THEN					; <Sys7.1> Restored conditional for 'color strike' code
 			MOVEQ	#SyntheticStrikeTable.synEntry,D0			; size of 1 entry version
 			MOVE.L	SynListHandle,D1		; already got it?
 			BLE.S	@createSynList			; if zero or -1, create one
@@ -817,6 +851,7 @@ BWInitFonts
 			TST.B	fmExist
 			BPL.S	@skipRest
 			CLR.B	fmExist
+		ENDIF								; <Sys7.1> HAS_COLOR
 			CLR.L	FOutFontHandle			; may point to non-existent font, so clear
 			CLR.L	LastFOND
 			BSR.S	InValWidths 			; invalidate all of the width tables.
@@ -1192,9 +1227,9 @@ CheckPurged
 			MOVE.L		WidthTabHandle, A1
 			MOVE.L		(A1), A1							; Width table ptr
 			TST.B		WidthIsSpline(A1)					; Get flag stating if spline			<14-jlf>
-			beq.s		@DoNormalPurgeCheck					; do normal stuff if not a spline		<14-jlf>
+			beq			@DoNormalPurgeCheck					; do normal stuff if not a spline		<14-jlf> <Sys7.1> Unshortened branch
 			tst.b		KeepSplineOnDisk(a1)				; should we do the load?				<14-jlf>
-			bne.s		@skipBuildTable						; no, skip it							<14-jlf>
+			bne			@skipBuildTable						; no, skip it							<14-jlf> <Sys7.1> Unshortened branch
 			move.w		WidthStrikeID(a1),d0				; setup sfnt resource id parameter		<14-jlf>
 			jsr			LoadSplineFontResource				; load the spline font resource			<14-jlf>
 			bsr			DerefWidthTab						; get the widthtablepointer in a0		<14-jlf>
@@ -1202,7 +1237,7 @@ CheckPurged
 			move.l		d0,a0								; move splineHandle						<14-jlf>
 			tst.l		(a0)								; was the spline loaded?				<14-jlf>
 			seq			KeepSplineOnDisk(a1)				; no, don't try to load it again.		<14-jlf>
-			bra.s		@skipBuildTable						; Do not build height table if spline	<14-jlf>
+			bra			@skipBuildTable						; Do not build height table if spline	<14-jlf> <Sys7.1> Unshortened branch
 			
 @DoNormalPurgeCheck
 			MOVE.L	A0,-(SP)								; push it
@@ -1220,7 +1255,7 @@ CheckPurged
 FMSwapDone
 			BSR		DerefWidthTab							; get pointer to width table in A0
 			TST.B	WidthIsSpline(A0)						; Test if spline
-			BEQ.S	@skipSpline								; not a spline
+			BEQ		@skipSpline								; not a spline							<Sys7.1> Unshortened branch
 			MOVEM.L	A0-A1/D0-D2,-(SP)						; Save regs
 			SUBQ	#4,SP									; make room for result
 			MOVE.L	WidthTabHandle, -(SP)					; 1) Push the Width Table Handle onto the stack
@@ -1652,7 +1687,7 @@ GotFontHandle
 			MOVE.L	WidthTabHandle, A1
 			MOVE.L	(A1), A1				; get Width Table pointer									<14-jlf>
 			TST.B	WidthIsSpline(A1)		; is this a spline width table?								<14-jlf>
-			beq.s	@SkipSplineLoad			; no, do non-spline cases									<14-jlf>
+			beq		@SkipSplineLoad			; no, do non-spline cases									<14-jlf> <Sys7.1> Unshortened branch
 			tst.b	KeepSplineOnDisk(a1)	; should we load the spline?								<14-jlf>
 			bne		NoColors				; no, skip the load											<14-jlf>
 			move.w	WidthStrikeID(a1),d0	; setup sfnt resource id parameter							<14-jlf>
@@ -1739,7 +1774,7 @@ GetPixDepth
 ; This doesn't work so well because Cyclone changes ScrnBase on depth switch            <SM22>
 ; without updating the QuickDraw Globals. A "More Correct" fix would be to              <SM22>
 ; have the process manager update the QuickDraw Globals of all running processes.       <SM22>
-            MOVE.L  ScrnBase,D0                 ; get pointer to screen base address    <SM22>
+            MOVE.L  screenBits(A1),D0           ; get pointer to screen base address    <SM22> <Sys7.1> Reverted the change described
 			TST		portBits+rowBytes(A0)		; IS SRC A PIXMAP?
 			BPL.S	@doBits						; =>NO, IT'S A BITMAP
 			MOVE.L	([portBits+baseAddr,A0]),A0	; GET POINTER TO PORT'S PIXMAP
@@ -2054,7 +2089,7 @@ LookForColor
 			SUBQ	#4,SP					; make space for function result
 			MOVE.L	#'fctb',-(SP)			; pass resource type
 			MOVE	D0,-(SP)				; pass resource ID
-			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb
+;			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb <Sys7.1> Don't!
 			_GetResource					; only uses D0,A0
 			MOVE.L	(SP)+,D5				; if it fails, then no color table to pass to MakeScaleTbl
 
@@ -2800,10 +2835,10 @@ AdjustSpace
 			MOVE.L	(A3)+,(A1)+ 			; update numer, denom
 			MOVE.L	(A3),(A1)				; of the scale factors.
 			TST.B	WidthIsSpline(A0)		; Test if spline
-			BEQ.S	@skipFill				; do not do spline things
+			BEQ		@skipFill				; do not do spline things				<Sys7.1> Unshortened branch
 			CLR.B	WidthUsedFam(A0)		; Splines never used FOND widths.
 			tst.b	KeepSplineOnDisk(a0)	; should we load the spline?			<14-jlf>
-			bne.s	@fontOkay				; no, skip the load.					<14-jlf>
+			bne		@fontOkay				; no, skip the load.					<14-jlf> <Sys7.1> Unshortened branch
 			move.w	WidthStrikeID(a0),d0	; push the sfnt resource id				<14-jlf>
 			jsr		LoadSplineFontResource	; load the spline resource				<14-jlf>
 			bsr		DerefWidthTab			; get widthpointer in a0				<14-jlf>
@@ -3223,14 +3258,7 @@ checkNeighborhood							; common entry point for system family as well.
 tryNeighborhoodBase
 			CMP		#$4000,D3
 			BLO.S	@mustBeRoman
-;;			AND		#$FE00,D3				; base is neighborhood & ~512
-
-			subq	#6,SP					; <73> 2 for Font2RealScript, 4 for GetScript
-			move.w	D3,-(SP)				; <73> push current font id
-			_Font2RealScript				; <73> convert it to script code
-			move.w	#smScriptSysFond,-(SP)
-			_GetScript						; <73> get system font id for the script
-			move.l	(SP)+,D3				; <73> try the script system font
+			AND		#$FE00,D3				; base is neighborhood & ~512	ex<73>.3 <Sys7.1> Just mask to Chicago vs calling ScriptMgr.
 
 			RTS
 @mustBeRoman
@@ -3348,10 +3376,10 @@ LoadSplineFontResource
 			move.l	(sp)+,d0					; <15> Set the condition code properly
 @foundSpline
 			move.l	d0,resourceHandle(a6)		; pop the spline handle
-			beq.s	@Exit						; bail if it was nil
+			beq		@Exit						; bail if it was nil				<Sys7.1> Unshortened branch
 			move.l	d0,a0						; grab the resource handle
 			tst.l	(a0)						; is the handle already loaded into memory?
-			bne.s	@Exit						; yes, return immediately
+			bne		@Exit						; yes, return immediately			<Sys7.1> Unshortened branch
 			
 ; at this point the empty resource handle is:
 ;
@@ -3365,11 +3393,11 @@ LoadSplineFontResource
 			_SizeRsrc							; get the size of the resource
 			move.l	(sp)+,d0					; pop the resource size
 			cmp.l	#128*1024,d0				; is the spline size greater than 128k?
-			bgt.s	@LoadEmptySplineIntoSystemHeap	; yes, load an empty spline into the system heap
+			bgt		@LoadEmptySplineIntoSystemHeap	; yes, load an empty spline into the system heap	<Sys7.1> Unshortened branch
 
 			move.l	resourceHandle(a6),-(sp)	; push empty resource handle
 			_LoadResource						; load the resource into memory
-			bra.s	@Exit						; return
+			bra		@Exit						; return							<Sys7.1> Unshortened branch
 
 ; The spline font is bigger than 128K, so don’t load it into memory, but create an empty
 ; handle for it in it’s resource reference entry.  We can probably get rid of the call to
@@ -3468,7 +3496,7 @@ LoadNoROM
 			SUBQ	#4,SP					; <14-jlf>
 			MOVE.L	#'NFNT',-(SP)			; push NFNT
 			MOVE.W	D0,-(SP)
-			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb
+;			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb <Sys7.1> Don't!
 			_GetResource
 			MOVE.L	(SP)+,D0				; got it?
 			bz.s	fontOnlyLoad			; if not, look for FONT
@@ -3477,7 +3505,7 @@ LoadNoROM
 			MOVE	#$8000,widthNFNT(A0)	; remember that we found a NFNT
 			MOVE	(SP)+,widthStrikeID(A0)
 			TST.L	D0						; clear z flag					; <3.1-16May89-CEL>
-			BRA.S	weGotIt 				; return z clear, handle in D0.
+			BRA		weGotIt 				; return z clear, handle in D0.		<Sys7.1> Unshortened branch
 
 ; we couldn't find the NFNT, so look for a FONT
 
@@ -3603,7 +3631,7 @@ FindSize
 			DBRA	D1,@fSizeLoop			; check them all out
 @trySpline
 			TST		D0						; check if Spline was found
-			BEQ		@cantFind
+			BEQ.S	@cantFind				; 								ex<SM17> <Sys7.1> Unlengthened branch
 @gotSpline
 
 ;
@@ -3631,10 +3659,7 @@ FindSize
 @CheckSplinePreferred
 			movem.l (sp)+, a1/d0-d2				; Restore it all
 
-			MOVE.L	(A2),A0 							; <73> handle->pointer
-			LEA 	FontFamilyRecord.FONDAssoc(A0),A0	; <73> bump past header
-			tst.w	(A0)								; <73> only sfnt is installed?
-			beq.s	@DoRomanLogic						; <73> then use it.
+												; ex<73>.1 <Sys7.1> Don't use too-small sfnt even if desparate.
 
 			btst.b	#splinePreferred,HiliteMode	; bit flag set in HiliteMode?
 			bne.s	@DoRomanLogic				; yes, force spline
@@ -3777,11 +3802,7 @@ GetFONDForSizeAndStyle
 			bra.s	@checkSplinePreferred	; Yes.  See if it’s ok to return a TrueType font.
 			
 @styledSplineEntry
-			cmp.w	d2,d0					; <71> See if style is exactly the same
-			bne.s	@testForStyle			; <71> No.  See if this candidate has the style we want
-			move.l	a4,d4					; <71> This 'FOND' has the style we want
-			bra.s	@gotStyledSpline		; <71>
-@testForStyle
+											; ex<71> <Sys7.1> Don't search the 'FOND' further
 			and.w	d2,d0					; See if this 'FOND' describes the desired style
 			bnz.s	@savePotentialStyleMatch	; It does indeed.  Prepare to load it in.
 			move.l	d3,d0					; <63> This 'FOND' doesn’t have the desired style.
@@ -3881,13 +3902,7 @@ GetFONDForSizeAndStyle
 ;
 
 @CheckAlternates
-			btst	#splinePreferred,HiliteMode	; <71> See if TrueType fonts are preferred
-			bz.s	@useBitMapAlternates	; <71> No.  Get a bitmapped font
-			tst.l	d4						; <71> See if we have styled spline candidate
-			bnz.s	@tryForSpline			; <71> We do.  Use it.
-			tst.l	d7						; <71> See if we have plain spline candidate
-			bnz.s	@tryForSpline			; <71> We do.  Use it.
-@useBitMapAlternates
+											; ex<71> <Sys7.1> Don't obey splinePreferred
 			tst.l	d6						; See if plain variation was found
 			bz.s	@tryForStyledAlternate	; <67> If there is a plain, return it.
 			move.l	d6,a1					; The plain variant was found
@@ -3908,9 +3923,7 @@ GetFONDForSizeAndStyle
 			bz.s	@tryForPlainSpline		; A plain font was desired
 @tryForStyledSpline
 			tst.l	d4						; See if a styled spline was picked up.
-			bz.s	@tryForPlainSpline		; <71> It wasn’t.  Try plain.
-			move.l	d4,a1					; <71> Use styled spline
-			bra.s	@setupForLoad			; <71>
+			bnz.s	@passBackStyledSpline	; ex<71> Un-inline @passBackStyledSpline on way to @setupForLoad
 @tryForPlainSpline
 			tst.l	d7						; See if a plain TrueType font was picked up.
 			bnz.s	@passBackPlainSpline	; We’ve got a TrueType version.  Go use it.
@@ -4293,8 +4306,7 @@ FindClosest
 			MOVEQ	#0,D1					; no font yet
 			MOVE	#$7FFF,D2 				; closest delta so far
 			
-			tst.w	(A0)					; <73> don’t take sfnt as the closest NFNT
-			beq.s	NxtSizeLoop				; <73> assuming sfnt is the first entry 
+											; ex<73>.2 Let sfnt be misinterpreted as 0pt NFNT
 
 Scan4SizeLoop
 			MOVE.W	D5,D0					; get one we want <DLD-12-Sep-85>
@@ -4719,7 +4731,7 @@ GetFOND
 			SUBQ	#4,SP
 			MOVE.L	#'FOND',-(SP)			; push type "FOND"
 			MOVE.W	D1,-(SP)				; push the ID
-			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb
+;			MOVE.W	#MapTrue,RomMapInsert	; look in ROM first								<SM19> rb <Sys7.1> Don't!
 			_GetResource					; look for it
 			MOVE.L	(SP)+,D0
 			MOVE.L	D0,A0
@@ -4957,13 +4969,13 @@ BWSetFontLock
 
 			move.l	FOutFontHandle,a0		; get the current font handle				<14-jlf>
 			tst.l	(a0)					; is it purged?								<14-jlf>
-			bne.s	@NoPurgeFont			; no, skip the resource load stuff			<14-jlf>
+			bne		@NoPurgeFont			; no, skip the resource load stuff			<14-jlf> <Sys7.1> Unshortened branch
 			move.l	WidthTabHandle,a0		; get current width table					<14-jlf>
 			move.l	(a0),a0					; get master pointer						<14-jlf>
 			tst.b	WidthIsSpline(a0)		; is this a spline font?					<14-jlf>
-			beq.s	@DoNormalFontLock		; no, do normal stuff						<14-jlf>
+			beq		@DoNormalFontLock		; no, do normal stuff						<14-jlf> <Sys7.1> Unshortened branch
 			tst.b	KeepSplineOnDisk(a0)	; should the spline be loaded into memory?	<14-jlf>
-			bne.s	@doneSFL				; no, bail out of routine					<14-jlf>
+			bne		@doneSFL				; no, bail out of routine					<14-jlf> <Sys7.1> Unshortened branch
 			move.w	WidthStrikeID(a0),d0	; setup sfnt resource id parameter			<14-jlf>
 			jsr		LoadSplineFontResource	; call the load routine						<14-jlf>
 			bsr		DerefWidthTab			; get widthPointer in a0					<14-jlf>
@@ -4971,8 +4983,8 @@ BWSetFontLock
 			tst.l	(a0)					; was the spline loaded into memory?		<14-jlf>
 			exg		d0,a0					; swap the registers back					<14-jlf>
 			seq		KeepSplineOnDisk(a0)	; don't try to load next time if not loaded	<14-jlf>
-			beq.s	@doneSFL				; skip the nopurge if it wasn't loaded		<14-jlf>
-			bra.s	@NoPurgeFont			; make it non-purgeable						<14-jlf>
+			beq		@doneSFL				; skip the nopurge if it wasn't loaded		<14-jlf> <Sys7.1> Unshortened branch
+			bra		@NoPurgeFont			; make it non-purgeable						<14-jlf> <Sys7.1> Unshortened branch
 			
 @DoNormalFontLock
 		

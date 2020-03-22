@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes, and de-inlining
+;							romGtNxt/1stFCB. Reverted <SM2> word branches.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		BTreeFuncs.a
 ;
 ;	Contains:	This file contains all the B*Tree interface calls and the dispatcher
@@ -521,8 +529,7 @@ GNMLoop		CMP.W	D1,D3				; same FCB?
 			MOVE.L	FCBBTCBptr(A1,D1),D0; D0 = ptr(BTCB)?					<12Jan92 #39>
 			BNE.S	BOpened				; found it							<12Jan92 #39>
 
-GtNxtMatch	ADD.W	FSFCBLen,D1			; go to next FCB				<03Feb87><SM1>
-			CMP.W	(A1),D1 			; reached the end yet?					 <SM1>
+GtNxtMatch	jsrROM	ROMGTNXTFCB			; go to next FCB				<03Feb87><SM1><Sys7.1> De-inlined and put back "ROM"
 			BCS.S	GNMLoop 			; loop thru them all
 
 		;; This is the first time open
@@ -619,8 +626,7 @@ xBTClose	BCLR	#btAsyncBit,D1 		; sync only
 			BNE.S	@NxtMatch			;									<28Mar90>
 			CMP.L	FCBVPtr(A1,D1),A3	; on the same volume?				<28Mar90>
 			BEQ.S	@BCOpened			; found it							<28Mar90>
-@NxtMatch	ADD.W	FSFCBLen,D1			; go to next FCB				    <SM1>
-			CMP.W	(A1),D1 			; reached the end yet?				<SM1>
+@NxtMatch	jsrROM	ROMGTNXTFCB			; go to next FCB				    <SM1><Sys7.1> De-inlined and put back "ROM"
 			BCS.S	@BCLoop 			; loop thru them all				<28Mar90>
 
 		IF btDebug THEN					; no match ??!!						<28Mar90>
@@ -871,7 +877,7 @@ xBTGetRec	BSR		ExtBTQueue
 			CMP.L	BTCWcount(A4),D1	; validate it
 			BEQ.S	@GetRec2			; OK
 			MOVE.L	BTCWcount(A4),ioBTHint1(A3)	; return current Wcount
-			BRA 	GetExit				; invalid marker <SM2> CSS 
+			BRA.S	GetExit				; invalid marker <SM2> CSS <Sys7.1>
 @2
 			MOVE.L	btcFNode(A4),D2		; user wants to read the 1st record
 @GetRec2	MOVE.L	D2,btcNodeM(A4)		; get record in this node, (change the node marker)
@@ -1077,8 +1083,7 @@ xBTCleanUp
 			MOVE	cbPBufULen(A2),D4		; D4=ext. FCB unit size
 			LEA		fcbPBufData(A2),A2		; A2=ext. fcb array
 			MOVE	FSFCBLen,D5				; D5=FCB len
-			MOVE.L	FCBSPtr,A1				; A1=FCB ptr			<SM1>
-			MOVEQ	#2,D1					; D1=FCB index			<SM1>
+			jsrROM	ROMGT1STFCB				; A1=FCB ptrm, D1=FCB index		<SM1><Sys7.1> De-inlined and put back "ROM"
 			
 ; First close all the open files belong to this process:
 ; A1=FCBptr, A2=Ext. FCBptr, D1.W=RefNum, D2=id2, D3.W=loop index, D4.W=ext FCBlen,

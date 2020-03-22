@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <21> by restoring plain BlockMoves.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Switch.c
 
 	Contains:	Process switching routines.
@@ -374,7 +381,7 @@ save_lomem(PEntryPtr pp)
 	pc->appllimit = APPLLIMIT;
 	pc->applzone = APPLZONE;
 	pc->currenta5 = (unsigned long)CURRENTA5;
-	BlockMoveData(CURAPNAME, &pc->curapname, *((unsigned char *)CURAPNAME) + 1);
+	BlockMove(CURAPNAME, &pc->curapname, *((unsigned char *)CURAPNAME) + 1);	// ex<21> <Sys7.1>
 	pc->curlayer = GetCurLayer();
 	pc->topmaphandle = TOPMAPHANDLE;
 	pc->curmap = CURMAP;
@@ -439,7 +446,7 @@ restore_lomem(PEntryPtr pp, Boolean shouldRestoreVolatile)
 	 */
 	APPLLIMIT = pc->appllimit;
 	CURRENTA5 = pc->currenta5;
-	BlockMoveData(&pc->curapname, CURAPNAME, Length(&(pc->curapname)) + 1);
+	BlockMove(&pc->curapname, CURAPNAME, Length(&(pc->curapname)) + 1);			// ex<21> <Sys7.1>
 	SetCurLayer(pc->curlayer);
 	TOPMAPHANDLE = pc->topmaphandle;
 	CURMAP = pc->curmap;

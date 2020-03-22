@@ -1,4 +1,12 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Added ScriptMgrPatch and ScriptMgrUtil to the lpch build. Recreated
+#							several missing build rules.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ScriptMgr.make
 #
 #	Contains:	Makefile to build the script manager library
@@ -17,6 +25,8 @@
 ScriptMgrObjects =					"{ObjDir}ScriptMgrHeader.a.o"					∂
 									"{ObjDir}RomanUtil.a.o"							∂
 									"{ObjDir}ScriptMgrMisc.a.o"						∂
+									"{ObjDir}ScriptMgrPatch.a.o"	# <Sys7.1>		∂
+									"{ObjDir}ScriptMgrUtil.a.o"		# <Sys7.1>		∂
 									"{ObjDir}ScriptMgrUtilDate.a.o"					∂
 									"{ObjDir}ScriptMgrUtilText.a.o"					∂
 									"{ObjDir}ScriptMgrUtilNum.a.o"					∂
@@ -161,3 +171,91 @@ ScriptMgrObjects =					"{ObjDir}ScriptMgrHeader.a.o"					∂
 
 
 
+# <Sys7.1>
+ScriptMgrExtObjects =				"{ObjDir}ScriptMgrExtHead.a.o"					∂
+									"{ObjDir}ScriptMgrFindWord.c.o"					∂
+									"{ObjDir}ScriptMgrTruncRepl.a.o"				∂
+									"{ObjDir}RomanNewJust.a.o"						∂
+									"{ObjDir}ScriptMgrKbdMenu.a.o"					∂
+									"{ObjDir}ScriptMgrSysMenuPatch.a.o"				∂
+									"{ObjDir}DblByteCompat.a.o"						∂
+									"{ObjDir}ScriptMgrDispatch.a.o"					∂
+									"{ObjDir}ScriptMgrKeyGetSet.a.o"				∂
+									"{ObjDir}ScriptMgrExtensions.a.o"				∂
+									"{ObjDir}ScriptMgrInit.a.o"						∂
+									"{ObjDir}ScriptMgrExtTail.a.o"					∂
+
+
+# <Sys7.1>
+"{RsrcDir}International.rsrc"		ƒ	"{ScriptMgrDir}International.r"
+	Rez {StdROpts} -o "{Targ}" "{ScriptMgrDir}International.r"
+
+
+# <Sys7.1>
+"{RsrcDir}ScriptMgrPatch.rsrc"		ƒ	"{LibDir}ScriptMgr.lib"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{LibDir}ScriptMgr.lib"
+
+
+# <Sys7.1>
+"{RsrcDir}ScriptMgrExtensions.rsrc"	ƒ	{ScriptMgrExtObjects}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {ScriptMgrExtObjects}
+
+
+# <Sys7.1>
+"{RsrcDir}InternationalPACK.a.rsrc"	ƒ	"{ObjDir}InternationalPACK.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}InternationalPACK.a.o"
+
+
+# <Sys7.1>
+"{RsrcDir}ScriptMgrROMPatch.rsrc"	ƒ	"{ObjDir}ScriptMgrROMPatch.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}ScriptMgrROMPatch.a.o"
+
+
+# <Sys7.1>
+"{RsrcDir}RomanITL2.a.rsrc"			ƒ	"{ObjDir}RomanITL2.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}RomanITL2.a.o"
+
+
+# <Sys7.1>
+"{RsrcDir}itl4Roman.a.rsrc"			ƒ	"{ObjDir}itl4Roman.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}itl4Roman.a.o"
+
+
+# <Sys7.1>
+"{ObjDir}ScriptMgrPatch.a.o"		ƒ	"{ScriptMgrDir}ScriptMgrPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}ScriptMgrPatch.a"
+
+
+# <Sys7.1>
+"{ObjDir}ScriptMgrUtil.a.o"		ƒ	"{ScriptMgrDir}ScriptMgrUtil.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}ScriptMgrUtil.a"
+
+
+# <Sys7.1>
+"{ObjDir}InternationalPACK.a.o"		ƒ	"{ScriptMgrDir}InternationalPACK.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}InternationalPACK.a"
+
+
+# <Sys7.1>
+"{ObjDir}ScriptMgrROMPatch.a.o"		ƒ	"{ScriptMgrDir}ScriptMgrROMPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}ScriptMgrROMPatch.a"
+
+
+# <Sys7.1>
+"{ObjDir}RomanITL2.a.o"				ƒ	"{ScriptMgrDir}RomanITL2.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}RomanITL2.a"
+
+
+# <Sys7.1>
+"{ObjDir}itl4Roman.a.o"				ƒ	"{ScriptMgrDir}itl4Roman.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}itl4Roman.a"
+
+
+# <Sys7.1>
+"{ObjDir}ScriptMgrExtHead.a.o"		ƒ	"{ScriptMgrDir}ScriptMgrExtHead.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}ScriptMgrExtHead.a"
+
+
+# <Sys7.1>
+"{ObjDir}ScriptMgrExtTail.a.o"		ƒ	"{ScriptMgrDir}ScriptMgrExtTail.a"
+	Asm {StdAOpts} -o "{Targ}" "{ScriptMgrDir}ScriptMgrExtTail.a"

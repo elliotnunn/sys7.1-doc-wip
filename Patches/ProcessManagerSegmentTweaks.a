@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Removed code to preflight the system heap with ResrvMem
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ProcessManagerSegmentTweaks.a
 ;
 ;	Contains:	Code to do smarter loading of Process Manager segments to reduce
@@ -34,21 +41,12 @@ LoadProcessManagerSegmentsLowerInSysHeap	InstallProc	(Plus,SE,II,IIci,Portable)
 				_CurResFile						; Remember the current resource file
 				clr.w	-(sp)
 				_UseResFile						; Work on the System file
-				move.b	ResLoad,-(sp)			; Save current resource load state
 				
 				lea		ProcessManagerSegmentTable,a4	; Table of Process Manager segments to load low
 @loadLoop
 				move.w	(a4)+,d7				; Get the segment number
 				bz.s	@doneWithSegments		; Did ’em all
-				sf		ResLoad					; Don’t load in resources
-				subq	#8,sp					; Space for _SizeResource result too
-				move.l	#kProcessManagerSegmentType,-(sp)
-				move.w	d7,-(sp)
-				_Get1Resource
-				_SizeRsrc						; Find out how big it is
-				move.l	(sp)+,d0				; Get the size
-				_ResrvMem ,Sys					; Make some space low in the heap
-				st		ResLoad					; Load it in for real now
+; <Sys7.1> Don't preflight with Get1Resource/SizeRsrc/ResrvMem
 				subq	#4,sp
 				move.l	#kProcessManagerSegmentType,-(sp)
 				move.w	d7,-(sp)
@@ -57,7 +55,6 @@ LoadProcessManagerSegmentsLowerInSysHeap	InstallProc	(Plus,SE,II,IIci,Portable)
 				bra.s	@loadLoop
 				
 @doneWithSegments
-				move.b	(sp)+,ResLoad			; Restore resource load state
 				_UseResFile						; The current resource file is on the stack
 				rts
 

@@ -1,4 +1,13 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted SuperMario changes (including merged Reality changes)
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+;							Clean diff against SuperMario
+;
+
+;
 ;	File:		DialogDispatch.a
 ;
 ;	Contains:	Dispatcher to new Dialog Manager calls.
@@ -219,7 +228,6 @@ rName			ds.b		256					; resName
 
 				move.l	windowDef(a4),d0		; Get the defproc handle
 				_StripAddress					; Get rid of variant kept in hi byte (to be clean)
-				move.w	#MapTrue,ROMMapInsert	; this WDEF could be in ROM !								<SM7> rb
 				move.l	d0,-(sp)				; Push the handle
 				pea		id(a6)					; VAR id
 				pea		rType(a6)				; VAR type
@@ -430,7 +438,7 @@ kBOCorner		 EQU 	16			; Radius for outline frame
 
 
 
-				linkSave	A2-A4/D3-D7			; link and save the registers to be used
+				linkSave	A2-A4/D4-D7			; link and save the registers to be used ex<18> <Sys7.1>
 				move.l		theEvent(a6),a2
 				move.l		evtMessage(a2),d4	; cache event.message
 
@@ -553,17 +561,8 @@ kBOCorner		 EQU 	16			; Radius for outline frame
 
 		; if cursor is over a TE field, then turn cursor to an I-beam, else the arrow
 
-		; Note: the current port may not be our dialog, we need to set it before							<19>
-		; calling GetMouse since it returns the mouse in local coordinates.									<19>
-		
-				pea			savedPort(a6)			;														<19>
-				_GetPort							;														<19>
-				push.l		a4						; switch current port to get right coordinates			<19>
-				_SetPort							;														<19>
 				pea			cursorLocation(a6)
 				_GetMouse							; get currect mouse position in local coordinates
-				push.l		savedPort(a6)			;														<19>
-				_SetPort							; restore port											<19>
 				subq		#2,sp
 				push.l		a4						; this is assumed to be the front window, because of how ClaimEvent works
 				push.l		cursorLocation(a6)
@@ -650,16 +649,7 @@ kBOCorner		 EQU 	16			; Radius for outline frame
 				_SetPort
 
 @doneUpdate
-		; If this is an update event for another window, it will never get cleared until the modal dialog	<19>
-		; is dismissed.  So, we'll never see a null event, which means we need to track the cursor here as	<19>
-		; well as for null events.  Also, A4 points to the window the update event is for, so we need to	<19>
-		; call FrontWindow to get the dialog we're really interested in.									<19>
-				subq		#4,sp					; room for frontmost window								<19>
-				_FrontWindow						;														<19>
-				pop.l		a4						; get frontmost window into a4							<19>
-				move.b		dlgFlagsByte(a4),d6		; and get the flags into d6								<19>
-				bra.s		@checkCursor			; track cursor in case this update event is always		<19>
-													; pending and we never get a null event					<19>
+				bra.s		@done					; 														ex<19> <Sys7.1>
 
 
 

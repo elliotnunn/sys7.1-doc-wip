@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted the MemoryMgrPriv.h include from <25>, as incompatible with
+							Zone.h, instead getting MoveHLow from EppcPrivate.h.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Eppc.c
 
 	Contains:	Routines which implement Event Process-to-Process Communication (EPPC),
@@ -206,7 +214,6 @@
 #include <Errors.h>
 #include <MFPrivate.h>
 #include <Memory.h>
-#include <MemoryMgrPriv.h>
 #include <PPCToolBox.h>
 #include <AppleEventsInternal.h>
 #include <Errors.h>

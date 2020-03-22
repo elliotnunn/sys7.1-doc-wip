@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM4>: restored fallthrough bug in PortChExtra.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		RomanNewJust.a
 ;
 ;	Contains:	New Roman routines for text drawing, measuring, and hit testing with
@@ -2682,7 +2689,7 @@ GetPortChExtra
 			move.l	(sp)+,d2				; get real chExtra for our size
 @donePortChExtra							;
 
-			rts
+			;rts							; ex<SM4> <Sys7.1>
 
 			endproc
 

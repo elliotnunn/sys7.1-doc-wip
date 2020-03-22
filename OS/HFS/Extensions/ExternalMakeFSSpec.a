@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM3> by changing pascalRegs back to interruptRegs (i.e. not
+;							saving a2/a3/d3).
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ExternalMakeFSSpec.a
 ;
 ;	Contains:	Code to perform emulation of the MakeFSSpec call
@@ -115,8 +123,8 @@ myCompletionRoutine:
 	movea.l			(sp)+, a6				; restore a6			
 	beq.s			anRTSInstruction		; if we haven't returned from the trap, rts to driver
 
-	movem.l			pascalRegs, -(sp)		; save all regs that pascal callers need saved	<LW2>pdw
-	pea				restorePascalRegs		; and get in the chain to restore them later	<LW2>pdw
+	movem.l			interruptRegs, -(sp)	; save all regs that pascal callers need saved	<LW2>pdw <Sys7.1>
+	pea				restoreInterruptRegs	; and get in the chain to restore them later	<LW2>pdw <Sys7.1>
 				
 myContCompatThread:
 	move.w			#fsCompatQType, d2		; our queue type/refnum
@@ -136,8 +144,8 @@ myContAppThread:
 											; continue without saving registers
 	rts										; return async time to application
 
-restorePascalRegs:							;												<LW2>pdw
-	movem.l			(sp)+, pascalRegs		; restore the regs that we saved last time through
+restoreInterruptRegs:						;												<LW2>pdw <Sys7.1>
+	movem.l			(sp)+, interruptRegs	; restore the regs that we saved last time through <Sys7.1>
 	rts										; back to the app thread
 	endproc
 

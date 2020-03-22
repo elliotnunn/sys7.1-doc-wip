@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM3>: changed back to short branches
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		TextLDEF.a
 ;
 ;	Contains:	LDEF 0 - Standard List Definition Procedure for simple text.
@@ -209,7 +216,7 @@ ListDraw
 				MOVE.W		D3,-(SP)			; length of text
 				_TextWidth
 				CMP.W		(SP),D7				; will string fit? <11> Leave width on stack
-				BGE 		@noTruncate			; yes, no need to truncate <SM3> CSS 
+				BGE.S		@noTruncate			; yes, no need to truncate <SM3> CSS <Sys7.1>
 
 				addq		#2,sp				; <11> Width isn’t needed til after truncation.  Lose it.
 				

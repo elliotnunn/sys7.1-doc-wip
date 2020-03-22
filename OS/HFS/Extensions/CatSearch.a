@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM1> by putting back the "ROM" prefixes.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		CatSearch.a
 ;
 ;	Contains:	High speed catalog search
@@ -872,7 +879,7 @@ CheckCSPB		proc	export
 ;__________________________________________________________________________________
 CMCatSearch:	proc	export
 
-	jsrRom		FSQUEUE   					; queue up the request
+	jsrRom		ROMFSQUEUE					; queue up the request						ex<SM1><Sys7.1> Put back "ROM"
 	SUBA.W		#CSSR.size, A6				; allocate a CSSR on A6 					moved here <1.3>
 	CLR.B		CSSR.flags(A6)				; clear the flags							moved here <1.3>
 	MOVEA.L 	A6, A3						; move CSSR ptr to a safe register				<12>
@@ -881,7 +888,7 @@ CMCatSearch:	proc	export
 	move.l		ioSearchTime(a5), d0		; get max search time (time mgr count)			<12>
 	bsr 		StartTimer					; start a timer, if needed, right away			<12>
 
-	jsrRom		DTRMV3   					; find vol using ioNamePtr & ioVRefNum (D023/A234 trashed)
+	jsrRom		ROMDTRMV3					; find vol using ioNamePtr & ioVRefNum (D023/A234 trashed)	ex<SM1><Sys7.1> Put back "ROM"
 	MOVEA.L 	A6, A3						; reload pointer to CSSR (doesn’t hurt CCs)		<12>
 	BNE 		@Exit						; (DtrmV3 puts VCBPtr in A2)
 	MOVE.W		vcbSigWord(A2), D0			; Check out the volume signature
@@ -891,7 +898,7 @@ CMCatSearch:	proc	export
 	BRA 		@Exit						; and cruise
 
 @ItsHFS:
-	jsrRom		EXTOFFLINCK   				; Is this volume on-line and one of ours?				<1.2>
+	jsrRom		ROMEXTOFFLINCK				; Is this volume on-line and one of ours?				<1.2> ex<SM1><Sys7.1> Put back "ROM"
 	BEQ.S		@VolumeIsCool				; Keep going if so										<1.2>
 	BRA 		@Exit						; Go home if not (with extFSErr or volOffLinErr in D0)	<1.2>
 
@@ -1007,7 +1014,7 @@ CMCatSearch:	proc	export
 @notBufferOnStack:
 	ADDA.W		#CSSR.size, A6				; deallocate CSSR
 	suba.l		a3, a3						; clear WDCB pointer for external file systems		<17>
-	jmpRom		CMDDONE   
+	jmpRom		ROMCMDDONE					;													ex<SM1><Sys7.1> Put back "ROM"
 
 	_CSDebugRts 'CMCatSearch', 0
 	endproc

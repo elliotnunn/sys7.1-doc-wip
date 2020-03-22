@@ -1,4 +1,15 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted ExpandMem to <66> (version $128, size $1F4) by moving the
+;							"size" equate. By leaving newer fields in the record after "size", we
+;							keep newer code building. Restored emNumer and emDenom as removed by
+;							<84>. Restored emFFSwapMMUMode, which was repurposed to
+;							emButtonIntGlobals by <SM22> (and not used anywhere).
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		SysPrivateEqu.a
 ;
 ;	Contains:	private equates that were formerly in SysEqu.a
@@ -336,7 +347,9 @@ emItlSysCachePtr	ds.l		1					; pointer to system itl cache				<7><20>
 emScriptMapPtr		ds.l		1					; pointer to script mapping/sorting data	<8>
 emLangMapPtr		ds.l		1					; pointer to language mapping/sorting data	<8>
 
+emNumer												; Resurrect the field below...				<Sys7.1>
 					ds.l		1					; was emNumer (obsolete), now unused		<11><84>
+emDenom												; Resurrect the field below...				<Sys7.1>
 					ds.l		1					; was emDenom (obsolete), now unused		<11><84>
 emIconCluts			ds.l		1					; Ptr to global icon info				<13>
 emScriptAppGlobals	ds.l		1					; Handle to application-specific script globals	<16><20><21>
@@ -388,6 +401,7 @@ emPrintingGlobals			ds.l	1				; Tsunami Printing Manager non-swapped printing gl
 
 emCursorGlobals				ds.l	1				; Ptr to CursorDev globals								<46>
 
+emFFSwapMMUMode										; Resurrect the field below...							<Sys7.1>
 emButtonIntGlobals			ds.l	1				; Ptr to Button Interrupt globals. previously Ptr to "real" SwapMMUMode routine	<SM22> CSS				
 
 emAppleTalkInactiveOnBoot	ds.w	1				; True if AppleTalk was inactive on boot				<48>
@@ -397,6 +411,9 @@ emOpenFontFiles				ds.w	1				; Count of open font files in the Fonts folder. 		<
 emLowMemoryPrintingGlobals	ds.l	1				; Handle to globals used by LowMemoryPrintingPatches	<50>
 
 emNetBootGlobals			ds.l	1				; Handle to globals used by emNetBootGlobals for Network Booting and Appletalk stuff.	<65>
+
+emRecSize			equ			*					; size for this version									<Sys7.1>
+size				equ			*
 
 emFndrDeskRgn				ds.l	1				; Handle to region maintained by Bungee Finder if fndrDeskRgnTracking is true <67> <69>
 
@@ -440,10 +457,7 @@ jSWModemSoundVector			ds.l	1				; Vector to control routine for software modem s
 ; (currently {CInternal}ExpandMemPriv.h is the one)
 ; Be sure to update the Reality sources when you change this file (and the version number)
 
-emCurVersion		EQU			$0133				; version 
-
-emRecSize			equ			*					; size for this version
-size				equ			*
+emCurVersion		EQU			$0128				; version 									<Sys7.1>
 
 	  				ENDR
 					

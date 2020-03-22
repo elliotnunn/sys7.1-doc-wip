@@ -1,4 +1,14 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Added a special case to the _CountTypes patch that I don't understand,
+;							possibly related to <42>.
+;							Save/restore ResOneDeep and ROMMapInsert around the jCheckLoad call.
+;							Added missing PrNonPortable equate for the good stuff in Private.a.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ResourceOverridePatches.a
 ;
 ;	Contains:	Code to handle special cases when the overrideNextMapBit, twoDeepBit,
@@ -210,6 +220,7 @@
 			include		'ToolEqu.a'
 			include		'fontPrivate.a'
 			include		'LinkedPatchMacros.a'
+			PrNonPortable: equ 1				; <Sys7.1>
 			include		'Private.a'
 			include		'ResourceMgrPriv.a'
 
@@ -493,7 +504,14 @@ localSize		equ		*
 				clr.w	oneDeepCall(a6)					; <26> It’s not one deep after all
 				bsr		SyncTopOverrideMap				; Set up the override maps
 @isCount1Types											; <24>
+				tst.b	ROMMapInsert					; <Sys7.1> Don't clear ResOneDeep if ROMMapInsert AND CurMap == SysMap
+				bz.s	@normalCase						; <Sys7.1>
+				move.w	CurMap,d0						; <Sys7.1>
+				cmp.w	SysMap,d0						; <Sys7.1>
+				beq.s	@specialCase					; <Sys7.1> 
+@normalCase												; <Sys7.1> 
 				clr.b	ResOneDeep						; <27> Clear ResOneDeep so CountTypes will count all resources left in the chain.
+@specialCase											; <Sys7.1> 
 				subq	#2,sp							; Room for word result
 				jsrOld									; Call through to the Resource Manager
 				move.w	(sp)+,numTypes(a6)				; Pass the result back to the caller
@@ -1437,6 +1455,8 @@ localSize		equ		*
 				move.l	realNextMap(a1),mNext(a0)		; <11> Restore the chain below this map
 				move.l	realTopMap(a1),TopMapHndl		; <11> Restore the real top map
 @notOneDeep
+				move.b	ResOneDeep,-(sp)				; <Sys7.1>
+				move.b	ROMMapInsert,-(sp)				; <Sys7.1>
 				link	a6,#RMgrStack					; Create a stack frame for CheckLoad
 				clr.w	ioStkFrame+ioVRefNum(a6)		; so that it has a IOPB where it
 				clr.w	ioStkFrame+ioFileType(a6)		; expects it on the stack
@@ -1444,6 +1464,8 @@ localSize		equ		*
 				move.l	jCheckLoad,a0					; Handy dandy vector to see if a resource is loaded
 				jsr		(a0)							; Go load the resource if necessary
 				unlk	a6								; Toss the parameter block
+				move.b	(sp)+,ROMMapInsert				; <Sys7.1>
+				move.b	(sp)+,ResOneDeep				; <Sys7.1>
 				move.l	a0,resHandle(a6)				; Return the handle
 				move.l	a0,HSCHandle					; <37> And save it in the cache
 @exitGetIndResourceOverride
@@ -2059,6 +2081,7 @@ FlushFontsCallThroughCommon
 				move.l	(a1),a0							; Nail the next one too
 				_DisposeHandle
 				clr.l	(a1)
+				clr.l	LastFOND
 				bra.s	Exit
 
 DontFlushFonts

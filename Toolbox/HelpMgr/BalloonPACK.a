@@ -1,3 +1,10 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM3> with a simple code change.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;__________________________________________________________________________________________________
 ;	File:		BalloonPACK.a
 ;
@@ -2789,7 +2796,7 @@ workString		ds.w		128							; space for a STR255 work area
 				MOVE.L	origString(A6),A2				; A2-> string beginning (len byte)
 				MOVEQ	#0,D3							; clear some hibits
 				MOVE.B	(A2),D3							; get length
-				BEQ 	@ExitFCS						; exit if original string was zero <SM3> CSS 
+				BEQ.S	@ExitFCS						; exit if original string was zero <SM3> CSS <Sys7.1>
 				
 				MOVE.B	#'^',D0							; look for citation caret character
 				LEA		1(A2),A1						; A1 -> string data

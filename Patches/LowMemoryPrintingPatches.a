@@ -1,0 +1,483 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Disassembled from scratch
+;
+
+				LOAD	'StandardEqu.d'
+				INCLUDE	'LinkedPatchMacros.a'
+				INCLUDE	'PrintTrapsEqu.a'
+				INCLUDE	'Folders.a'
+				INCLUDE	'FSEqu.a'
+				INCLUDE	'LayerEqu.a'
+				INCLUDE	'Processes.a'
+
+
+Globals			RECORD	0,INCREMENT
+gPrmnModDate	DS.L	1
+gPrmnPrefMem	DS.L	1
+gPrmnVolRefNum	DS.W	1
+gPrmnDirID		DS.L	1
+gPrmnNameHand	DS.L	1
+gDialogHit		DS.W	1
+gFlag			DS.W	1
+GlobalSize		EQU		*
+				ENDR
+
+
+kCancel			EQU		1
+kPrintLater		EQU		2
+kPrintNow		EQU		3
+
+
+
+InstallLowMemoryPrinting		InstallProc		(Plus,SE,II,Portable,IIci)
+				WITH	Globals
+
+				MOVEQ	#22,D0					; create printing global handle
+				_NewHandle	,sys,clear
+				MOVE.L	ExpandMem,A1
+				MOVE.L	A0,ExpandMemRec.emLowMemoryPrintingGlobals(A1)
+				MOVE.L	A0,A2					; save printing globals
+
+				SUBQ	#4,SP
+				MOVE.L	#'STR ',-(SP)
+				MOVE.W	#-16601,-(SP)			; "PrintMonitor"
+				_GetResource					; get it in the system heap
+				MOVE.L	(A2),A0
+				MOVE.L	(SP)+,gPrmnNameHand(A0)
+				RTS
+
+
+LowMemoryPrintingDialogPatch	PatchProc	_GetResource,(Plus,SE,II,Portable,IIci)
+				IMPORT	lowMemPrintDialog
+				WITH	Globals
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				MOVE.L	(A0),A0
+				TST.B	gFlag(A0)
+				BNE.S	@keepTesting
+@jmpOld			jmpOld
+@keepTesting	CMP.L	#'PREC',6(SP)
+				BNE.S	@jmpOld
+				CMP.W	#127,4(SP)
+				BNE.S	@jmpOld
+
+; PREC 127, call original routine...
+				LEA		10(SP),A0
+				SUBQ	#4,SP
+				MOVE.L	-(A0),-(SP)
+				MOVE.W	-(A0),-(SP)
+				BSR.S	@jmpOld
+				MOVE.L	(SP)+,D0
+				MOVE.L	D0,10(SP)
+				BEQ.S	@tailReturn				; pass through nil
+
+; and tail patch it...
+				MOVE.L	D0,A0
+				MOVE.L	(A0),A0
+				BTST	#7,(A0)
+				BNE.S	@tailReturn				; skip if first bit is set?
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				_HLock
+				MOVE.L	(A0),A0
+				LEA		gDialogHit(A0),A0
+				TST.W	(A0)
+				BNE.S	@nodo
+				MOVE.W	ResErr,-(SP)
+				MOVE.W	MemErr,-(SP)
+				MOVEM.L	D1/D2/A0/A1,-(SP)
+				MOVE.L	A0,-(SP)
+				JSR		lowMemPrintDialog
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				_HUnlock
+				MOVEM.L	(SP)+,D1/D2/A0/A1
+				MOVE.W	(SP)+,MemErr
+				MOVE.W	(SP)+,ResErr
+@nodo
+				CMP.W	#3,(A0)
+				BNE.S	@tailReturn
+				MOVE.L	10(SP),A0
+				MOVE.L	(A0),A0
+				BSET	#7,(A0)
+
+@tailReturn		MOVE.L	(SP)+,A0
+				ADDQ	#6,SP
+				JMP		(A0)
+
+
+NastierPatch	PatchProc	$A8FD,(Plus,SE,II,Portable,IIci)
+				IMPORT	prmtRunning,prmtPrefMem
+				WITH	Globals
+
+				MOVE.L	4(SP),D0
+				CMP.L	#$04000C00,D0
+				BEQ.S	@PrOpenDoc
+				CMP.L	#$08000484,D0
+				BEQ.S	@PrClosDoc
+
+@jmpOld			jmpOld
+
+@PrClosDoc		LEA		12(SP),A0
+				MOVE.L	-(A0),-(SP)
+				MOVE.L	-(A0),-(SP)
+				BSR.S	@jmpOld
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				MOVE.L	(A0),A0
+				CLR.B	gFlag(A0)
+
+				MOVE.L	(SP)+,A0
+				ADDQ	#8,SP
+				JMP		(A0)
+
+@PrOpenDoc		MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				MOVE.L	(A0),A0
+				CLR.W	gDialogHit(A0)
+	
+				SUBQ	#2,SP
+				JSR		prmtRunning
+				TST.B	(SP)+
+				BNE.S	@jmpOld
+
+				MOVE.L	D3,-(SP)
+				SUBQ	#4,SP
+				JSR		prmtPrefMem
+				MOVE.L	(SP)+,D3
+				BEQ.S	@cannotBackground
+				BMI.S	@cleanupgo
+
+				SUBQ	#4,SP
+				_TempFreeMem
+				MOVE.L	(SP)+,D1
+				SUB.L	#20*1024,D1
+				CMP.L	D3,D1
+				BGE.S	@cleanupgo
+
+@cannotBackground
+				MOVE.L	(SP)+,D3
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				MOVE.L	(A0),A0
+				MOVE.B	#1,gFlag(A0)
+
+				LEA		20(SP),A0
+				SUBQ	#4,SP
+				MOVE.L	-(A0),-(SP)
+				MOVE.L	-(A0),-(SP)
+				MOVE.L	-(A0),-(SP)
+				MOVE.L	-(A0),-(SP)
+				BSR.S	@jmpOld
+				MOVE.L	(SP)+,20(SP)
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				MOVE.L	(A0),A0
+				CMP.W	#kCancel,gDialogHit(A0)
+				BNE.S	@noErr
+				MOVE.W	#128,-(SP)
+				_PrSetError
+@noErr
+				MOVE.L	(SP)+,A0
+				LEA		16(SP),SP
+				JMP		(A0)
+
+@cleanupgo		MOVE.L	(SP)+,D3
+				BRA.W	@jmpOld
+
+
+
+; Return a long, equal to the PrintMonitor's preferred memory partition
+; Error if negative
+prmtPrefMem		PROC	EXPORT
+				WITH	Globals,HParamBlockRec,HFileParam
+
+prmtPrefMemFrm	RECORD	{A6Link},DECREMENT
+result			DS.L	1
+return			DS.L	1
+A6Link			DS.L	1
+HFQEl			DS.B	ioHFQElSiz
+prmonRefNum		DS.W	1
+LocalSize		EQU		*
+				ENDR
+				WITH	prmtPrefMemFrm
+
+				LINK	A6,#LocalSize
+				MOVE.L	A2,-(SP)
+				CLR.L	result(A6)
+
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				_HLock
+				MOVE.L	(A0),A2
+				TST.L	gPrmnDirID(A2)
+				BNE.S	@gotExtn
+
+				SUB.L	#2,SP
+				MOVE.W	#kOnSystemDisk,-(SP)
+				MOVE.L	#kExtensionFolderType,-(SP)
+				CLR.W	-(SP) ; do not create
+				PEA		gPrmnVolRefNum(A2)
+				PEA		gPrmnDirID(A2)
+				MOVEQ	#0,D0
+				_AliasDispatch ; FindFolder
+				MOVE.W	(SP)+,D0
+				BNE		@return
+@gotExtn
+
+				LEA		HFQEl(A6),A0
+				MOVEQ	#ioHFQElSiz/2-1,D0
+@clearLoop		CLR.W	(A0)+
+				DBRA	D0,@clearLoop
+
+				LEA		HFQEl(A6),A0
+				MOVE.L	gPrmnNameHand(A2),A1
+				MOVE.L	(A1),ioNamePtr(A0)
+				MOVE.W	gPrmnVolRefNum(A2),ioVRefNum(A0)
+				CLR.W	ioFDirIndex(A0)
+				MOVE.L	gPrmnDirID(A2),ioDirID(A0)
+				_GetCatInfo
+				BEQ.S	@gotPrintMon
+				MOVE.L	D0,result(A6)
+				BRA.S	@return
+@gotPrintMon
+
+				TST.L	gPrmnModDate(A2)
+				BEQ.S	@globWasZero
+				MOVE.L	gPrmnModDate(A2),D0
+				CMP.L	ioFlMdDat(A0),D0
+				BNE.S	@globWasZero
+				MOVE.L	gPrmnPrefMem(A2),result(A6)
+				BRA.S	@return
+@globWasZero
+				MOVE.L	ioFlMdDat(A0),gPrmnModDate(A2)
+
+				SUB.L	#2,SP
+				MOVE.W	gPrmnVolRefNum(A2),-(SP)
+				MOVE.L	gPrmnDirID(A2),-(SP)
+				MOVE.L	gPrmnNameHand(A2),A1
+				MOVE.L	(A1),-(SP)
+				MOVE.B	#1,-(SP)
+				_HOpenResFile
+				MOVE.W	(SP)+,prmonRefNum(A6)
+				BMI.S	@return
+
+				SUB.L	#4,SP
+				MOVE.L	#'SIZE',-(SP)
+				MOVE.W	#0,-(SP)
+				_Get1Resource
+				MOVE.L	(SP)+,D0
+				BNE.S	@gotSizeRes
+				SUB.L	#4,SP
+				MOVE.L	#'SIZE',-(SP)
+				MOVE.W	#-1,-(SP)
+				_Get1Resource
+				MOVE.L	(SP)+,D0
+				BEQ.S	@closeAndReturn
+@gotSizeRes
+
+				MOVE.L	D0,A0
+				MOVE.L	(A0),A0
+				MOVE.L	2(A0),D0
+				MOVE.L	D0,result(A6)
+				MOVE.L	D0,gPrmnPrefMem(A2)
+
+@closeAndReturn
+				MOVE.W	prmonRefNum(A6),-(SP)
+				_CloseResFile
+@return
+				MOVE.L	ExpandMem,A0
+				MOVE.L	ExpandMemRec.emLowMemoryPrintingGlobals(A0),A0
+				_HUnlock
+				MOVE.L	(SP)+,A2
+				UNLK	A6
+				RTS
+
+
+; Return a bool, true if the PrintMonitor is running
+prmtRunning		PROC	EXPORT
+				WITH	Globals
+
+prmtRunningFrm	RECORD	{A6Link},DECREMENT
+result			DS.W	1
+return			DS.L	1
+A6Link			DS.L	1
+psn				DS		ProcessSerialNumber
+procInfo		DS		ProcessInfoRec
+LocalSize		EQU		*
+				ENDR
+				WITH	prmtRunningFrm
+
+				LINK	A6,#LocalSize
+
+				MOVEQ	#0,D0
+				MOVE.L	D0,psn.highLongOfPSN(A6)
+				MOVE.L	D0,psn.lowLongOfPSN(A6)
+				MOVEQ	#ProcessInfoRec.size,D1
+				MOVE.L	D1,procInfo.processInfoLength(A6)
+				MOVE.L	D0,procInfo.processName(A6)
+				MOVE.L	D0,procInfo.processAppSpec(A6)
+				BRA.S	@nextProcess
+
+@getProcessInfo	SUB.L	#2,SP
+				PEA		psn(A6)
+				PEA		procInfo(A6)
+				_GetProcessInformation
+				TST.W	(SP)+
+				BNE.S	@nextProcess
+				CMP.L	#'prmt',procInfo.processSignature(A6)
+				BNE.S	@nextProcess
+				MOVE.B	#1,result(A6)
+				BRA.S	@return						; Print Monitor 'prmt' running
+
+@nextProcess	SUB.L	#2,SP
+				PEA		psn(A6)
+				_GetNextProcess
+				TST.W	(SP)+
+				BEQ.S	@getProcessInfo
+
+				CLR.B	result(A6)					; not running
+@return			UNLK	A6
+				RTS
+
+
+; Dialog: "Your document will be printed in the background when more memory is available"
+; Takes one argument: a pointer to a word
+; The pointed-to word is set to the hit item: 1 = Cancel, 2 = Print Later, 3 = Print Now
+lowMemPrintDialog		PROC	EXPORT
+				IMPORT	HandToHand
+				WITH	Globals
+
+lowMemPrintDialogFrm	RECORD	{A6Link},DECREMENT
+result			DS.L	1
+return			DS.L	1
+A6Link			DS.L	1
+oldZone			DS.L	1
+newDitlHand		DS.L	1
+itemHit			DS.W	1
+LocalSize		EQU		*
+savedRegs		DS.L	3
+				ENDR
+				WITH	lowMemPrintDialogFrm
+
+@regs			REG		D7/A3/A4
+
+				LINK	A6,#LocalSize
+				MOVEM.L	@regs,-(SP)
+
+				_GetZone
+				MOVE.L	A0,oldZone(A6)
+				MOVE.L	SysZone,A0
+				_SetZone
+
+				SUB.L	#4,SP
+				MOVE.L	#'DITL',-(SP)
+				MOVE.W	#-16601,-(SP)
+				_GetResource
+				MOVE.L	(SP)+,A4
+
+				SUB.L	#2,SP
+				_ResError
+				TST.W	(SP)+
+				BNE		@return
+
+				SUB.L	#4,SP
+				MOVE.L	#'RECT',-(SP)
+				MOVE.W	#-16601,-(SP)
+				_GetResource
+				MOVE.L	(SP)+,A3
+
+				SUB.L	#2,SP
+				_ResError
+				TST.W	(SP)+
+				BNE		@return
+
+				MOVE.L	A4,newDitlHand(A6)
+
+				SUB.L	#2,SP
+				PEA		newDitlHand(A6)
+				JSR		HandToHand
+				TST.W	(SP)+
+				BEQ.S	@ditlCopied
+				MOVE.L	oldZone(A6),A0
+				_SetZone
+				BRA		@return
+@ditlCopied
+
+				MOVE.L	A3,A0						; the dialog rect
+				_HLock
+
+				SUB.L	#4,SP
+				MOVEQ	#0,D0
+				MOVE.L	D0,-(SP)					; wStorage = nil
+				MOVE.L	(A3),-(SP)					; boundsRect
+				MOVE.L	D0,-(SP)					; title = nil
+				MOVEQ	#0,D1
+				MOVE.B	D1,-(SP)					; visible = false
+				MOVEQ	#1,D0
+				MOVE.W	D0,-(SP)					; procID = 1
+				MOVEQ	#-1,D0
+				MOVE.L	D0,-(SP)					; behind = -1
+				MOVE.B	D1,-(SP)					; goAwayFlag = false
+				MOVEQ	#0,D0
+				MOVE.L	D0,-(SP)					; refCon = 0
+				MOVE.L	newDitlHand(A6),-(SP)		; itmLstHndl = newDitlHand
+				_NewDialog
+				MOVE.L	(SP)+,A4
+
+				SUB.L	#2,SP
+				MOVE.L	A4,-(SP)
+				MOVEQ	#3,D0
+				MOVE.W	D0,-(SP)
+				_SetDialogDefaultItem
+				MOVE.W	(SP)+,D7
+
+				SUB.L	#2,SP
+				MOVE.L	A4,-(SP)
+				MOVEQ	#1,D0
+				MOVE.W	D0,-(SP)
+				_SetDialogCancelItem
+				MOVE.W	(SP)+,D7
+
+				MOVE.L	A4,-(SP)					; whichWindow = our dialog
+				MOVEQ	#lcMainScreen,D0
+				MOVE.B	D0,-(SP)					; where = lcMainScreen
+				MOVEQ	#hcCenter,D1
+				MOVE.B	D1,-(SP)					; horizontalControl = hcCenter
+				MOVEQ	#vcAlertCenter,D0
+				MOVE.B	D0,-(SP)					; verticalControl = vcAlertCenter
+				_AutoPositionWindow
+
+				_InitCursor
+
+				MOVE.L	A4,-(SP)
+				_ShowWindow
+
+				MOVEQ	#0,D0
+				MOVE.L	D0,-(SP)					; filterProc = nil
+				PEA		itemHit(A6)
+				_ModalDialog
+
+				MOVE.L	A4,-(SP)
+				_DisposeDialog
+
+				MOVE.L	A3,A0						; the dialog rect
+				_HUnlock
+
+				MOVE.L	oldZone(A6),A0
+				_SetZone
+
+				MOVE.L	result(A6),A0
+				MOVE.W	itemHit(A6),(A0)
+
+@return			MOVEM.L	savedRegs(A6),@regs
+				UNLK	A6
+				MOVE.L	(SP)+,(SP)
+				RTS

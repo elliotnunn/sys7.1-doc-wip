@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <18> by recreating the non-standard "MyGestalt" glue asm.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:			ProcessMgrMisc.a
 ;
 ;	Contains:		Routines which support the Process Manager that could not be
@@ -1758,5 +1765,20 @@ MNGSaveRegs		REG			d0-d1/a0-a2					; working registers
 				rts										; leave
 		
 				ENDPROC
+
+;---------------------------------------------------------------------------------------
+; Non-standard glue, only used at ProcessMgr init						ex<18> <Sys7.1>
+
+				SEG			'INIT'
+MYGESTALT		PROC		EXPORT
+
+				MOVE.L		8(SP),D0
+				_Gestalt
+				MOVE.L		4(SP),A1
+				MOVE.L		A0,(A1)
+				MOVE.L		(SP)+,A0
+				LEA.L		8(SP),SP
+				MOVE.W		D0,(SP)
+				JMP			(A0)
 
 				END

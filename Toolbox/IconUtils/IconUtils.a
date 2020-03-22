@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM5> bugfix (marked as '<PN>'). Removed <SM4> code to use icon
+;							resources in ROM.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		IconUtils.a
 ;
 ;	Contains:	Assembler portion of utilities for plotting color icons.
@@ -159,7 +167,7 @@ FromResource	PROC	EXPORT
 			LEA		typeTable, A1		;	get the table of resTypes
 			MOVE.L	$00(A1,D0.W), -(SP)	;	push the icon type
 			MOVE.W	D1, -(SP)			;	push the icon id
-			MOVE.W	#MAPTRUE,ROMMAPINSERT	; look in ROM first							<SM4> rb
+;			MOVE.W	#MAPTRUE,ROMMAPINSERT	; look in ROM first							<SM4> rb <Sys7.1>
 			_GetResource				;	call GetResource
 			MOVE.L	(A7)+, D0			;	pop the handle into D0 for return
 			RTS							;	return
@@ -531,7 +539,7 @@ GETCODE	MOVEA.L	THEDATA(SP), A1			;	get the address to return data in
 		MOVE.L	(A0), (A1)				;	return the data
 EXITOK	MOVEQ	#noErr, D0				;	record no error.
 EXIT	MOVEA.L	(SP)+, A0				;	Pop return address into A0
-		ADDQ.L	#8, SP					;	Point stack at return value <PN>
+		ADDQ.L	#6, SP					;	Point stack at return value <PN> <Sys7.1>
 		MOVE.W	D0, (SP)				;	put return value on the stack
 		JMP		(A0)					;	return
 		
@@ -693,7 +701,7 @@ FromResource	PROC	EXPORT
 			LEA		typeTable, A1		;	get the table of resTypes
 			MOVE.L	$00(A1,D0.W), -(SP)	;	push the icon type
 			MOVE.W	D1, -(SP)			;	push the icon id
-			MOVE.W	#MAPTRUE,ROMMAPINSERT	; look in ROM first								<SM4> rb
+;			MOVE.W	#MAPTRUE,ROMMAPINSERT	; look in ROM first								<SM4> rb <Sys7.1>
 			_GetResource				;	call GetResource
 			MOVE.L	(A7)+, D0			;	pop the handle into D0 for return
 			RTS							;	return
@@ -1065,7 +1073,7 @@ GETCODE	MOVEA.L	THEDATA(SP), A1			;	get the address to return data in
 		MOVE.L	(A0), (A1)				;	return the data
 EXITOK	MOVEQ	#noErr, D0				;	record no error.
 EXIT	MOVEA.L	(SP)+, A0				;	Pop return address into A0
-		ADDQ.L	#8, SP					;	Point stack at return value <PN>
+		ADDQ.L	#6, SP					;	Point stack at return value <PN> <Sys7.1>
 		MOVE.W	D0, (SP)				;	put return value on the stack
 		JMP		(A0)					;	return
 		

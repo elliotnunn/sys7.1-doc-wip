@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Revert <SM2>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		Bass_Allocate.a
 ;
 ;	Copyright:	© 1989-1993 by Apple Computer, Inc., all rights reserved.
@@ -244,9 +251,9 @@ DisposeTempBuffer	PROC 	EXPORT			;<18Jun89>	BAL
 ;
 ;
 CtempBufHand		PROC 	EXPORT
-		EXPORT		GETSTYLEBUFHAND
+		EXPORT		GetStyleBufHand		; <Sys7.1>
 		MOVE.L	4(SP), d0				; Get size
-GETSTYLEBUFHAND
+GetStyleBufHand							; <Sys7.1>
 		MOVE.L	D0, D3					; Save request in reg
 		BSR		FontNewTempHandle			; Try to get it from Multi Temp
 		BNE.S	@returnVal				; Worked so go home

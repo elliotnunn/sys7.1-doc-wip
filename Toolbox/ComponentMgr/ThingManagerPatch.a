@@ -1,0 +1,38 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Disassembled from scratch
+;
+
+			LOAD	'StandardEqu.d'
+			INCLUDE	'GestaltEqu.a'
+			INCLUDE	'LinkedPatchMacros.a'
+
+
+InstallThingManager		InstallProc		(Plus,SE,II,Portable,IIci)
+			import		__InitComponentManager
+
+			move.w		#$A82A,d0
+			leaResident	MainComponent,a0
+			_SetTrapWordAddress
+
+			jsr			__InitComponentManager
+
+			move.l		#gestaltComponentMgr,d0
+			leaResident	GestaltComponentMgrVersion,a0
+			_NewGestalt
+
+			rts
+
+
+GestaltComponentMgrVersion	Proc	Export
+			import		__ComponentManagerVersion
+
+			clr.l		-(sp)
+			jsr			__ComponentManagerVersion
+			move.l		8(sp),a0
+			move.l		(sp)+,(a0)
+			move.l		(sp)+,a0
+			addq		#8,sp
+			clr.w		(sp)
+			jmp			(a0)

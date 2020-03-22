@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Partly reverted <SM10>, removing check for 040+VM from MOVE16 workaround
+;							Ripped out the (conditional) nops from <SM8>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		SCSIMgr96.a
 ;
 ;	Contains:	SCSI Mgr for the 53C96
@@ -622,12 +630,7 @@ dataCommon_96
 
 
 @data_end
-			cmpi.b	#cpu68040,CPUFlag			; Do we have an 040?							<SM10>
-			bne.s	@TheRealExit				; -> No.  No MOVE16.  No Problem.
-			cmpi.l	#-1,VMGlobals				; VM running?
-			beq.s	@TheRealExit				; -> No, no VM, no problem
-			
-
+; ex<SM10> <Sys7.1> Don't restrict this workaround to 040s running VM
 ;--- Flush the cache line that contains location 8 (because of MOVE16 bug)						<3> thru next <3>
 
 			movem.l	D0-D2, -(sp)
@@ -673,9 +676,6 @@ DoSCSIComplete_96
 			bne.w	@phaseErr					; 
 @inPhase										; we should be in status phase.
 			move.b	#cCmdComp, rCMD(a3)			; load cmd complete code
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		WaitForSCSIIntrp			; Wait for intrp w/ timeout
 												;    on exit d5 = rF0S|rINT|0|rSTA
 			beq.w	@noStatus					; Branch if timedout
@@ -695,9 +695,6 @@ DoSCSIComplete_96
 ;			;bne.s	@cmdErr																		<T8> from last <T8>
 
 			move.b	#cMsgAcep, rCMD(a3)			; load msg accepted code which de-asserts *ACK
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		WaitForSCSIIntrp			; Wait for intrp w/ timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
 			beq.w	@badAcpt					; Branch if timedout
@@ -835,9 +832,6 @@ Select_96
 ; Set up chip for select process (flush FIFO, init dest ID)
 			move.b	d0, rDID(a3) 					; load select bus ID w/ target ID
 			move.b	#cFlshFFO, rCMD(a3)				; Flush FIFO, make sure it's empty
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 
 			btst.l	#16, d0							; is this a Sel w/Atn?
 			bne.s	@withAtn
@@ -847,9 +841,6 @@ Select_96
 			move.b	zeroReg, rXCM(a3)				; tell chip that we will be sending 1
 			move.b	#1, rXCL(a3)					; DMA byte (in command phase)
 			move.b	#cDMASelWOAtn, rCMD(a3)			; issue Select w/o Atn cmd
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bset.b	#NeedCmdSent, G_State96(a4)		; flag=expect to see a COMMAND phase next			<T9>
 			bra.s	@2
 
@@ -858,9 +849,6 @@ Select_96
 			move.b	zeroReg, rXCM(a3)				; tell chip that we will be sending 2
 			move.b	#1, rXCL(a3)					; DMA bytes (1 in msg_out, 1 in command) 
 			move.b	#cDMASelWAtn, rCMD(a3)			; issue Select w/ Atn cmd
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bset.b	#NeedMsgOut, G_State96(a4)		; flag=expect to see a MESSAGE_OUT phase next		<T9>
 @2			
 			bset.b	#SelInProg, G_State96(a4)		; set flag->select is in prog, expect intrpt	<T8><T9>
@@ -899,11 +887,7 @@ Select_96
 ;———————————————————
 @waitLoop
 	; Check for a REQ from the target (within valid phase)
-		IF forPDMDebug THEN						;								<SM8>
-			move.b	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ELSE
 			move.l	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ENDIF
 			move.b	G_bitDREQ(a4),d0				; load DREQ bit position	<4> jab
 			btst.l	d0, d5							; DREQ ?					<4> jab
 			bne.s	@gotDREQ						; yes: then we have a REQ for Msg_Out or Cmd byte
@@ -1016,9 +1000,6 @@ SendCMD_96
 @btmLoadFIFO									;														<T9>
 			dbra	d2, @loadFIFO				;	 last byte in order to satisfy the c96's DMA		<T2>
 												;	 circuitry & get us that intrp.						<T2>
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 	
 			btst.b	#NeedCmdSent, G_State96(a4)	; were we expecting a command phase here?			<2> thru next <2>
 			beq.s	@skipDMA
@@ -1039,9 +1020,6 @@ SendCMD_96
 			and.b	rSTA(a3), d1				; get phase bits before sending last byte			<2> from prev <2>
 
 			move.b	(a2)+, rDMA(a3)				; Use psuedo DMA to load last byte						<T2>
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 
 			bclr.b	#NeedCmdSent,G_State96(a4)	; no longer need command sent and,						<T9>
 			bset.b	#FCIntPend,G_State96(a4)	; now we can expect a FunctionCmplt interrupt			<T9>
@@ -1059,9 +1037,6 @@ SendCMD_96
 			moveq.l #noErr, d0					; no error												<T9>
 @cmdExit										; At this point, we're out of cmd phase
 			and.b	#$FF-SlowCableMode,rCF1(a3)	; turn-off Slow cable mode								<T9>
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			tst.w	d0							;
 			rts
 
@@ -1095,9 +1070,6 @@ SendCMD_96
 			bclr.b	#NeedMsgOut, G_State96(a4)		; and Message_Out  							<Taa>
 			bclr.b	#NeedCmdSent, G_State96(a4)		; and Command expected flags				<Taa>
 			move.b	#cFlshFFO, rCMD(a3)				; flush the FIFO of unused Command bytes			
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 @phaseErr
 			moveq.l #scPhaseErr, d0				; phase error											<T5>
 			move.l	#scsiCmd, d6				; load proc ID											<T5>
@@ -1132,9 +1104,6 @@ GetMsg_96
 			bne.s	@phaseErr					; 
 			
 			move.b	#cIOXfer, rCMD(a3)			; load Transfer cmd byte in CMD regr
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		WaitForSCSIIntrp			; Wait for intrp w/ timeout						<T3>
 												;    on exit d5 = xxxx|rSQS|rSTA|rINT
 			beq.s	@timedOut					; Branch if timedout
@@ -1142,9 +1111,6 @@ GetMsg_96
 			move.b	rFFO(a3), d2				; xfer fifo msg byte into d2 w/ *ACK still asserted
 												; now, unconditionally accept the message byte
 			move.b	#cMsgAcep, rCMD(a3)			; load msg accepted code which de-asserts *ACK
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		WaitForSCSIIntrp			; Wait for intrp w/ timeout						<T3>		
 												;    on exit d5 = rFOS|rINT|0|rSTA
 			beq.s	@timedOut					; Branch if timedout
@@ -1204,9 +1170,6 @@ SendMsg_96
 @inPhase	; We probably got here from Select w/ATN which means
 			; ATN is deasserted prior to transfer of msg byte
 			move.b	d2, rFFO(a3)				; xfer msg byte	
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bclr.b	#NeedMsgOut,G_State96(a4)	; did we send a Select w/ATN?
 			beq.s	@needXfer					; no - just split
 			bset.b	#NeedCmdSent,G_State96(a4)	; yes - we took care of MsgOut, now we need to send command
@@ -1303,14 +1266,14 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 			moveq.l	#iPhaseMsk, d0				; load mask bits for phase value
 			and.b	rSTA(a3), d0				; get phase bits
 
-		;	cmp		#iDataOut, d0				; 
-			beq.s	@inDataPhase				; 
-			
 			cmp		#iDataIn, d0				; 
 			beq.s	@inDataPhase				; 
 			
+			cmp		#iDataOut, d0				; 
+			beq.s	@inDataPhase				; 
+			
 			cmp		#iCommand, d0				; 
-			beq		@shoveCommand				; 
+			beq.s	@shoveCommand				; 
 			
 			cmp		#iMsgOut, d0				; 
 			beq.w	@shoveMsgOut					; 
@@ -1360,9 +1323,6 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 ; Dump out data_out bytes until we've gone into another phase		
 @shoveDataOut
 			move.b	#$EE, rFFO(a3)				; load filler byte into FIFO 
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		Xfer1Byte					; xfer 1 byte and wait for intrp w/o timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
 			bne.s	@xferErr						; bra. on xfer error
@@ -1374,9 +1334,6 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 			bclr.b	#NeedCmdSent, G_State96(a4)	; did we expect this?
 			beq.s	@nonDMA						; no - bra, do xfer using FIFO	
 			move.b	#$EE, rDMA(a3)				; yes - use DMA (since chip is waiting for it)
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bset.b	#FCIntPend,G_State96(a4)	; we took care of cmd, now expect FC interrupt	
 			jsr		WaitForSCSIIntrp
 			beq.s	@timedOut					; bra if timedout
@@ -1386,9 +1343,6 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 			bra.s	@2							; trying again is as good as anything else
 @nonDMA
 			move.b	#$EE, rFFO(a3)				; load filler byte into FIFO 
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		Xfer1Byte					; xfer 1 byte and wait for intrp w/o timeout
 			bne.s	@xferErr						; bra. on xfer error
 @2
@@ -1398,9 +1352,6 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 ; Dump out message_out bytes until we've gone into another phase		
 @shoveMsgOut			
 			move.b	#$08, rFFO(a3)				; load filler byte into FIFO (NOP message)
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bclr.b	#NeedMsgOut, G_State96(a4)	; did we expect this?
 			beq.s	@needXferCmd				; no - branch	
 			bset.b	#NeedCmdSent,G_State96(a4)	; yes - taking care of MsgOut, now we need cmd
@@ -1418,9 +1369,6 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 			bne.s	@xferErr					; bra. on xfer error
 			move.b	rFFO(a3), d0				; just empty the FIFO
 			move.b	#cMsgAcep, rCMD(a3)			; load msg accepted code which de-asserts ACK
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			jsr		WaitForSCSIIntrp			; Wait for intrp w/ timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
 			bra.s	@checkNextPhase
@@ -1449,11 +1397,7 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 @pDMAread
 			btst.b	#bINT, rSTA(a3)				; poll for intrp hopefully from TC zero
 			bne.s	@readAll					; bra. if we got one
-		IF forPDMDebug THEN						;								<SM8>
-			move.b	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ELSE
 			move.l	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ENDIF
 			move.b	G_bitDREQ(a4),d0			; load DREQ bit position		<4> jab
 			btst.l	d0, d5						; DREQ ?						<4> jab
 			beq.s	@pDMAread					; bra. if inactive
@@ -1470,18 +1414,11 @@ CyclePhase_96									; (accessed thru jvCyclePhase)
 @pDMAwrite
 			btst.b	#bINT, rSTA(a3)				; poll for intrp hopefully from TC zero
 			bne.s	@writeAll					; bra. if we filled all data
-		IF forPDMDebug THEN						;								<SM8>
-			move.b	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ELSE
 			move.l	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ENDIF
 			move.b	G_bitDREQ(a4),d0			; load DREQ bit position		<4> jab
 			btst.l	d0, d5						; DREQ ?						<4> jab
 			beq.s	@pDMAwrite					; bra. if inactive
 			move.w	#$EEEE, rDMA(a3)			; load filler data into FIFO
-		if nonSerializedIO Then
-			nop									; Force write to complete.		<SM8>
-		endif
 			bra.s	@pDMAwrite
 @writeAll										; Intrp will occur when REQ is asserted for the next phase
 			jsr		WaitForIntNoTime			; Expecting an intrp, clear it when occurs
@@ -1534,11 +1471,7 @@ TestForDREQ
 			jsr		SwapMMU						;  (sets up d0 with previous mode)
 
 			move.l	G_SCSIDREQ(a4), a0			; G_SCSIDREQ contains DREQ regr address
-		IF forPDMDebug THEN						;								<SM8>
-			move.b	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ELSE
 			move.l	(a0), d5					; read DAFB regr (a0=DAFB register addr)
-		ENDIF
 
 			jsr		SwapMMU						; return to previous mode (in d0)
 

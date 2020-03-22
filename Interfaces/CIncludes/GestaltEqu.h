@@ -1,3 +1,10 @@
+/*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <60> by removing inline glue for NewGestalt and ReplaceGestalt
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
 /************************************************************
 
 Created: Sunday, January 6, 1991 at 9:27 PM
@@ -646,25 +653,19 @@ typedef pascal OSErr (*SelectorFunctionProcPtr)(OSType selector, long *response)
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+pascal OSErr NewGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction);
+pascal OSErr ReplaceGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction,SelectorFunctionProcPtr *oldGestaltFunction);
+
 #if SystemSevenOrLater
 
 #pragma parameter __D0 Gestalt(__D0,__A1)
 pascal OSErr Gestalt(OSType selector,long *response)
     = {0xA1AD,0x2288};
 
-#pragma parameter __D0 NewGestalt(__D0,__A0)
-pascal OSErr NewGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction)
-    = {0xA3AD};
-
-#pragma parameter __D0 ReplaceGestalt(__D0,__A0,__A1)
-pascal OSErr ReplaceGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction,SelectorFunctionProcPtr *oldGestaltFunction)
-	= {0x2F09, 0xA5AD, 0x225F, 0x2288};
-
 #else
 
 pascal OSErr Gestalt(OSType selector,long *response);
-pascal OSErr NewGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction);
-pascal OSErr ReplaceGestalt(OSType selector,SelectorFunctionProcPtr gestaltFunction,SelectorFunctionProcPtr *oldGestaltFunction);
 
 #endif
 

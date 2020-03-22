@@ -1,4 +1,13 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM2> hack that used some cut-and-paste INITZONEGLUE to work
+							around the whole ROM INITZONE routine being called. Kept all the
+							subsequent Reality changes that were rolled in to SuperMario.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		PartialFontExtensions.c
 
 	Contains:	Partial font extension entry points for the scaler and cache code to
@@ -83,8 +92,8 @@
 	#include	"FontScaler.h"
 	#include	"Bass_Cache.h"
 
-//••••• Temporary hack for INitZone
-extern pascal void INITZONEGLUE (GrowZoneProcPtr pgrowZone,short cmoreMasters,void *limitPtr,
+//••••• Temporary hack for INitZone		ex<SM2> <Sys7.1> Use the real InitZone glue, not 'InitZoneGlue'
+extern pascal void INITZONE (GrowZoneProcPtr pgrowZone,short cmoreMasters,void *limitPtr,
  void *startPtr);
 
 /*	--------------------------------------------------------------------------------------
@@ -352,8 +361,8 @@ pascal OSErr InitializePartialFonts( Size partialFontZoneSize )
 
 	error = NewZonePtr( &partialFontZone, partialFontZoneSize, SystemZone( ) );
 	if ( error == noErr ) {
-//••••Temporary hack
-			INITZONEGLUE( (GrowZoneProcPtr) PartialFontZoneGrowZoneProcedure, partialFontZoneSize/kPartialFontBytesPerMasterPointer, partialFontZone + partialFontZoneSize, partialFontZone ); //<SM3> <SM4>
+//••••Temporary hack											ex<SM2> <Sys7.1> Use the real InitZone glue, not 'InitZoneGlue'
+			INITZONE( (GrowZoneProcPtr) PartialFontZoneGrowZoneProcedure, partialFontZoneSize/kPartialFontBytesPerMasterPointer, partialFontZone + partialFontZoneSize, partialFontZone ); //<SM3> <SM4>
 			if ( (error = MemError( )) == noErr ) {
 			
 				error = NewZoneHandle( (Handle*) &fragmentTableCache, (Size) sizeof( FragmentTableCacheStructure ), (THz) partialFontZone );

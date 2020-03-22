@@ -1,4 +1,14 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted the refactoring in <SM6>, as well as the short branches.
+;							Removed the <SM2> expectation of finding associated resources in ROM
+;							(one of the changes is in code moved by <SM6>). Changed MOVE.L
+;							ProcResult to MOVE.B ProcResult+3.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ScrollBarCDEF.a
 ;
 ;	Contains:	This file contains the control definition procedure
@@ -309,8 +319,14 @@ hilite				equ		50
 
 ; test if the message is in range
 
+			cmp.w	#6,message(A6)		; (0-6 good)										<Sys7.1>
+			bls.s	@MsgOK				;													<Sys7.1>
+			cmp.w	#10,message(A6)		; (10 good)											<Sys7.1>
+			beq.s	@MsgOK				;													<Sys7.1>
+			cmp.w	#11,message(A6)		; (11 good)											<Sys7.1>
+			beq.s	@MsgOK				;													<Sys7.1>
 			cmp.w	#drawThumbOutlineMsg,message(A6) ; compare to highest value
-			bhi.s	OORange				; We respond to 0-12								<1.2><SM6>
+			bne		OORange				; We respond to 0-12, excluding 7-9					<1.2><SM6><Sys7.1>
 @MsgOK
 
 ; save the penState and set it our way
@@ -318,6 +334,63 @@ hilite				equ		50
 			PEA 	SavePen(A6) 		; push pointer to savePenState
 			_GetPenState				; remember current penState
 			_PenNormal					; set the pen the way we	want it
+
+; ex<SM6> <Sys7.1> inlined from procedure "InitDrawingStuff" (for use of DrawSBar, DrawThumbOutline)
+; sets up the drawing environment for calls that do drawing									ex<SM6> <Sys7.1>
+
+; Determine type of system.  We need to know if we have color QuickDraw and a color			ex<SM6> <Sys7.1>
+;	window manager port.																	ex<SM6> <Sys7.1>
+
+			cmp.w	#$3FFF,ROM85		; do we have color QD?								ex<SM6> <Sys7.1>
+			SLS		IsColor(A6)			; set boolean depending on color or B&W system		ex<SM6> <Sys7.1>
+			BHI.s	@BWSys				; no, this system has B&W QD						ex<SM6> <Sys7.1>
+
+; save the current port's colors															ex<SM6> <Sys7.1>
+
+			move.l	GrafGlobals(A5),A0	; get pointer to grafGlobals	<C407/16Nov86> DAF	ex<SM6> <Sys7.1>
+			move.l	thePort(A0),A0		; get pointer to thePort		<C407/16Nov86> DAF	ex<SM6> <Sys7.1>
+
+			PEA		SavFgCol(A6)		; save foreColor									ex<SM6> <Sys7.1>
+			_GetForeColor				;													ex<SM6> <Sys7.1>
+			PEA		SavBkCol(A6)		; save backColor too								ex<SM6> <Sys7.1>
+			_GetBackColor				;													ex<SM6> <Sys7.1>
+
+
+; get the CtlAuxRec for this guy and lock it's colortable			<DAF 26Apr86>			ex<SM6> <Sys7.1>
+
+			CLR.l	-(SP)				; return the handle here							ex<SM6> <Sys7.1>
+			CLR.b	-(SP)				; space for boolean func return						ex<SM6> <Sys7.1>
+			move.l	CtlHndl(A6),-(SP)	; push the control handle							ex<SM6> <Sys7.1>
+			PEA		6(SP)				; push a pointer to placeholder						ex<SM6> <Sys7.1>
+			_GetAuxCtl					; get its auxRec									ex<SM6> <Sys7.1>
+			addQ	#2,SP				; don't need boolean result							ex<SM6> <Sys7.1>
+			move.l	(SP)+,A0			; get auxCtl handle									ex<SM6> <Sys7.1>
+			move.l	(A0),A0				; a pointer to the auxCtlRec						ex<SM6> <Sys7.1>
+			move.l	acCTable(A0),A0		; get colortable's handle		<1.3>				ex<SM6> <Sys7.1>
+			move.l	A0,AuxCtlHndl(A6)	; save the handle									ex<SM6> <Sys7.1>
+			_HLock						; lock the handle									ex<SM6> <Sys7.1>
+			move.l	(A0),AuxCtlPtr(A6)	; save a pointer									ex<SM6> <Sys7.1>
+
+; ------------- get a pixmap for drawing the gadgets ------------							ex<SM6> <Sys7.1>
+
+			subq.l	#4, SP					; room for a PixMapHandle						ex<SM6> <Sys7.1>
+			move.l	#'pmap', -(SP)			; the Pixmap resource type						ex<SM6> <Sys7.1>
+			move.w	#kPixmapID, -(SP)		; ID of working pixmap							ex<SM6> <Sys7.1>
+			_GetResource					; (don't) look in ROM first						ex<SM6> ex<SM2> <Sys7.1>
+			move.l	(SP), workPixmap(A6)	; save it for later								ex<SM6> <Sys7.1>
+			
+			
+			move.w	#kClutID,-(sp)			; ID of clut for pixmap							ex<SM6> <Sys7.1>
+			_GetCTable						;												ex<SM6> <Sys7.1>
+			move.l	(sp)+,workCLUT(a6)		;												ex<SM6> <Sys7.1>
+
+			move.l	workPixmap(a6),a0		;												ex<SM6> <Sys7.1>
+			move.l	(a0),a0					;												ex<SM6> <Sys7.1>
+			move.l	workCLUT(a6),pmTable(a0)	; Stash colour table into pmap handle		ex<SM6> <Sys7.1>
+			
+@BWSys										;												ex<SM6> <Sys7.1>
+			clr.l	tempPixels(A6)			; init this to NIL								ex<SM6> <Sys7.1>
+
 
 ; fetch the parameters into registers
 
@@ -331,6 +404,11 @@ hilite				equ		50
 
 ; case out on the message number
 
+			cmp.w	#6,d0				; account for the table lacking selectors 7-9,		<Sys7.1>
+			bls		@LowSelector		; by adjusting the index into the table				<Sys7.1>
+			subq	#3,d0				;													<Sys7.1>
+@LowSelector							;													<Sys7.1>
+
 			add 	D0,D0				; double for word index
 			lea 	GoScrollBar,A1		; get table address
 			add 	0(A1,D0),A1 		; compute dispatch address
@@ -340,6 +418,24 @@ hilite				equ		50
 
 			PEA 	SavePen(A6) 		; push savePenState
 			_SetPenState				; restore original pen state
+
+; ex<SM6> <Sys7.1> inlined from procedure "RestoreDrawingStuff" (for use of DrawSBar, DrawThumbOutline)
+; clean up color stuff												<DAF 28Apr86>			ex<SM6> <Sys7.1>
+
+			tst.b	IsColor(A6)			;													ex<SM6> <Sys7.1>
+			beq.s	@NoColor1			; if on B&W, then skip								ex<SM6> <Sys7.1>
+
+			move.l	AuxCtlHndl(A6),A0	; unlock the CDEF									ex<SM6> <Sys7.1>
+			_HUnlock					;													ex<SM6> <Sys7.1>
+			PEA		SavFgCol(A6)		;													ex<SM6> <Sys7.1>
+			_RGBForeColor				;													ex<SM6> <Sys7.1>
+			PEA		SavBkCol(A6)		;													ex<SM6> <Sys7.1>
+			_RGBBackColor				;													ex<SM6> <Sys7.1>
+
+			move.l	workCLUT(a6),-(sp)	;													ex<SM6> <Sys7.1>
+			_DisposCTable				;													ex<SM6> <Sys7.1>
+			
+@NoColor1								;													ex<SM6> <Sys7.1>
 
 ; we're done -- restore registers and return to caller
 
@@ -351,8 +447,9 @@ TenBytExit	move.l	(SP)+,A0			; get return address
 			add 	#12,SP				; strip parameters
 			JMP 	(A0)				; return	to caller
 
-JustRTS		clr.l	ProcResult(a6)		; indicate we didn't handle this message
-			rts
+; <Sys7.1> don't need this, there are no "unhandled message" entries in the table
+;	JustRTS		clr.l	ProcResult(a6)		; indicate we didn't handle this message
+;				rts
 			
 GoScrollBar
 			DC.w	DrawSBar-GoScrollBar	; draw is message 0
@@ -362,91 +459,13 @@ GoScrollBar
 			DC.w	DispSBar-GoScrollBar	; de-allocate indicator region (4)
 			DC.w	MoveSBar-GoScrollBar	; move indicator call (5)
 			DC.w	ThumbSBar-GoScrollBar	; message 6 is thumb dragging
-			DC.w	JustRTS-GoScrollBar		; message 7 is thumb dragging custom message
-			DC.w	JustRTS-GoScrollBar		; message 8 is not supported
-			DC.w	JustRTS-GoScrollBar		; message 9 is not supported
+											; messages 7-9 not included in the table
 			DC.w	CalcWholeSBar-GoScrollBar; calc whole regions is message 10		<1.2>
 			DC.w	CalcThumbSBar-GoScrollBar; calc thumb regions is message 11		<1.2>
 			DC.w	DrawThumbOutline-GoScrollBar;									<26>
 
 
-; sets up the drawing environment for calls that do drawing
-
-InitDrawingStuff						;											<SM6>
-
-; Determine type of system.  We need to know if we have color QuickDraw and a color
-;	window manager port.
-
-			cmp.w	#$3FFF,ROM85		; do we have color QD?
-			SLS		IsColor(A6)			; set boolean depending on color or B&W system
-			BHI.s	@BWSys				; no, this system has B&W QD
-
-; save the current port's colors
-
-			move.l	GrafGlobals(A5),A0	; get pointer to grafGlobals	<C407/16Nov86> DAF
-			move.l	thePort(A0),A0		; get pointer to thePort		<C407/16Nov86> DAF
-
-			PEA		SavFgCol(A6)		; save foreColor
-			_GetForeColor				;
-			PEA		SavBkCol(A6)		; save backColor too
-			_GetBackColor				;
-
-
-; get the CtlAuxRec for this guy and lock it's colortable			<DAF 26Apr86>
-
-			CLR.l	-(SP)				; return the handle here
-			CLR.b	-(SP)				; space for boolean func return
-			move.l	CtlHndl(A6),-(SP)	; push the control handle
-			PEA		6(SP)				; push a pointer to placeholder
-			_GetAuxCtl					; get its auxRec
-			addQ	#2,SP				; don't need boolean result
-			move.l	(SP)+,A0			; get auxCtl handle
-			move.l	(A0),A0				; a pointer to the auxCtlRec
-			move.l	acCTable(A0),A0		; get colortable's handle		<1.3>
-			move.l	A0,AuxCtlHndl(A6)	; save the handle
-			_HLock						; lock the handle
-			move.l	(A0),AuxCtlPtr(A6)	; save a pointer
-
-; ------------- get a pixmap for drawing the gadgets ------------
-
-			subq.l	#4, SP					; room for a PixMapHandle
-			move.l	#'pmap', -(SP)			; the Pixmap resource type
-			move.w	#kPixmapID, -(SP)		; ID of working pixmap
-			move.w	#MapTrue,RomMapInsert				;									<SM2> rb
-			_GetResource					; look in ROM first							<SM2> rb
-			move.l	(SP), workPixmap(A6)	; save it for later
-			
-			
-			move.w	#kClutID,-(sp)			; ID of clut for pixmap
-			_GetCTable
-			move.l	(sp)+,workCLUT(a6)
-
-			move.l	workPixmap(a6),a0
-			move.l	(a0),a0
-			move.l	workCLUT(a6),pmTable(a0)	; Stash colour table into pmap handle
-			
-@BWSys
-			clr.l	tempPixels(A6)			; init this to NIL
-			rts
-
-
-; clean up color stuff												<DAF 28Apr86>
-
-RestoreDrawingStuff						;												<SM6>
-			tst.b	IsColor(A6)			;
-			beq.s	@NoColor1			; if on B&W, then skip
-
-			move.l	AuxCtlHndl(A6),A0	; unlock the CDEF
-			_HUnlock
-			PEA		SavFgCol(A6)		;
-			_RGBForeColor				;
-			PEA		SavBkCol(A6)		;
-			_RGBBackColor				;
-
-			move.l	workCLUT(a6),-(sp)
-			_DisposCTable
-			
-@NoColor1	rts
+; ex<SM6> <Sys7.1> InitDrawingStuff and RestoreDrawingStuff taken from here
 
 
 
@@ -466,7 +485,7 @@ ParamSize		EQU		*-StartParams
 ; desired "hilite" area code.
 
 DrawSBar
-			bsr		InitDrawingStuff	; initialize the drawing environment				<SM6>
+										; (no need to) initialize the drawing environment	<SM6><Sys7.1>
 
 		; if we are drawing to the screen, use _DeviceLoop to handle the case of
 		; multiple monitors. If we are not drawing to the screen, then _DeviceLoop
@@ -498,7 +517,7 @@ DrawSBar
 			move.w	#fakeDeviceFlags, -(SP)	; assume non-CQD case
 			clr.l	-(SP)				; NIL gDeviceHandle for non-CQD machines
 			btst	#6, ROM85			; Color QuickDraw available?
-			bnz.s	@deviceAndFlagsOk	; of not, fake versions on stack are correct		<SM6>
+			bnz		@deviceAndFlagsOk	; of not, fake versions on stack are correct		<SM6><Sys7.1>
 			move.l	theGDevice, A1		; current device GDHandle
 			move.l	A1, (SP)			; fix gdHandle on stack
 			move.l	(A1), A1			; point to the device
@@ -506,8 +525,8 @@ DrawSBar
 @deviceAndFlagsOk
 
 			clr.l	-(SP)				; flag clear (not drawing to screen)
-			bsr.s	CDefDrawControl		; draw the control									<SM6>
-			bra.s	RestoreDrawingStuff	; cleanup after doing drawing						<SM6>
+			bsr		CDefDrawControl		; draw the control									<SM6><Sys7.1>
+			rts							; (don't) cleanup after doing drawing				<SM6><Sys7.1>
 
 @drawToScreen
 			subq	#4, SP				; room for RgnHandle
@@ -529,7 +548,7 @@ DrawSBar
 			move.l	controlRgn(A6), -(SP)
 			_DisposRgn
 
-			bra		RestoreDrawingStuff	; cleanup after doing drawing						<SM6>
+			rts							; (don't) cleanup after doing drawing				<SM6><Sys7.1>
 
 
 CDefDrawControl
@@ -669,7 +688,7 @@ SkipDown
 			bsr		SetupColors						;
 			PEA		TempRect						; push the rectangle
 			_EraseRect								; paint the shade on the scroll bar
-			bra.s	DoIndicator						; done drawing background of scroll bar
+			bra		DoIndicator						; done drawing background of scroll bar		ex<SM6> <Sys7.1>
 @whiteOutScrollBar
 			PEA		TempRect						; push the rectangle
 			move.l	(A5),A0 						; get grafGlobals
@@ -697,12 +716,12 @@ SkipDown
 
 DoIndicator
 			bsr		IsDisabled				; is it disabled
-			bz.s	FrameCtl				; yes => go frame the control						<SM6>
+			bz		FrameCtl				; yes => go frame the control						<SM6><Sys7.1>
 
 			move.l	IndicatorRect(A6),TempRect
 			move.l	IndicatorRect+4(A6),TempRect+4
 			tst.b	shaded(a6)				; is it shaded
-			bnz.s	@drawShadedThumb		; yes => handle shaded thumb						<SM6>
+			bnz		@drawShadedThumb		; yes => handle shaded thumb						<SM6><Sys7.1>
 			
 			move.l	#$FFFF0000,d0			; Inset height
 			tst.w	isHoriz(a6)				; Horizontal thumb?
@@ -797,7 +816,7 @@ DrawArrowBox
 			tst.b	shaded(a6)			; If we’re drawing in black and white, then
 			bz.s	@bwScrollBar		; it doesn’t matter if we’re disabled or not.
 			
-			bsr.s	IsDisabled			; If disabled & drawing in colour,						<SM6>
+			bsr		IsDisabled			; If disabled & drawing in colour,						<SM6><Sys7.1>
 			bnz.s	@notDisabled		; use black and white arrows to draw.
 			
 ; Set up colours to match faint gray used in body of scroll bar
@@ -847,7 +866,7 @@ IsDisabled
 			move.l	(A3),A0 			; get sBar pointer
 			move.w	ContrlMin(A0),D0	; get the min
 			cmp.w	ContrlMax(A0),D0	; same as the max?
-			beq.s	doneChecking		;														<SM6>
+			beq		doneChecking		;														<SM6><Sys7.1>
 			move.b	ContrlHilite(A0),D0 ; get the hilite parameter
 			addQ.b	#1,D0				; was it	255?
 doneChecking
@@ -1093,7 +1112,7 @@ GetIndRgn
 ; the whole region was requested
 
 CalcWholeSBar
-			move.l	#1, ProcResult(A6)	; return 1 to show that we respond				<V1.2>
+			move.b	#1, ProcResult+3(A6); return 1 to show that we respond				<V1.2><Sys7.1>
 GetWholeRgn
 			move.l	D3,-(SP)			; push the region handle
 			PEA 	ContrlRect(A0)		; push rectangle	pointer
@@ -1101,7 +1120,7 @@ GetWholeRgn
 			rts 						; all done!
 
 CalcThumbSBar
-			move.l	#1, ProcResult(A6)	; return 1 to show that we respond				<V1.2>
+			move.b	#1, ProcResult+3(A6); return 1 to show that we respond				<V1.2><Sys7.1>
 			BRA.s	GetIndRgn			;												<V1.2>
 
 PlotLtGray
@@ -1112,13 +1131,13 @@ PlotLtGray
 			beq.s	@useOldStyle		; no => fill using black on white
 			move.w	#wHiliteShade8,D0	; use a dark gray for dots in pattern
 			move.w	#cArrowShade2,D1	; use a light gray for the background
-			bra.s	@plotPAT			;												<SM6>
+			bra		@plotPAT			;												<SM6><Sys7.1>
 @useOldStyle
 			move.w	#cFrameColor,D0		; black foreground
 			move.w	#cBodyColor,D1		; white background
 @plotPAT
 			bsr		SetupColors			; set up the foreground and background colors
-			bsr.s	GetOldStyleLtGray	; use common routine to get the PAT				<SM6>
+			bsr		GetOldStyleLtGray	; use common routine to get the PAT				<SM6><Sys7.1>
 			move.l	(A0),-(SP)			; dereference to get PatPtr
 			_FillRect					; fill the rect
 @doneGetLtGray
@@ -1645,8 +1664,7 @@ SetupColorPict
 			subq.l	#4, SP								; room for the PicHandle
 			move.l	#'pixs', -(SP)
 			move.w	d0, -(SP)							; push the resource ID
-			move.w	#MapTrue,RomMapInsert				;									<SM2> rb
-			_GetResource								; look in ROM first					<SM2> rb
+			_GetResource								; (don't) look in ROM first			<SM2> rb <Sys7.1>
 			move.l	(SP)+, A0							; pixels handle
 			_HLock										; don’t want it to move
 			move.l	A0, tempPixels(A6)					; save for dispose
@@ -1726,7 +1744,7 @@ AdjustRect
 ; <26> The following routine is used to draw the outline of the thumb during dragging.
 DrawThumbOutline
 
-				bsr		InitDrawingStuff				; initialize the drawing environment	<SM6>
+														; (no need to) initialize the drawing environment	<SM6><Sys7.1>
 
 	IF NOT forROM THEN
 				subq.l	#4,sp							; get a new rgn
@@ -1747,7 +1765,7 @@ DrawThumbOutline
 				_DisposRgn
 	ENDIF
 				ST		ProcResult(a6)
-				bra		RestoreDrawingStuff				; cleanup after doing drawing			<SM6>
+				rts										; (don't) cleanup after doing drawing	<SM6>
 
 
 ; <26> The following routine is for drawing of the outline of a dragged thumb.
@@ -1791,7 +1809,7 @@ ThumbDrawRoutine
 			_FrameRect
 		ENDIF
 
-		bra.s		@doneDrawThumb				;												<SM6>
+		bra			@doneDrawThumb				;												<SM6><Sys7.1>
 @colorWindow									; yes => use the HiliteMode
 		bsr			SetupWMgrCPort
 		move.w		#hilite,-(sp)					; set HiliteMode

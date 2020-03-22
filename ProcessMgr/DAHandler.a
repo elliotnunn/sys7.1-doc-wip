@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <4> by recreating the non-standard "MyGestalt" glue asm.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:			DAHandler.a
 ;
 ;	Contains:		The System Desk Accessory Handler application
@@ -171,5 +178,21 @@ GSHSDone
 				rts
 				
 				ENDPROC
+
+;---------------------------------------------------------------------------------------
+; Non-standard glue, only used at DAHandler init						ex<4> <Sys7.1>
+; (Marks the Init segment for UnloadSeg calls)
+
+				SEG			'Init'
+MYGESTALT		PROC		EXPORT
+
+				MOVE.L		8(SP),D0
+				_Gestalt
+				MOVE.L		4(SP),A1
+				MOVE.L		A0,(A1)
+				MOVE.L		(SP)+,A0
+				LEA.L		8(SP),SP
+				MOVE.W		D0,(SP)
+				JMP			(A0)
 
 				END

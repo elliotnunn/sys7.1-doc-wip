@@ -1,0 +1,5598 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Disassembled from scratch
+;
+
+; for linked patches
+
+	CASE		OBJ
+
+	LOAD		'StandardEqu.d'
+	INCLUDE		'Devices.a'
+	INCLUDE		'EgretEqu.a'
+	INCLUDE		'GestaltEqu.a'
+	INCLUDE		'HardwarePrivateEqu.a'
+	INCLUDE		'InternalOnlyEqu.a'
+	INCLUDE		'IOPrimitiveEqu.a'
+	INCLUDE		'LinkedPatchMacros.a'
+	INCLUDE		'SysEqu.a'
+	INCLUDE		'SysPrivateEqu.a'
+	INCLUDE		'UniversalEqu.a'
+	INCLUDE		'TrapsPrivate.a'
+
+
+	MACHINE		MC68030
+
+
+	MakePatch	SYSBEEP,_SysBeep,(Plus,SE,II,Portable,IIci,notAUX)
+
+
+OldPBSoundOpen		ROMBind		(IIci,$E5A0A)
+OldPBSoundPrime		ROMBind		(IIci,$E5A12)
+OldPBSoundControl	ROMBind		(IIci,$E5A1C)
+OldPBSoundStatus	ROMBind		(IIci,$E5B5A)
+OldPBSoundClose		ROMBind		(IIci,$E5A26)
+
+
+batmanSnd			equ			$b0
+elsieSound			equ			$e0
+
+
+;16:043fe
+SetSosumi	InstallProc		(IIci)
+			cmp.b	#boxMacIIsi,BoxFlag
+			bne.s	@return
+
+			subq	#2,sp
+			move.l	sp,a0
+			move.l	#$0002007C,d0
+			_ReadXPram
+			tst.w	(sp)
+			bne.s	@cleanup
+			move.w	#9,(sp) ; sosumi
+			move.l	sp,a0
+			move.l	#$0002007C,d0
+			_WriteXPram
+@cleanup
+			addq	#2,sp
+@return
+			rts
+
+
+;03:00f0e
+InitSoundMgrA	InstallProc		(Plus,SE)
+			IMPORT	Snd_Func1, InitSndDispatch, InitMACEDispatch, InitSoundMgrCommon
+			jsr		Snd_Func1
+			jsr		InitSndDispatch
+			jsr		InitMACEDispatch
+			jmp		InitSoundMgrCommon
+
+
+;28:000f2
+InitSoundMgrB	InstallProc		(II,Portable,IIci,notAUX,notEricksonSoundMgr)
+			IMPORT	Snd_Func1, InitSndDispatch, InitMACEDispatch, InstallSoundIntHandler, InitSoundMgrCommon
+			jsr		Snd_Func1
+			jsr		InitSndDispatch
+			jsr		InitMACEDispatch
+			jsr		InstallSoundIntHandler
+			jmp		InitSoundMgrCommon
+
+
+;16:04428
+InitSoundMgrC	InstallProc		(IIci,notAUX,hasEricksonSoundMgr)
+			IMPORT	Snd_Func1, InstallSoundIntHandler, InitSoundMgrCommon
+			move.l	SMGlobals,a1
+			move.l	6(a1),a0
+			_DisposeHandle
+			move.l	10(a1),a0
+			_DisposePtr
+			move.l	26(a1),a0
+			_RecoverHandle
+			_DisposeHandle
+			move.l	42(a1),a2
+			move.l	a1,a0
+			_DisposePtr
+
+			jsr		Snd_Func1
+			move.l	SMGlobals,a1
+			move.l	a2,42(a1)
+
+			jsr		InstallSoundIntHandler
+			jmp		InitSoundMgrCommon
+
+
+;31:29048
+InitSoundMgrCommon	Proc	Export
+			IMPORT	InstallNewGlobals, LoadSoundInputDriver
+			clr.w	-(sp)
+			move.w	#8,-(sp)
+			peaResident	SndManagerDispatch
+			move.l	#$00040000,d0
+			_SoundDispatch
+			move.w	(sp)+,d0
+
+			clr.w	-(sp)
+			move.w	#20,-(sp)
+			peaResident	SoundInDispatch
+			move.l	#$00040000,d0
+			_SoundDispatch
+			move.w	(sp)+,d0
+
+			move.l	#32,d0
+			_NewPtr	,sys,clear
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	a0,38(a1)
+
+			leaResident	soundAttrGestalt,a0
+			move.l	#gestaltSoundAttr,d0
+			_NewGestalt
+			beq.s	@noreplace
+
+			leaResident	soundAttrGestalt,a0
+			move.l	#gestaltSoundAttr,d0
+			_ReplaceGestalt
+@noreplace
+
+			jsr		InstallNewGlobals
+			jsr		LoadSoundInputDriver
+			rts
+
+
+;31:290a4
+LoadSoundInputDriver	Proc	Export
+fBase			equ		-322
+fCntlBlock		equ		-322
+fSndBlock		equ		-270
+fRefNum			equ		-14
+fDriverHdl		equ		-12
+fUTblEntry		equ		-8
+fUTblEntry2		equ		-4
+
+			link	a6,#-322
+
+			move.l	#gestaltSoundAttr,d0
+			_Gestalt
+			move.l	a0,d0
+			btst	#gestaltBuiltInSoundInput,d0
+			beq		@return
+
+			subq	#4,sp
+			move.l	#'DRVR',-(sp)
+			pea		@AppleSoundInput
+			_GetNamedResource
+			move.l	(sp)+,d0
+			beq		@return
+
+			move.l	d0,fDriverHdl(a6)
+			move.l	d0,-(sp)
+			_DetachResource
+			move.l	fDriverHdl(a6),a0
+			_HLock
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.w	#1,$1E(a1)
+
+			cmp.b	#boxQuadra900,BoxFlag
+			beq.s	@q9x
+			cmp.b	#boxQuadra950,BoxFlag
+			bne.s	@notq9x
+@q9x		move.w	#3,$1E(a1)
+@notq9x
+
+			move.l	UTableBase,a0
+			adda.l	#48*4,a0
+			move.l	#~48,d0
+
+@lup		tst.l	(a0)+
+			dbeq	d0,@lup
+			sub.l	#4,a0
+			move.l	a0,fUTblEntry(a6)
+			move.w	d0,fRefNum(a6)
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.w	d0,(a1)
+			move.l	fUTblEntry(a6),fUTblEntry2(a6)
+
+			move.l	fDriverHdl(a6),a0
+			move.l	(a0),a0
+			dc.w	$A43D							; _DrvrInstall,LOCK - make a DCE
+
+			move.l	fUTblEntry(a6),a0				; lock the DCE
+			move.l	(a0),a0
+			_HLock
+
+			move.l	fUTblEntry(a6),a1				; a0=DRVR ptr, a1=DCE ptr
+			move.l	(a1),a1
+			move.l	(a1),a1
+			move.l	-12(a6),a0
+			move.l	(a0),a0
+
+			move.l	a0,dCtlDriver(a1)
+			move.w	drvrFlags(a0),dCtlFlags(a1)
+			move.w	drvrDelay(a0),dCtlDelay(a1)
+			move.w	drvrEMask(a0),dCtlEMask(a1)
+			move.w	drvrMenu(a0),dCtlMenu(a1)
+			bset	#DOpened,dCtlFlags+1(a1)
+
+			add		drvrOpen(a0),a0
+			jsr		(a0)
+
+			lea		fCntlBlock(a6),a0
+			move.w	fRefNum(a6),CntrlParam.ioCRefNum(a0)
+			move.w	#2,CntrlParam.csCode(a0)
+			move.l	#'name',CntrlParam.csParam(a0)
+			lea		fSndBlock(a6),a2
+			move.l	a2,CntrlParam.csParam+4(a0)
+			_Status	,immed
+			bne.s	@return
+
+			subq	#2,sp
+			move.w	fRefNum(a6),-(sp)
+			pea		fSndBlock(a6)
+			_SPBSignInDevice
+			move.w	(sp)+,d0
+
+@return		unlk	a6
+			rts
+
+@AppleSoundInput
+			string	pascal
+			dc.b	'.AppleSoundInput'
+			align	2
+
+;16:0445c
+_R2490		InstallProc		(IIci,notAUX)
+			move.l	#gestaltMachineType,d0
+			_Gestalt
+			move.l	a0,d2
+			sub.b	#gestaltMacIIci,d2
+			and.w	#$FF,d2
+
+			movea.l	UnivInfoPtr,a1						; a1 = ptr to productinfo record
+			move.l	$30(a1),d0							; get offset to sound vector tbl
+			beq.s	@noRomTable
+			bsr		copyPrimitiveTbl
+			bsr		overridePrimitiveTbl
+			bra.s	@tableDone
+
+@noRomTable
+			move.l	#gestaltSoundAttr,d0
+			_Gestalt
+			move.l	a0,d0
+			btst	#gestaltBuiltInSoundInput,d0
+			beq.s	@partialTableDone
+
+; we have sound input hardware, meaning DFAC... so force insertion of crappy table
+			leaResident	TableOfTables,a1
+			add.l	(a1,d2*4),a1
+			moveq	#0,d0
+			bsr		copyPrimitiveTbl
+			jsrTBL	sndDFACInit
+
+@tableDone
+			moveq.l	#1,d0								; default all cpu's with AGC on
+			jsrTBL	sndAGCcontrol
+
+@partialTableDone
+			bsr.s	installVBL
+			bsr.s	overrideSinDRVR
+			rts
+
+
+installVBL
+			Import	ReGenSoundInt
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			cmp.b	#$B0,46(a1)
+			bne.s	@return
+
+			TestFor	VIA2Exists
+			beq.s	@return
+
+			TestFor	JawsExists
+			bne.s	@return
+
+			move.l	ROMBase,a0
+			cmp.w	#$67C,8(a0)
+			bne.s	@return
+			cmp.w	#$15F1,18(a0)
+			bne.s	@return
+
+			moveq	#14,d0
+			_NewPtr	,sys,clear
+			leaResident	ReGenSoundInt,a1
+			move.l	a1,vblAddr(a0)
+			move.w	#vType,vblType(a0)
+			move.w	#30,vblCount(a0)
+			clr.w	vblPhase(a0)
+			_VInstall
+
+@return		rts
+
+
+overrideSinDRVR
+			Import	NewPBSoundDrvr
+
+			move.l	#gestaltMachineType,d0
+			_Gestalt
+			move.l	a0,d0
+			cmp.b	#gestaltPowerBook140,d0
+			beq.s	@pb14x
+			cmp.b	#gestaltPowerBook145,d0
+			bne.s	@return
+@pb14x
+
+			leaResident	NewPBSoundDrvr,a0
+			move.l	SoundDCE,a1
+			move.l	a0,dCtlDriver(a1)
+
+@return		rts
+
+
+;	Convert ROM sound primitive offset table into a RAM pointer table.
+
+copyPrimitiveTbl
+			With	SoundIOHeader
+			SndTblLength: equ -2
+
+			adda.l	d0,a1								; a1 = ptr to ROM tbl
+			moveq.l	#0,d0								; clear d0
+			move.w	SndTblLength(a1),d0					; d0 = number of entries in table
+			asl.l	#2,d0								; convert long entries to byte count
+			addq.l	#SoundIOHeaderSize,d0				; size of global header records
+			_NewPtr	,sys,clear							; alloc storage
+
+			adda.l	#SoundIOHeaderSize,a0				; inc past global header
+			move.l	a0,([Expandmem],\
+					ExpandMemRec.emSndPrimitives)		; set the expandmem pointer
+
+			move.b	#sndAGCOff,UserAGC(a0)				; init AGC off as default
+
+;	Convert the offset values in the original table to long addresses in the RAM-based
+;	table.  a0 = ptr to new RAM-based tbl, a1 = ptr to old ROM table
+
+			move.w	SndTblLength(a1),d0					; get number of entries in table
+			subq.w	#1,d0								; adjust for dbra
+			move.l	a1,d1								; d1 = address of ROM/RAM table
+@Loop
+			move.l	(a1)+,(a0)							; get routine offset
+			add.l	d1,(a0)+							; add ROM/RAM table address to convert to 32 bit address
+			dbra	d0,@Loop
+
+			rts
+
+			EndWith
+
+
+overridePrimitiveTbl
+			leaResident	TableOfTables,a1				; a1 = ptr to table of tables
+			cmp.w	-2(a1),d2							; d2 = 'mach' minus 11 (IIci)
+			bhs.s	@Return								; punt if no table for machine
+			move.l	(a1,d2*4),d0
+			beq.s	@Return								; again, punt if no table
+			add.l	d0,a1								; a1 = ptr to this table
+
+			move.l	([Expandmem],\
+					ExpandMemRec.emSndPrimitives),a0	; get the expandmem pointer
+
+;	Convert the offset values in the original table to long addresses in the RAM-based
+;	table.  a0 = ptr to new RAM-based tbl, a1 = ptr to old LINKED PATCH table
+
+			move.w	SndTblLength(a1),d0					; get number of entries in table
+			subq.w	#1,d0								; adjust for dbra
+			move.l	a1,d1								; d1 = address of ROM/RAM table
+@Loop
+			move.l	(a1)+,d2							; get routine offset
+			beq.s	@0									; do we offer one?
+			add.l	d1,d2								; add ROM/RAM table address to convert to 32 bit address
+			move.l	d2,(a0)
+@0			add.w	#4,a0								; postincrement (even if zero)
+			dbra	d0,@Loop
+
+@Return
+			rts
+
+
+;_________________________________________________________________________________________
+;	Sound primitives vector table
+
+
+;16:045ac
+			Proc
+
+			Export	TableOfTables
+			dc.w	(TableOfTablesEnd-TableOfTables)/4
+TableOfTables
+			dc.l	0									; 11
+			dc.l	0									; 12
+			dc.l	0									; 13
+			dc.l	0									; 14
+			dc.l	0									; 15
+			dc.l	0									; 16 
+			dc.l	0									; 17
+			dc.l	SndCntlMacIIsi-TableOfTables		; 18
+			dc.l	SndCntlLC-TableOfTables				; 19
+			dc.l	SndCntlQuadra900-TableOfTables		; 20
+			dc.l	SndCntlPB170-TableOfTables			; 21
+			dc.l	SndCntlQuadra700-TableOfTables		; 22
+			dc.l	SndCntlClassicII-TableOfTables		; 23
+			dc.l	0									; 24
+			dc.l	SndCntlPB140-TableOfTables			; 25
+			dc.l	SndCntlQuadra950-TableOfTables		; 26
+			dc.l	SndCntlLCIII-TableOfTables			; 27
+			dc.l	SndCntlUnk28-TableOfTables			; 28
+			dc.l	0									; 29
+			dc.l	0									; 30
+			dc.l	0									; 31
+			dc.l	0									; 32
+			dc.l	0									; 33
+			dc.l	0									; 34
+			dc.l	0									; 35
+			dc.l	0									; 36
+			dc.l	SndCntlLCII-TableOfTables			; 37
+			dc.l	0									; 38
+			dc.l	0									; 39
+			dc.l	0									; 40
+			dc.l	0									; 41
+			dc.l	0									; 42
+			dc.l	0									; 43
+			dc.l	0									; 44
+			dc.l	0									; 45
+			dc.l	0									; 46
+			dc.l	0									; 47
+			dc.l	0									; 48
+			dc.l	0									; 49
+			dc.l	0									; 50
+			dc.l	0									; 51
+			dc.l	0									; 52
+			dc.l	0									; 53
+			dc.l	SndCntlPB145-TableOfTables			; 54
+TableOfTablesEnd
+
+
+			dc.w	(SndCntlMacIIsiEnd-SndCntlMacIIsi)/4
+SndCntlMacIIsi
+			dc.l	EricksonDFACInit-SndCntlMacIIsi
+			dc.l	EgretDFACSend-SndCntlMacIIsi
+			dc.l	ASCSetVol-SndCntlMacIIsi
+			dc.l	EnableSoundInts-SndCntlMacIIsi
+			dc.l	DisableSoundInts-SndCntlMacIIsi
+			dc.l	ClearSoundInt-SndCntlMacIIsi
+			dc.l	InputSelect-SndCntlMacIIsi
+			dc.l	QueryInput-SndCntlMacIIsi
+			dc.l	ByPassControl-SndCntlMacIIsi
+			dc.l	PlayThruVol-SndCntlMacIIsi
+			dc.l	AGCControl-SndCntlMacIIsi
+SndCntlMacIIsiEnd
+
+
+			dc.w	(SndCntlLCEnd-SndCntlLC)/4
+SndCntlLC
+SndCntlLCII
+			dc.l	ElsieDFACInit-SndCntlLC
+			dc.l	EgretDFACSend-SndCntlLC
+			dc.l	ASCSetVol-SndCntlLC
+			dc.l	EnableSoundInts-SndCntlLC
+			dc.l	DisableSoundInts-SndCntlLC
+			dc.l	ClearSoundInt-SndCntlLC
+			dc.l	ElsieInputSelect-SndCntlLC
+			dc.l	QueryInput-SndCntlLC
+			dc.l	ByPassControl-SndCntlLC
+			dc.l	PlayThruVol-SndCntlLC
+			dc.l	AGCControl-SndCntlLC
+SndCntlLCEnd
+
+
+			dc.w	(SndCntlClassicIIEnd-SndCntlClassicII)/4
+SndCntlClassicII
+			dc.l	ElsieDFACInit-SndCntlClassicII
+			dc.l	EgretDFACSend-SndCntlClassicII
+			dc.l	ASCSetVol-SndCntlClassicII
+			dc.l	EnableSoundInts-SndCntlClassicII
+			dc.l	DisableSoundInts-SndCntlClassicII
+			dc.l	ClearSoundInt-SndCntlClassicII
+			dc.l	ElsieInputSelect-SndCntlClassicII
+			dc.l	QueryInput-SndCntlClassicII
+			dc.l	ByPassControl-SndCntlClassicII
+			dc.l	PlayThruVol-SndCntlClassicII
+			dc.l	AGCControl-SndCntlClassicII
+SndCntlClassicIIEnd
+
+
+			dc.w	(SndCntlQuadra700End-SndCntlQuadra700)/4
+SndCntlQuadra700
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	InputSelect-SndCntlQuadra700
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+SndCntlQuadra700End
+
+
+			dc.w	(SndCntlQuadra900End-SndCntlQuadra900)/4
+SndCntlQuadra900
+SndCntlQuadra950
+			dc.l	0
+			dc.l	EgretDFACSend-SndCntlQuadra900
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	EclipseInputSelect-SndCntlQuadra900
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+SndCntlQuadra900End
+
+
+			dc.w	(SndCntlPB170End-SndCntlPB170)/4
+SndCntlPB170
+SndCntlPB140
+SndCntlPB145
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	TIMInputSelect-SndCntlPB170
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+SndCntlPB170End
+
+
+			dc.w	(SndCntlLCIIIEnd-SndCntlLCIII)/4
+SndCntlLCIII
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+SndCntlLCIIIEnd
+
+
+			dc.w	(SndCntlUnk28End-SndCntlUnk28)/4
+SndCntlUnk28
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+			dc.l	0
+SndCntlUnk28End
+
+
+EricksonDFACInit
+			moveq	#sndEricksonDFAC,d0
+			bra.s	EgretDFACInit
+ElsieDFACInit
+			moveq	#sndElsieDFAC-256,d0
+EgretDFACInit
+			jsrTBL	sndDFACSend
+			rts
+
+
+;——————————————————————————————————————————————————————————————————————————————
+;	EgretDFACSend  -  send a byte to DFAC using Egret
+;
+;	Use this routine during runtime after traps are enabled.
+;
+;	Input:	d0.b = byte to send DFAC (in DFAC order)
+;	Output:	none
+;
+
+EgretDFACSend
+@saveregs	reg		d1-d3/a0-a1
+
+			WITH	EgretPB, SoundIOHeader, ExpandMemRec
+
+			movem.l	@saveregs,-(sp)					; work register
+
+;	Reverse the order of the bits because Egret shifts them out in reverse order
+;	to what DFAC is expecting MSB first.
+
+			move.l	d0,d3							; save DFAC value in DFAC order
+			moveq	#0,d1							; destination
+			moveq	#8-1,d2							; loop count for 8 bits
+@Loop
+			asr.b	#1,d0							; shift lsb into extend bit
+			roxl.b	#1,d1							; shift extend bit towards msb
+			dbra	d2,@Loop
+
+			move.w	sr,-(sp)
+			ori.w	#$700,sr
+
+;	Build a Parameter block for the default DFAC message
+
+			suba.w	#EgretPbSize,sp					; make room for PB
+			movea.l	sp,a0							; point a0 to pbBuffer
+			move.b	#pseudoPkt,pbCmdType(a0)
+			move.b	#WrDFAC,pbCmd(a0)
+			move.w	#1,pbByteCnt(a0)				; set byte count
+			clr.l	pbBufPtr(a0)					; clear unused fields
+			clr.w	pbFlags(a0)
+			clr.w	pbResult(a0)
+			clr.l	pbCompletion(a0)
+			move.b	d1,pbParam(a0)					; set byte to send DFAC
+
+			_EgretDispatch
+			adda.w	#EgretPbSize,sp					; discard the parameter block and data buffer
+			bne.s	@Done							; some error - do not update image of DFAC
+
+;	Update the RAM image of the DFAC register
+
+			movea.l	([Expandmem],emSndPrimitives),a0; a0 = ptr to vector table
+			move.b	d3,DFAClast(a0)					; update DFAC register image
+
+@Done
+			move.w	(sp)+,sr
+			movem.l	(sp)+,@saveregs
+			rts										; Return to Caller
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————
+;	ElsieInputSelect  -  Select the sound input source on Elsie
+;
+;	If we are turning off the source (equivalent to disabling recording), then
+;	re-establish the playback mode by selecting the Aux source with AGC on and
+;	playthrough volume set to the maximum.
+;
+;	Input:	do.b	input selection
+;						0  =  none (off)
+;						1  =  microphone
+;						2  =  auxillary (modem sound on Tim, CD on Spike and Eclipse)
+;	Output:	none
+;
+
+ElsieInputSelect
+
+			WITH	ExpandMemRec, SoundIOHeader
+
+			cmpi.b	#sndMicrophone,d0				; are we selecting the mike?
+			beq.s	InputSelect						; yes - continue
+
+;	In Elsie sound, the playthrough with the auxiliary source is how playback is
+;	done.  If not selecting mike, then enable playback
+
+@saveregs	reg		d1/a0
+			movem.l	@saveregs,-(sp)
+			movea.l	([Expandmem],emSndPrimitives),a0; a0 = ptr to vector table
+			move.w	sr,-(sp)
+			ori.w	#$700,sr
+			moveq	#(sndByPassMask\				;												<t6>
+					AND sndPlayThruMask\
+					AND	sndAGCMask),d1				; mask off bypass, volume, and AGC bits
+			and.b	DFAClast(a0),d1					; get DFAC register image
+			moveq	#sndElsieDFAC-256,d0			; DFAC playback mode for Elsie sound			<t6>
+			jsrTBL	sndDFACSend						; call DFACSend routine thru expandmem			<t6>
+			move.w	(sp)+,sr
+			movem.l	(sp)+,@saveregs
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————
+;	InputSelect  -  Select the sound input source
+;
+;	If we are selecting "none" for the input source, then turn off the volume
+;	and AGC to prevent any noise leakage.  Save the old volume and restore it
+;	later when a new source is selected.
+;
+;	AGCInputSelect
+;	On Tim and Spike, sound input does not work unless AGC is enabled.  We
+;	kludge something to always set AGC.
+;
+;	Input:	do.b	input selection
+;						0  =  none (off)
+;						1  =  microphone
+;						2  =  auxillary (modem sound on Tim, CD on Spike and Eclipse)
+;	Output:	d0.b	last source
+;
+
+InputSelect
+@saveregs	reg		d1-d2/a0-a1						; added d2 to save registers 					<H23>
+
+			WITH	SoundIOHeader
+
+			movem.l	@saveregs,-(sp)
+			move.l	([Expandmem],\
+					ExpandMemRec.emSndPrimitives),a0; a0 = ptr to vector table
+			move.w	sr,-(sp)						;												<t9>
+			ori.w	#HiIntMask,sr					; disable ints									<t9>
+
+			moveq.l	#3,d2							; get selection bits to return					<t9>
+			and.b	DFAClast(a0),d2					; save for return								<t9>
+
+			moveq	#(sndSelectMask\				;												<t6>
+					AND sndPlayThruMask\
+					AND	sndAGCMask),d1				; mask off selection, volume, and AGC bits
+			and.b	DFAClast(a0),d1					;  in the DFAC register image					<t6>
+			or.b	d0,d1							;  and OR them into DFAC image					<t6>
+
+;	Check for volume and AGC to update in DFAC now that a sound source has been selected.
+;	If we are disabling input, then zero the volume and disable AGC to prevent noise
+;	leakage, otherwise set the currently selected volume and AGC levels.
+
+			tst.b	d0								; are we turning off input?
+			beq.s	@send							; yes - set no input and zero volume
+			or.b	UserVolume(a0),d1				; set volume level
+			cmpi.b	#sndMicrophone,d0				; are we selecting the mike input?				<H13>
+			bne.s	@send							; no - do not enable AGC						<H13>
+			or.b	UserAGC(a0),d1					; set AGC level									<t6>
+
+@send
+			move.b	d1,d0							; d0 = new DFAC value
+			jsrTBL	sndDFACSend						; call DFACSend routine thru expandmem			<t6>
+
+			move.w	(sp)+,sr						; enable ints									<t9>
+			move.b	d2,d0							; return source bits we replaced				<t9>
+			movem.l	(sp)+,@saveregs
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+			dc.b	0,1,2,0,0,0
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;	PlayThruVol  -  Set the playthrough volume
+;
+;	If a sound source has not been selected, then save the volume in the globals
+;	to be updated to DFAC later when the source is selected.  Also set playback
+;	volume for consistancy.
+;
+;	Input:	d0.b = volume level (0-7)
+;	Output:	none
+;
+
+PlayThruVol
+@saveregs	reg		d1/a0
+
+			WITH	SoundIOHeader
+
+			movem.l	@saveregs,-(sp)
+			movea.l	([Expandmem],\
+					ExpandMemRec.emSndPrimitives),a0; a0 = ptr to vector table
+			move.w	sr,-(sp)						;												<t9>
+			ori.w	#HiIntMask,sr					; disable ints									<t9>
+
+			asl.b	#5,d0							; shift volume into s5-s7 position
+			move.b	d0,UserVolume(a0)				; save user set volume level
+			moveq	#(sndSelectMask-256),d1			; mask off selection bits
+			and.b	DFAClast(a0),d1					;  in the DFAC register image
+			beq.s	@Done							; no sound source - we are done
+
+			moveq	#sndPlayThruMask,d1				; mask off volume bits
+			and.b	DFAClast(a0),d1					;  in the DFAC register image
+			or.b	d1,d0							; or-in value to send DFAC to set volume
+			jsrTBL	sndDFACSend						; call DFACSend routine thru expandmem
+@Done
+			move.w	(sp)+,sr						; enable ints									<t9>
+			movem.l	(sp)+,@saveregs
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;	AGCControl  -  enable or disable AGC
+;
+;	Enable or disable AGC.  If no sound source has been selected, then
+;	save the AGC value and set it whenever the sound source is selected.
+;
+;	Input:	d0.b  =   0 is disable, nonzero is enable
+;	Output:	none
+;
+
+AGCControl
+@saveregs	reg		d1/a0
+
+			WITH	SoundIOHeader
+
+			movem.l	@saveregs,-(sp)
+			movea.l	([Expandmem],\
+					ExpandMemRec.emSndPrimitives),a0; a0 = ptr to vector table
+			moveq.l	#sndAGCOff,d1					; assume AGC off (min gain)						<t11>
+			tst.b	d0								; enable or disable AGC
+			beq.s	@continue						; was disable AGC
+			moveq.l	#sndAGCOn,d1					; enable AGC
+@continue
+			move.w	sr,-(sp)						;												<t9>
+			ori.w	#HiIntMask,sr					; disable ints									<t9>
+			move.b	d1,UserAGC(a0)					; save value
+
+			moveq	#(sndSelectMask-256),d0			; mask off selection bits
+			and.b	DFAClast(a0),d0					;  in the DFAC register image
+			beq.s	@Done							; no sound source - we are done
+
+			moveq	#sndAGCMask-256,d0				; mask off the AGC control bits
+			and.b	DFAClast(a0),d0					;  in the DFAC register image
+			or.b	d1,d0							; or-in AGC value to send to DFAC
+			jsrTBL	sndDFACSend						; call DFACSend routine thru expandmem
+@Done
+			move.w	(sp)+,sr						; enable ints									<t9>
+			movem.l	(sp)+,@saveregs
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————
+;	ASCSetVol  -  Set the playback volume on normal ASC/Batman hardware
+;
+;	Set the playback volume using the volume control register on Batman.
+;
+;	Input:	d0.b = volume level (0-7)
+;	Output:	none
+;
+
+ASCSetVol	move.l	a0,-(sp)
+			movea.l	ASCBase,a0						; get base address of asc/batman
+			lsl.b	#5,d0							; shift volume up to pwm position
+			move.b	d0,ascVolControl(a0)			; save it in ASC volume register
+			movea.l	(sp)+,a0
+			rts
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;	ByPassControl  -  enable or disable aux bypass
+;
+;	Input:	d0.b  =   0 is disable, nonzero is enable
+;	Output:	none
+;
+
+ByPassControl
+@saveregs	reg		d1/a0
+
+			WITH	SoundIOHeader, ExpandMemRec
+
+			movem.l	@saveregs,-(sp)
+			movea.l	([Expandmem],emSndPrimitives),a0; a0 = ptr to vector table
+			moveq.l	#sndByPassOff,d1				; assume bypass off
+			tst.b	d0								; enable or disable bypass
+			beq.s	@continue						; was bypass off
+			moveq.l	#sndByPassOn,d1					; set bypass on
+@continue	move.w	sr,-(sp)						;												<t9>
+			ori.w	#HiIntMask,sr					; disable ints									<t9>
+			moveq	#sndByPassMask-256,d0			; mask off bypass control bit
+			and.b	DFAClast(a0),d0					;  in the DFAC register image
+			or.b	d1,d0							; d0 = value to send DFAC
+			jsrTBL	sndDFACSend						; call DFACSend routine thru expandmem
+			move.w	(sp)+,sr						; enable ints									<t9>
+			movem.l	(sp)+,@saveregs
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————
+;	QueryInput  -  return current input source selected
+;
+;	Input:	none
+;	Output:	d0.b	input source
+;						0  =  none (off)
+;						1  =  microphone
+;						2  =  auxillary (modem sound on Tim, CD on Spike and Eclipse)
+
+			WITH	SoundIOHeader, ExpandMemRec
+
+QueryInput	move.l	a0,-(sp)
+			movea.l	([Expandmem],emSndPrimitives),a0; a0 = ptr to vector table
+			moveq	#~(sndSelectMask-256),d0		; mask off selection bits						<t6>
+			and.b	DFAClast(a0),d0					;  in the DFAC register image					<t6>
+			movea.l	(sp)+,a0
+			rts
+
+			ENDWITH
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+			dc.b	0,1,2,0
+
+
+;——————————————————————————————————————————————————————————————————————————————
+EnableSoundInts
+			move.l	a0,-(sp)
+			move.l	VIA2,a0
+			move.b	#$90,$1C13(a0)
+			move.l	(sp)+,a0
+			rts
+
+
+DisableSoundInts
+			move.l	a0,-(sp)
+			move.l	VIA2,a0
+			move.b	#$10,$1C13(a0)
+			move.l	(sp)+,a0
+			rts
+
+
+ClearSoundInt
+			move.l	a0,-(sp)
+			move.l	VIA2,a0
+			move.b	#$90,$1A03(a0)
+			move.l	(sp)+,a0
+			rts
+
+
+;——————————————————————————————————————————————————————————————————————————————				<r8> thru next <r8> djw
+;	TIMInputSelect  -  Select the sound input source on Tim
+;
+;	On Tim, the input selection routine in ROM always turns AGC on.  Patch
+;	it out to not force AGC on.
+;
+;	Input:	do.b	input selection
+;						0  =  none (off)
+;						1  =  microphone
+;						2  =  auxillary (modem sound on Tim)
+;	Output:	d0.b	last source
+;
+
+			WITH	SoundIOHeader, ExpandMemRec
+
+AutoSlpDisable	equ		$f8						; Counting semaphor to disable sleep
+
+TIMInputSelect
+@workingReg	reg		d2/a0-a1
+			move.w	sr,-(sp)					; save the old sr
+			movem.l	@workingReg,-(sp)			; save working registers
+
+			move.l	PmgrBase,a1					; point a1 to globals
+			movea.l	([Expandmem],emSndPrimitives),a0	; a0 = ptr to vector table
+			ori.w	#HiIntMask,sr				; disable ints
+
+			moveq.l	#3,d2						; get selection bits
+			and.b	DFAClast(a0),d2				;
+			beq.s	@currentlyOff				; is a source active ??
+
+@currentlySelected								; sound source currently selected
+			tst.b	d0							; check new state,
+			bne.s	@setsource					; if just new source, set the source
+			subq.b	#1,AutoSlpDisable(a1)		; ... if turning off source, dec the nosleep semaphore
+			bra.s	@setsource
+
+@currentlyOff									; sound source currently off
+			tst.b	d0							; check new state,
+			beq.s	@setsource					; if new source still off, set the source
+			addq.b	#1,AutoSlpDisable(a1)		; ... if turning on source, inc the nosleep semaphore
+;			bra.s	@setsource
+
+@setsource
+			movem.l	(sp)+,@workingReg			; restore working registers
+			bsr		InputSelect					; change the source					<r10> djw
+			move.w	(sp)+,sr					; enable ints
+			rts
+
+			ENDWITH
+
+
+;_______________________________________________________________________							<Z16> thru next <Z16>									<Z18> thru next <Z18>
+;
+;  Routine:		ReGenSoundIntVBL
+;
+;  Desc:		Since reading VIAx[vBufB] causes interrupts to cleared,
+;				this re-generates those sound interrupts.
+;
+;				This routine stolen from
+;
+;					{Regatta}Toolbox:SoundMgr:SoundMgrPatch.a
+;
+;				...Then brought back from SndPrimitives.a
+;
+;_______________________________________________________________________
+
+			Export	ReGenSoundInt
+ReGenSoundInt ; file=SoundMgrPatch.a (per SndPrimitives.a/Sony.a comment)
+			move.w	#30,vblCount(a0)				; re-arm VBL task
+
+			movea.l	ASCBase,a1						; point to Batman
+
+			move.w	sr,-(sp)						; preserve the status register
+			ori.w	#$0700,sr						; mask interrupts
+
+			tst.b	bmIntControlA(a1)				; channel A interrupt enabled?
+			beq.s	@do
+			tst.b	bmIntControlB(a1)				; channel B interrupt enabled?
+			bne.s	@dont
+
+@do			move.b	#1,bmIntControlA(a1)			; disable chnl A interrupts
+			move.b	#1,bmIntControlB(a1)			; disable chnl B interrupts
+			clr.b	bmIntControlA(a1)				; clear the interrupt mask to re-generate
+			clr.b	bmIntControlB(a1)				; clear the interrupt mask to re-generate
+
+			move.w	#1,vblCount(a0)
+
+@dont		move.w	(sp)+,sr
+			rts
+
+
+;_______________________________________________________________________							<Z16> thru next <Z16>									<Z18> thru next <Z18>
+
+			Export	NewPBSoundDrvr
+NewPBSoundDrvr
+			dc.b	(1<<dWritEnable)	| \
+					(1<<dCtlEnable)		| \
+					(1<<dStatEnable)	| \
+					(1<<dNeedLock)			; drvFlags (upper byte)
+			dc.b	0						; drvFlags (upper lower)
+			dc.w	0						; drvDelay
+			dc.w	0						; drvEMask
+			dc.w	0						; drvMenu
+			dc.w	NewPBSoundOpen-NewPBSoundDrvr
+			dc.w	NewPBSoundPrime-NewPBSoundDrvr
+			dc.w	NewPBSoundControl-NewPBSoundDrvr
+			dc.w	NewPBSoundStatus-NewPBSoundDrvr
+			dc.w	NewPBSoundClose-NewPBSoundDrvr
+
+			string	pascal
+			dc.b	'.Sound '				; drvName, including leading length byte
+			align	2						; force back to even boundaries
+
+NewPBSoundOpen
+			jmpROM	OldPBSoundOpen
+
+NewPBSoundPrime
+			jmpROM	OldPBSoundPrime
+
+NewPBSoundControl
+			cmp.w	#2,CntrlParam.csCode(a0)
+			bne.s	@old
+			move.w	CntrlParam.csParam(a0),d0
+			jsrTBL	sndPlaybackVol
+@old		jmpROM	OldPBSoundControl
+
+NewPBSoundStatus
+			jmpROM	OldPBSoundStatus
+
+NewPBSoundClose
+			jmpROM	OldPBSoundClose
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;	EclipseInputSelect  -  Select the sound input source on Eclipse
+;
+;	On Eclipse, the sound input source is selected by two bits on VIA2 port B
+;	register in addition to DFAC.  There are four sound input sources on
+;	Eclipse: Microphone (or none?), RCA jacks, Microphone, and the CD (aux).
+;	These sources are selected through the VIA2 bits and routed through DFAC.
+;
+;	If we are selecting "none" for the input source, then turn off the volume
+;	and AGC to prevent any noise leakage.  Save the old volume and restore it
+;	later when a new source is selected.
+;
+;	Input:	do.b	input selection
+;						0  =  none (off)
+;						1  =  microphone
+;						2  =  auxillary (modem sound on Tim, CD on Spike and Eclipse)
+;						3  =  RCA jacks
+;	Output:	none
+;
+
+EclipseInputSelect
+
+			move.w	sr,-(sp)						;												<t12> djw
+			ori.w	#HiIntMask,sr					;												<t12> djw
+			movem.l	d0-d1,-(sp)						;												<t12> djw
+			move.b	([via2],vBufB),d1				; read current via values						<t12> djw
+			and.b	#%10110111,d1					; clear the previous value (bits pb6,pb3)		<t12> djw
+			andi.w	#$ff,d0							; make a word index
+			or.b	EclipseSelectTable(pc,d0.w),d1	; set new input									<t12> djw
+			move.b	d1,([via2],vBufB)				; set via2 bits
+			movem.l	(sp)+,d0-d1						;												<t12> djw
+			move.w	(sp)+,sr						;												<t12> djw
+
+			tst.b	d0								; selecting no source?
+			beq		InputSelect						; yes - ok to go setup DFAC						<t14> djw
+			moveq.l	#sndMicrophone,d0				; all sound sources go through DFAC mike input
+			bra		InputSelect						;												<t14> djw
+
+EclipseSelectTable
+			dc.b	%00000000						; none (or microphone?)	pb6=0, pb3=0
+			dc.b	%01000000						; microphone			pb6=1, pb3=0
+			dc.b	%01001000						; auxilary (CD)			pb6=1, pb3=1
+			dc.b	%00001000						; RCA jacks				pb6=0, pb3=1
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;31:291c2
+
+__Comp3to1		Proc	Export
+			Import	Table_1,Table_2,Table_3,Table_4,Table_5
+
+			link	a6,#0
+			movem.l	d0-d7/a0-a5,-(sp)
+			cmpi.l	#6,$18(a6)
+			blt.w	loc_129428
+			movea.l	$14(a6),a0
+			cmpa.w	#0,a0
+			bne.s	loc_1291ea
+			clr.w	d3
+			move.w	d3,d4
+			move.w	d3,d5
+			move.w	d3,d6
+			bra.s	loc_1291f8
+loc_1291ea
+			move.w	(a0),d3
+			move.w	2(a0),d4
+			move.w	4(a0),d5
+			move.w	6(a0),d6
+loc_1291f8
+			movea.l	$20(a6),a2
+			movea.l	$1c(a6),a3
+			move.l	8(a6),d0
+			subq.l	#1,d0
+			adda.l	d0,a2
+			movea.l	$c(a6),a5
+			subq.l	#1,a5
+loc_12920e
+			move.b	(a2)+,d0
+			adda.l	a5,a2
+			addi.b	#-$80,d0
+			ext.w	d0
+			asl.w	#8,d0
+			addi.b	#-$80,d0
+			sub.w	d4,d0
+			bvc.s	loc_12922e
+			bmi.s	loc_12922a
+			move.w	#$8001,d0
+			bra.s	loc_12922e
+loc_12922a
+			move.w	#$7fff,d0
+loc_12922e
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a4
+			adda.w	d1,a4
+			muls.w	(a4),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_129264
+			cmpi.w	#$13,d0
+			bgt.s	loc_12924c
+			moveq	#0,d2
+			bra.s	loc_129286
+loc_12924c
+			cmpi.w	#$28,d0
+			bgt.s	loc_129256
+			moveq	#1,d2
+			bra.s	loc_129286
+loc_129256
+			cmpi.w	#$43,d0
+			bgt.s	loc_129260
+			moveq	#2,d2
+			bra.s	loc_129286
+loc_129260
+			moveq	#3,d2
+			bra.s	loc_129286
+loc_129264
+			not.w	d0
+			cmpi.w	#$13,d0
+			bgt.s	loc_129270
+			moveq	#7,d2
+			bra.s	loc_129286
+loc_129270
+			cmpi.w	#$28,d0
+			bgt.s	loc_12927a
+			moveq	#6,d2
+			bra.s	loc_129286
+loc_12927a
+			cmpi.w	#$43,d0
+			bgt.s	loc_129284
+			moveq	#5,d2
+			bra.s	loc_129286
+loc_129284
+			moveq	#4,d2
+loc_129286
+			asl.w	#3,d1
+			lea		Table_5,a4
+			add.w	d2,d1
+			add.w	d2,d1
+			adda.w	d1,a4
+			move.w	(a4),d6
+			add.w	d4,d6
+			bvc.s	loc_1292a4
+			bmi.s	loc_1292a0
+			move.w	#$8001,d6
+			bra.s	loc_1292a4
+loc_1292a0
+			move.w	#$7fff,d6
+loc_1292a4
+			move.w	d6,d0
+			move.w	d6,d4
+			asr.w	#3,d0
+			sub.w	d0,d4
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_4,a4
+			adda.w	d2,a4
+			adda.w	d2,a4
+			add.w	(a4),d3
+			bge.s	loc_1292c0
+			clr.w	d3
+loc_1292c0
+			move.b	d2,d7
+			move.b	(a2)+,d0
+			adda.l	a5,a2
+			addi.b	#-$80,d0
+			ext.w	d0
+			asl.w	#8,d0
+			addi.b	#-$80,d0
+			sub.w	d4,d0
+			bvc.s	loc_1292e2
+			bmi.s	loc_1292de
+			move.w	#$8001,d0
+			bra.s	loc_1292e2
+loc_1292de
+			move.w	#$7fff,d0
+loc_1292e2
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a4
+			adda.w	d1,a4
+			muls.w	(a4),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_129304
+			cmpi.w	#$23,d0
+			bgt.s	loc_129300
+			moveq	#0,d2
+			bra.s	loc_129312
+loc_129300
+			moveq	#1,d2
+			bra.s	loc_129312
+loc_129304
+			not.w	d0
+			cmpi.w	#$23,d0
+			bgt.s	loc_129310
+			moveq	#3,d2
+			bra.s	loc_129312
+loc_129310
+			moveq	#2,d2
+loc_129312
+			asl.w	#3,d1
+			lea		Table_3,a4
+			add.w	d2,d1
+			add.w	d2,d1
+			adda.w	d1,a4
+			move.w	(a4),d6
+			add.w	d4,d6
+			bvc.s	loc_129330
+			bmi.s	loc_12932c
+			move.w	#$8001,d6
+			bra.s	loc_129330
+loc_12932c
+			move.w	#$7fff,d6
+loc_129330
+			move.w	d6,d0
+			move.w	d6,d4
+			asr.w	#3,d0
+			sub.w	d0,d4
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_2,a4
+			adda.w	d2,a4
+			adda.w	d2,a4
+			add.w	(a4),d3
+			bge.s	loc_12934c
+			clr.w	d3
+loc_12934c
+			asl.b	#3,d2
+			add.b	d2,d7
+			move.b	(a2)+,d0
+			adda.l	a5,a2
+			addi.b	#-$80,d0
+			ext.w	d0
+			asl.w	#8,d0
+			addi.b	#-$80,d0
+			sub.w	d4,d0
+			bvc.s	loc_129370
+			bmi.s	loc_12936c
+			move.w	#$8001,d0
+			bra.s	loc_129370
+loc_12936c
+			move.w	#$7fff,d0
+loc_129370
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a4
+			adda.w	d1,a4
+			muls.w	(a4),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_1293a6
+			cmpi.w	#$13,d0
+			bgt.s	loc_12938e
+			moveq	#0,d2
+			bra.s	loc_1293c8
+loc_12938e
+			cmpi.w	#$28,d0
+			bgt.s	loc_129398
+			moveq	#1,d2
+			bra.s	loc_1293c8
+loc_129398
+			cmpi.w	#$43,d0
+			bgt.s	loc_1293a2
+			moveq	#2,d2
+			bra.s	loc_1293c8
+loc_1293a2
+			moveq	#3,d2
+			bra.s	loc_1293c8
+loc_1293a6
+			not.w	d0
+			cmpi.w	#$13,d0
+			bgt.s	loc_1293b2
+			moveq	#7,d2
+			bra.s	loc_1293c8
+loc_1293b2
+			cmpi.w	#$28,d0
+			bgt.s	loc_1293bc
+			moveq	#6,d2
+			bra.s	loc_1293c8
+loc_1293bc
+			cmpi.w	#$43,d0
+			bgt.s	loc_1293c6
+			moveq	#5,d2
+			bra.s	loc_1293c8
+loc_1293c6
+			moveq	#4,d2
+loc_1293c8
+			asl.w	#3,d1
+			lea		Table_5,a4
+			add.w	d2,d1
+			add.w	d2,d1
+			adda.w	d1,a4
+			move.w	(a4),d6
+			add.w	d4,d6
+			bvc.s	loc_1293e6
+			bmi.s	loc_1293e2
+			move.w	#$8001,d6
+			bra.s	loc_1293e6
+loc_1293e2
+			move.w	#$7fff,d6
+loc_1293e6
+			move.w	d6,d0
+			move.w	d6,d4
+			asr.w	#3,d0
+			sub.w	d0,d4
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_4,a4
+			adda.w	d2,a4
+			adda.w	d2,a4
+			add.w	(a4),d3
+			bge.s	loc_129402
+			clr.w	d3
+loc_129402
+			asl.b	#5,d2
+			add.b	d2,d7
+			move.b	d7,(a3)+
+			subq.l	#3,$18(a6)
+			bgt.w	loc_12920e
+			movea.l	$10(a6),a0
+			cmpa.w	#0,a0
+			beq.s	loc_129428
+			move.w	d3,(a0)
+			move.w	d4,2(a0)
+			move.w	d5,4(a0)
+			move.w	d6,6(a0)
+loc_129428
+			movem.l	(sp)+,d0-d7/a0-a5
+			movea.l	4(a6),a0
+			unlk	a6
+			adda.l	#$20,sp
+			jmp		(a0)
+
+
+__Exp1to3		Proc	Export
+			Import	Table_2,Table_4
+
+			link	a6,#0
+			movem.l	d0-d7/a0-a5,-(sp)
+			cmpi.l	#1,$18(a6)
+			blt.w	loc_129620
+			movea.l	$14(a6),a0
+			cmpa.w	#0,a0
+			bne.s	loc_12945c
+			clr.w	d2
+			clr.w	d3
+			bra.s	loc_129462
+loc_12945c
+			move.w	(a0),d2
+			move.w	2(a0),d3
+loc_129462
+			movea.l	$20(a6),a2
+			movea.l	$1c(a6),a3
+			move.w	#$7f0,d6
+			movea.w	#$10,a5
+			move.w	#$8080,d7
+			move.l	8(a6),d0
+			subq.l	#1,d0
+			lsl.l	#1,d0
+			adda.l	d0,a2
+			movea.l	$c(a6),a1
+			subq.l	#1,a1
+			adda.l	a1,a1
+loc_129488
+			move.b	(a2)+,d4
+			moveq	#7,d1
+			and.b	d4,d1
+			add.w	d1,d1
+			lea		Table_4,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_1294a4
+			moveq	#0,d2
+loc_1294a4
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_1294ba
+			bmi.s	loc_1294b6
+			move.w	#$8001,d3
+			bra.s	loc_1294ba
+loc_1294b6
+			move.w	#$7fff,d3
+loc_1294ba
+			move.w	d3,d0
+			move.w	d0,d5
+			andi.w	#$ff00,d5
+			asr.w	#3,d0
+			sub.w	d0,d3
+			lsr.w	#2,d4
+			moveq	#6,d1
+			and.b	d4,d1
+			lea		Table_2,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_1294e0
+			moveq	#0,d2
+loc_1294e0
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_1294f6
+			bmi.s	loc_1294f2
+			move.w	#$8001,d3
+			bra.s	loc_1294f6
+loc_1294f2
+			move.w	#$7fff,d3
+loc_1294f6
+			move.w	d3,d0
+			asr.w	#3,d0
+			sub.w	d0,d3
+			lsr.w	#5,d0
+			andi.w	#$ff,d0
+			or.w	d0,d5
+			eor.w	d7,d5
+			move.w	d5,(a3)+
+			lsr.w	#2,d4
+			moveq	#$e,d1
+			and.b	d4,d1
+			lea		Table_4,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_129522
+			moveq	#0,d2
+loc_129522
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_129538
+			bmi.s	loc_129534
+			move.w	#$8001,d3
+			bra.s	loc_129538
+loc_129534
+			move.w	#$7fff,d3
+loc_129538
+			move.w	d3,d0
+			move.w	d0,d5
+			andi.w	#$ff00,d5
+			asr.w	#3,d0
+			sub.w	d0,d3
+			move.b	(a2)+,d4
+			moveq	#7,d1
+			and.b	d4,d1
+			add.w	d1,d1
+			lea		Table_4,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_129560
+			moveq	#0,d2
+loc_129560
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_129576
+			bmi.s	loc_129572
+			move.w	#$8001,d3
+			bra.s	loc_129576
+loc_129572
+			move.w	#$7fff,d3
+loc_129576
+			move.w	d3,d0
+			asr.w	#3,d0
+			sub.w	d0,d3
+			lsr.w	#5,d0
+			andi.w	#$ff,d0
+			or.w	d0,d5
+			eor.w	d7,d5
+			move.w	d5,(a3)+
+			lsr.w	#2,d4
+			moveq	#6,d1
+			and.b	d4,d1
+			lea		Table_2,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_1295a2
+			moveq	#0,d2
+loc_1295a2
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_1295b8
+			bmi.s	loc_1295b4
+			move.w	#$8001,d3
+			bra.s	loc_1295b8
+loc_1295b4
+			move.w	#$7fff,d3
+loc_1295b8
+			move.w	d3,d0
+			move.w	d0,d5
+			andi.w	#$ff00,d5
+			asr.w	#3,d0
+			sub.w	d0,d3
+			lsr.w	#2,d4
+			moveq	#$e,d1
+			and.b	d4,d1
+			lea		Table_4,a4
+			adda.w	d1,a4
+			move.w	d2,d1
+			move.w	d2,d0
+			asr.w	#5,d0
+			sub.w	d0,d2
+			add.w	(a4),d2
+			bge.s	loc_1295de
+			moveq	#0,d2
+loc_1295de
+			and.w	d6,d1
+			add.w	a5,d1
+			adda.w	d1,a4
+			add.w	(a4),d3
+			bvc.s	loc_1295f4
+			bmi.s	loc_1295f0
+			move.w	#$8001,d3
+			bra.s	loc_1295f4
+loc_1295f0
+			move.w	#$7fff,d3
+loc_1295f4
+			move.w	d3,d0
+			asr.w	#3,d0
+			sub.w	d0,d3
+			lsr.w	#5,d0
+			andi.w	#$ff,d0
+			or.w	d0,d5
+			eor.w	d7,d5
+			move.w	d5,(a3)+
+			adda.l	a1,a2
+			subq.l	#1,$18(a6)
+			bne.w	loc_129488
+			movea.l	$10(a6),a0
+			cmpa.w	#0,a0
+			beq.s	loc_129620
+			move.w	d2,(a0)
+			move.w	d3,2(a0)
+loc_129620
+			movem.l	(sp)+,d0-d7/a0-a5
+			movea.l	4(a6),a0
+			unlk	a6
+			adda.l	#$20,sp
+			jmp		(a0)
+
+
+__Exp1to6		Proc	Export
+			Import	Table_2,Table_4
+
+			link	a6,#-4
+			movem.l	d0-d7/a0-a5,-(sp)
+			cmpi.l	#1,$18(a6)
+			blt.w	loc_129870
+			movea.l	$14(a6),a0
+			cmpa.w	#0,a0
+			bne.s	loc_12965c
+			suba.l	a4,a4
+			move.w	a4,d5
+			move.w	a4,d3
+			movea.w	a4,a5
+			move.w	a4,d4
+			move.w	a4,d2
+			bra.s	loc_129672
+loc_12965c
+			movea.w	(a0),a4
+			move.w	2(a0),d5
+			move.w	4(a0),d3
+			movea.w	6(a0),a5
+			move.w	8(a0),d4
+			move.w	$a(a0),d2
+loc_129672
+			movea.l	$20(a6),a0
+			movea.l	$1c(a6),a2
+			move.w	#$7f0,d6
+			move.w	#$10,d7
+			move.l	8(a6),d0
+			subq.l	#1,d0
+			adda.l	d0,a0
+			movea.l	$c(a6),a3
+			subq.l	#1,a3
+loc_129690
+			move.b	(a0)+,d1
+			moveq	#7,d0
+			and.w	d1,d0
+			add.w	d0,d0
+			move.w	d0,-2(a6)
+			lsr.w	#2,d1
+			moveq	#6,d0
+			and.w	d1,d0
+			move.w	d0,-4(a6)
+			lsr.w	#2,d1
+			andi.w	#$e,d1
+			lea		Table_4,a1
+			adda.w	d1,a1
+			move.w	d3,d1
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			add.w	(a1),d3
+			bge.s	loc_1296c0
+			clr.w	d3
+loc_1296c0
+			and.w	d6,d1
+			add.w	d7,d1
+			adda.w	d1,a1
+			move.w	(a1),d0
+			eor.w	d0,d2
+			bmi.s	loc_1296ea
+			add.w	a5,d0
+			bvc.s	loc_1296dc
+			bmi.s	loc_1296d8
+			move.w	#$8001,d0
+			bra.s	loc_1296dc
+loc_1296d8
+			move.w	#$7fff,d0
+loc_1296dc
+			move.w	d0,d2
+			addi.w	#$1fa,d4
+			bvc.s	loc_1296e8
+			move.w	#$7fff,d4
+loc_1296e8
+			bra.s	loc_129706
+loc_1296ea
+			add.w	a5,d0
+			bvc.s	loc_1296fa
+			bmi.s	loc_1296f6
+			move.w	#$8001,d0
+			bra.s	loc_1296fa
+loc_1296f6
+			move.w	#$7fff,d0
+loc_1296fa
+			move.w	d0,d2
+			subi.w	#$13a,d4
+			bvc.s	loc_129706
+			move.w	#$8001,d4
+loc_129706
+			muls.w	d4,d0
+			add.l	d0,d0
+			swap	d0
+			movea.w	d0,a5
+			asr.w	#1,d2
+			move.w	d5,d1
+			sub.w	d2,d1
+			asr.w	#2,d1
+			move.w	d5,d0
+			add.w	a4,d0
+			sub.w	d1,d0
+			move.w	a4,d5
+			movea.w	d2,a4
+			add.w	a4,d1
+			add.w	d5,d1
+			andi.w	#$ff00,d0
+			lsr.w	#8,d1
+			or.w	d0,d1
+			eori.w	#$8080,d1
+			move.w	d1,(a2)+
+			move.w	-4(a6),d1
+			lea		Table_2,a1
+			adda.w	d1,a1
+			move.w	d3,d1
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			add.w	(a1),d3
+			bge.s	loc_12974a
+			clr.w	d3
+loc_12974a
+			and.w	d6,d1
+			add.w	d7,d1
+			adda.w	d1,a1
+			move.w	(a1),d0
+			eor.w	d0,d2
+			bmi.s	loc_129774
+			add.w	a5,d0
+			bvc.s	loc_129766
+			bmi.s	loc_129762
+			move.w	#$8001,d0
+			bra.s	loc_129766
+loc_129762
+			move.w	#$7fff,d0
+loc_129766
+			move.w	d0,d2
+			addi.w	#$1fa,d4
+			bvc.s	loc_129772
+			move.w	#$7fff,d4
+loc_129772
+			bra.s	loc_129790
+loc_129774
+			add.w	a5,d0
+			bvc.s	loc_129784
+			bmi.s	loc_129780
+			move.w	#$8001,d0
+			bra.s	loc_129784
+loc_129780
+			move.w	#$7fff,d0
+loc_129784
+			move.w	d0,d2
+			subi.w	#$13a,d4
+			bvc.s	loc_129790
+			move.w	#$8001,d4
+loc_129790
+			muls.w	d4,d0
+			add.l	d0,d0
+			swap	d0
+			movea.w	d0,a5
+			asr.w	#1,d2
+			move.w	d5,d1
+			sub.w	d2,d1
+			asr.w	#2,d1
+			move.w	d5,d0
+			add.w	a4,d0
+			sub.w	d1,d0
+			move.w	a4,d5
+			movea.w	d2,a4
+			add.w	a4,d1
+			add.w	d5,d1
+			andi.w	#$ff00,d0
+			lsr.w	#8,d1
+			or.w	d0,d1
+			eori.w	#$8080,d1
+			move.w	d1,(a2)+
+			move.w	-2(a6),d1
+			lea		Table_4,a1
+			adda.w	d1,a1
+			move.w	d3,d1
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			add.w	(a1),d3
+			bge.s	loc_1297d4
+			clr.w	d3
+loc_1297d4
+			and.w	d6,d1
+			add.w	d7,d1
+			adda.w	d1,a1
+			move.w	(a1),d0
+			eor.w	d0,d2
+			bmi.s	loc_1297fe
+			add.w	a5,d0
+			bvc.s	loc_1297f0
+			bmi.s	loc_1297ec
+			move.w	#$8001,d0
+			bra.s	loc_1297f0
+loc_1297ec
+			move.w	#$7fff,d0
+loc_1297f0
+			move.w	d0,d2
+			addi.w	#$1fa,d4
+			bvc.s	loc_1297fc
+			move.w	#$7fff,d4
+loc_1297fc
+			bra.s	loc_12981a
+loc_1297fe
+			add.w	a5,d0
+			bvc.s	loc_12980e
+			bmi.s	loc_12980a
+			move.w	#$8001,d0
+			bra.s	loc_12980e
+loc_12980a
+			move.w	#$7fff,d0
+loc_12980e
+			move.w	d0,d2
+			subi.w	#$13a,d4
+			bvc.s	loc_12981a
+			move.w	#$8001,d4
+loc_12981a
+			muls.w	d4,d0
+			add.l	d0,d0
+			swap	d0
+			movea.w	d0,a5
+			asr.w	#1,d2
+			move.w	d5,d1
+			sub.w	d2,d1
+			asr.w	#2,d1
+			move.w	d5,d0
+			add.w	a4,d0
+			sub.w	d1,d0
+			move.w	a4,d5
+			movea.w	d2,a4
+			add.w	a4,d1
+			add.w	d5,d1
+			andi.w	#$ff00,d0
+			lsr.w	#8,d1
+			or.w	d0,d1
+			eori.w	#$8080,d1
+			move.w	d1,(a2)+
+			adda.l	a3,a0
+			subq.l	#1,$18(a6)
+			bne.w	loc_129690
+			movea.l	$10(a6),a0
+			cmpa.w	#0,a0
+			beq.s	loc_129870
+			move.w	a4,(a0)
+			move.w	d5,2(a0)
+			move.w	d3,4(a0)
+			move.w	a5,6(a0)
+			move.w	d4,8(a0)
+			move.w	d2,$a(a0)
+loc_129870
+			movem.l	(sp)+,d0-d7/a0-a5
+			movea.l	4(a6),a0
+			unlk	a6
+			adda.l	#$20,sp
+			jmp		(a0)
+
+
+__Comp6to1		Proc	Export
+			Import	Table_1,Table_2,Table_4
+
+			link	a6,#-4
+			movem.l	d0-d7/a0-a5,-(sp)
+			cmpi.l	#6,$18(a6)
+			blt.w	loc_129c5c
+			movea.l	$14(a6),a0
+			cmpa.w	#0,a0
+			bne.s	loc_1298b8
+			move.w	#$fc02,d6
+			movea.w	#$fc02,a5
+			move.w	#$e00f,d7
+			movea.w	#$e00f,a4
+			clr.w	d3
+			clr.w	d4
+			clr.w	d5
+			suba.l	a2,a2
+			bra.s	loc_1298d6
+loc_1298b8
+			move.w	(a0),d6
+			movea.w	2(a0),a5
+			move.w	4(a0),d7
+			movea.w	6(a0),a4
+			move.w	8(a0),d3
+			move.w	$a(a0),d4
+			move.w	$c(a0),d5
+			movea.w	$e(a0),a2
+loc_1298d6
+			movea.l	$20(a6),a0
+			movea.l	$1c(a6),a1
+			move.l	8(a6),d0
+			subq.l	#1,d0
+			adda.l	d0,a0
+			move.l	$c(a6),-4(a6)
+			subq.l	#1,-4(a6)
+loc_1298f0
+			moveq	#$ffffff80,d1
+			add.b	(a0)+,d1
+			adda.l	-4(a6),a0
+			ext.w	d1
+			asl.w	#4,d1
+			add.w	d6,d1
+			sub.w	a5,d1
+			asr.w	#1,d1
+			move.w	a5,d0
+			add.w	d6,d0
+			add.w	d6,d0
+			add.w	d1,d0
+			movea.w	d6,a5
+			move.w	d1,d6
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d0,d7
+			moveq	#$ffffff80,d0
+			add.b	(a0)+,d0
+			adda.l	-4(a6),a0
+			ext.w	d0
+			asl.w	#4,d0
+			add.w	d6,d0
+			sub.w	a5,d0
+			asr.w	#1,d0
+			move.w	a5,d1
+			add.w	d6,d1
+			add.w	d6,d1
+			add.w	d0,d1
+			movea.w	d6,a5
+			move.w	d0,d6
+			move.w	a4,d0
+			add.w	d7,d0
+			add.w	d7,d0
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d1,d7
+			add.w	d7,d0
+			sub.w	d4,d0
+			bvc.s	loc_129950
+			bmi.s	loc_12994c
+			move.w	#$8001,d0
+			bra.s	loc_129950
+loc_12994c
+			move.w	#$7fff,d0
+loc_129950
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a3
+			adda.w	d1,a3
+			muls.w	(a3),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_129986
+			cmpi.w	#$15,d0
+			bgt.s	loc_12996e
+			moveq	#0,d2
+			bra.s	loc_1299a8
+loc_12996e
+			cmpi.w	#$2b,d0
+			bgt.s	loc_129978
+			moveq	#1,d2
+			bra.s	loc_1299a8
+loc_129978
+			cmpi.w	#$48,d0
+			bgt.s	loc_129982
+			moveq	#2,d2
+			bra.s	loc_1299a8
+loc_129982
+			moveq	#3,d2
+			bra.s	loc_1299a8
+loc_129986
+			not.w	d0
+			cmpi.w	#$15,d0
+			bgt.s	loc_129992
+			moveq	#7,d2
+			bra.s	loc_1299a8
+loc_129992
+			cmpi.w	#$2b,d0
+			bgt.s	loc_12999c
+			moveq	#6,d2
+			bra.s	loc_1299a8
+loc_12999c
+			cmpi.w	#$48,d0
+			bgt.s	loc_1299a6
+			moveq	#5,d2
+			bra.s	loc_1299a8
+loc_1299a6
+			moveq	#4,d2
+loc_1299a8
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_4,a3
+			adda.w	d2,a3
+			adda.w	d2,a3
+			add.w	(a3),d3
+			bge.s	loc_1299bc
+			clr.w	d3
+loc_1299bc
+			asl.w	#3,d1
+			lea		$10(a3),a3
+			adda.w	d1,a3
+			move.w	(a3),d0
+			move.w	a2,d1
+			eor.w	d0,d1
+			bmi.s	loc_1299ea
+			add.w	d4,d0
+			bvc.s	loc_1299dc
+			bmi.s	loc_1299d8
+			move.w	#$8001,d0
+			bra.s	loc_1299dc
+loc_1299d8
+			move.w	#$7fff,d0
+loc_1299dc
+			movea.w	d0,a2
+			addi.w	#$1fa,d5
+			bvc.s	loc_1299e8
+			move.w	#$7fff,d5
+loc_1299e8
+			bra.s	loc_129a06
+loc_1299ea
+			add.w	d4,d0
+			bvc.s	loc_1299fa
+			bmi.s	loc_1299f6
+			move.w	#$8001,d0
+			bra.s	loc_1299fa
+loc_1299f6
+			move.w	#$7fff,d0
+loc_1299fa
+			movea.w	d0,a2
+			subi.w	#$13a,d5
+			bvc.s	loc_129a06
+			move.w	#$8001,d5
+loc_129a06
+			muls.w	d5,d0
+			add.l	d0,d0
+			swap	d0
+			move.w	d0,d4
+			asl.b	#5,d2
+			move.b	d2,(a1)
+			moveq	#$ffffff80,d1
+			add.b	(a0)+,d1
+			adda.l	-4(a6),a0
+			ext.w	d1
+			asl.w	#4,d1
+			add.w	d6,d1
+			sub.w	a5,d1
+			asr.w	#1,d1
+			move.w	a5,d0
+			add.w	d6,d0
+			add.w	d6,d0
+			add.w	d1,d0
+			movea.w	d6,a5
+			move.w	d1,d6
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d0,d7
+			moveq	#$ffffff80,d0
+			add.b	(a0)+,d0
+			adda.l	-4(a6),a0
+			ext.w	d0
+			asl.w	#4,d0
+			add.w	d6,d0
+			sub.w	a5,d0
+			asr.w	#1,d0
+			move.w	a5,d1
+			add.w	d6,d1
+			add.w	d6,d1
+			add.w	d0,d1
+			movea.w	d6,a5
+			move.w	d0,d6
+			move.w	a4,d0
+			add.w	d7,d0
+			add.w	d7,d0
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d1,d7
+			add.w	d7,d0
+			sub.w	d4,d0
+			bvc.s	loc_129a72
+			bmi.s	loc_129a6e
+			move.w	#$8001,d0
+			bra.s	loc_129a72
+loc_129a6e
+			move.w	#$7fff,d0
+loc_129a72
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a3
+			adda.w	d1,a3
+			muls.w	(a3),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_129a94
+			cmpi.w	#$25,d0
+			bgt.s	loc_129a90
+			moveq	#0,d2
+			bra.s	loc_129aa2
+loc_129a90
+			moveq	#1,d2
+			bra.s	loc_129aa2
+loc_129a94
+			not.w	d0
+			cmpi.w	#$25,d0
+			bgt.s	loc_129aa0
+			moveq	#3,d2
+			bra.s	loc_129aa2
+loc_129aa0
+			moveq	#2,d2
+loc_129aa2
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_2,a3
+			adda.w	d2,a3
+			adda.w	d2,a3
+			add.w	(a3),d3
+			bge.s	loc_129ab6
+			clr.w	d3
+loc_129ab6
+			asl.w	#3,d1
+			lea		$10(a3),a3
+			adda.w	d1,a3
+			move.w	(a3),d0
+			move.w	a2,d1
+			eor.w	d0,d1
+			bmi.s	loc_129ae4
+			add.w	d4,d0
+			bvc.s	loc_129ad6
+			bmi.s	loc_129ad2
+			move.w	#$8001,d0
+			bra.s	loc_129ad6
+loc_129ad2
+			move.w	#$7fff,d0
+loc_129ad6
+			movea.w	d0,a2
+			addi.w	#$1fa,d5
+			bvc.s	loc_129ae2
+			move.w	#$7fff,d5
+loc_129ae2
+			bra.s	loc_129b00
+loc_129ae4
+			add.w	d4,d0
+			bvc.s	loc_129af4
+			bmi.s	loc_129af0
+			move.w	#$8001,d0
+			bra.s	loc_129af4
+loc_129af0
+			move.w	#$7fff,d0
+loc_129af4
+			movea.w	d0,a2
+			subi.w	#$13a,d5
+			bvc.s	loc_129b00
+			move.w	#$8001,d5
+loc_129b00
+			muls.w	d5,d0
+			add.l	d0,d0
+			swap	d0
+			move.w	d0,d4
+			asl.b	#3,d2
+			add.b	d2,(a1)
+			moveq	#$ffffff80,d1
+			add.b	(a0)+,d1
+			adda.l	-4(a6),a0
+			ext.w	d1
+			asl.w	#4,d1
+			add.w	d6,d1
+			sub.w	a5,d1
+			asr.w	#1,d1
+			move.w	a5,d0
+			add.w	d6,d0
+			add.w	d6,d0
+			add.w	d1,d0
+			movea.w	d6,a5
+			move.w	d1,d6
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d0,d7
+			moveq	#$ffffff80,d0
+			add.b	(a0)+,d0
+			adda.l	-4(a6),a0
+			ext.w	d0
+			asl.w	#4,d0
+			add.w	d6,d0
+			sub.w	a5,d0
+			asr.w	#1,d0
+			move.w	a5,d1
+			add.w	d6,d1
+			add.w	d6,d1
+			add.w	d0,d1
+			movea.w	d6,a5
+			move.w	d0,d6
+			move.w	a4,d0
+			add.w	d7,d0
+			add.w	d7,d0
+			movea.w	d7,a4
+			asr.w	#1,d7
+			add.w	d1,d7
+			add.w	d7,d0
+			sub.w	d4,d0
+			bvc.s	loc_129b6c
+			bmi.s	loc_129b68
+			move.w	#$8001,d0
+			bra.s	loc_129b6c
+loc_129b68
+			move.w	#$7fff,d0
+loc_129b6c
+			move.w	d3,d1
+			asr.w	#4,d1
+			add.w	d1,d1
+			lea		Table_1,a3
+			adda.w	d1,a3
+			muls.w	(a3),d0
+			swap	d0
+			or.w	d0,d0
+			bmi.s	loc_129ba2
+			cmpi.w	#$15,d0
+			bgt.s	loc_129b8a
+			moveq	#0,d2
+			bra.s	loc_129bc4
+loc_129b8a
+			cmpi.w	#$2b,d0
+			bgt.s	loc_129b94
+			moveq	#1,d2
+			bra.s	loc_129bc4
+loc_129b94
+			cmpi.w	#$48,d0
+			bgt.s	loc_129b9e
+			moveq	#2,d2
+			bra.s	loc_129bc4
+loc_129b9e
+			moveq	#3,d2
+			bra.s	loc_129bc4
+loc_129ba2
+			not.w	d0
+			cmpi.w	#$15,d0
+			bgt.s	loc_129bae
+			moveq	#7,d2
+			bra.s	loc_129bc4
+loc_129bae
+			cmpi.w	#$2b,d0
+			bgt.s	loc_129bb8
+			moveq	#6,d2
+			bra.s	loc_129bc4
+loc_129bb8
+			cmpi.w	#$48,d0
+			bgt.s	loc_129bc2
+			moveq	#5,d2
+			bra.s	loc_129bc4
+loc_129bc2
+			moveq	#4,d2
+loc_129bc4
+			move.w	d3,d0
+			asr.w	#5,d0
+			sub.w	d0,d3
+			lea		Table_4,a3
+			adda.w	d2,a3
+			adda.w	d2,a3
+			add.w	(a3),d3
+			bge.s	loc_129bd8
+			clr.w	d3
+loc_129bd8
+			asl.w	#3,d1
+			lea		$10(a3),a3
+			adda.w	d1,a3
+			move.w	(a3),d0
+			move.w	a2,d1
+			eor.w	d0,d1
+			bmi.s	loc_129c06
+			add.w	d4,d0
+			bvc.s	loc_129bf8
+			bmi.s	loc_129bf4
+			move.w	#$8001,d0
+			bra.s	loc_129bf8
+loc_129bf4
+			move.w	#$7fff,d0
+loc_129bf8
+			movea.w	d0,a2
+			addi.w	#$1fa,d5
+			bvc.s	loc_129c04
+			move.w	#$7fff,d5
+loc_129c04
+			bra.s	loc_129c22
+loc_129c06
+			add.w	d4,d0
+			bvc.s	loc_129c16
+			bmi.s	loc_129c12
+			move.w	#$8001,d0
+			bra.s	loc_129c16
+loc_129c12
+			move.w	#$7fff,d0
+loc_129c16
+			movea.w	d0,a2
+			subi.w	#$13a,d5
+			bvc.s	loc_129c22
+			move.w	#$8001,d5
+loc_129c22
+			muls.w	d5,d0
+			add.l	d0,d0
+			swap	d0
+			move.w	d0,d4
+			add.b	d2,(a1)+
+			subq.l	#6,$18(a6)
+			bgt.w	loc_1298f0
+			movea.l	$10(a6),a0
+			cmpa.w	#0,a0
+			beq.s	loc_129c5c
+			move.w	d6,(a0)
+			move.w	a5,2(a0)
+			move.w	d7,4(a0)
+			move.w	a4,6(a0)
+			move.w	d3,8(a0)
+			move.w	d4,$a(a0)
+			move.w	d5,$c(a0)
+			move.w	a2,$e(a0)
+loc_129c5c
+			movem.l	(sp)+,d0-d7/a0-a5
+			movea.l	4(a6),a0
+			unlk	a6
+			adda.l	#$20,sp
+			jmp		(a0)
+
+
+;——————————————————————————————————————————————————————————————————————————————						<t6>
+;31:29c6c
+
+InitSndDispatch	Proc	Export
+			Import	DispFuncDisp, UnimplFunction, _R24DE, DispAddTool, _R24EA, _R24F0, SoundDispatcher
+			move.l	#52,d0
+			_NewPtr	,sys
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	a0,42(a1)
+
+			leaResident	DispFuncDisp,a1
+			move.l		a1,(a0)+
+
+			move.l		#7,d1
+			leaResident	UnimplFunction,a1
+@Loop8		move.l		a1,(a0)+
+			dbra		d1,@Loop8
+
+			leaResident	_R24DE,a1
+			move.l		a1,(a0)+
+			leaResident	DispAddTool,a1
+			move.l		a1,(a0)+
+			leaResident	_R24EA,a1
+			move.l		a1,(a0)+
+			leaResident	_R24F0,a1
+			move.l		a1,(a0)+
+
+			leaResident	SoundDispatcher,a0
+			move.l		#$00,d0				; SoundDispatch
+			_SetTrapAddress	,newTool
+
+			rts
+
+
+;31:29cb0
+SoundDispatcher	Proc	Export
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.soundMgrGlobals(a0),a0
+			move.l	42(a0),a0
+			move.l	(a0,d0),a0
+			swap	d0
+			jmp		(a0)
+
+			Export	DispFuncDisp
+DispFuncDisp
+			cmp.w	#16,d0
+			bhs.s	UnimplFunction
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.soundMgrGlobals(a0),a0
+			move.l	42(a0),a0
+			move.l	36(a0,d0),a0
+			jmp		(a0)
+
+			Export	UnimplFunction
+UnimplFunction
+			tst.w	d0
+			bne.s	@return
+			clr.l	4(sp)
+@return		rts
+
+
+_R24DE	Proc	Export
+			Import	SoundDispatcher
+
+			move.w	4(sp),d0
+			beq.s	@version
+			cmp.w	#36,d0
+			bhs.s	@bad
+
+			move.l	(sp),a0
+			add.l	#6,sp
+			move.l	a0,-(sp)
+			and.l	#$FFFF,d0
+			jmp		SoundDispatcher
+
+@bad		clr.l	6(sp)
+			bra.s	@return
+
+@version	move.l	#$01002001,6(sp)	; 1.0d1
+
+@return		move.l	(sp),a0
+		OPT NONE
+			addq.l	#6,sp
+		OPT ALL
+			jmp		(a0)
+			rts
+
+
+;31:29d18
+DispAddTool	Proc	Export
+			move.w	8(sp),d0
+			cmp.w	#36,d0
+			bge.s	@bad
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	42(a1),a1
+
+			move.l	4(sp),a0
+			move.l	a0,(a1,d0)
+			clr.w	10(sp)
+			bra.s	@return
+
+@bad		move.w	#paramErr,10(sp)
+
+@return		move.l	(sp),a0
+			adda.l	#10,sp
+			jmp		(a0)
+
+
+;31:29d4a
+_R24EA	Proc	Export
+			Import	UnimplFunction
+
+			move.w	4(sp),d0
+			cmp.w	#36,d0
+			bhs.s	@bad
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	42(a1),a1
+
+			leaResident	UnimplFunction,a0
+			move.l	a0,(a1,d0)
+			clr.w	6(sp)
+			bra.s	@return
+
+@bad		move.w	#paramErr,6(sp)
+
+@return		move.l	(sp),a0
+		OPT NONE
+			addq.l	#6,sp
+		OPT ALL
+			jmp		(a0)
+
+
+;31:29d7a
+_R24F0	Proc	Export
+			Import	UnimplFunction
+
+			move.w	4(sp),d0
+			cmp.w	#36,d0
+			bhs.s	@bad
+
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	42(a1),a1
+
+			move.l	(a1,d0),d0
+			lea		UnimplFunction,a0
+			cmp.l	a0,d0
+			bne.s	@ne
+
+@bad		moveq	#0,d0
+
+@ne			move.l	d0,6(sp)
+			move.l	(sp),a0
+			add.l	#6,sp
+			jmp		(a0)
+
+
+;31:29da8
+InitMACEDispatch	Proc	Export
+			Import	MACEDispatch
+
+			clr.w		-(sp)
+			move.w		#16,-(sp)
+			peaResident	MACEDispatch
+			move.l		#$00040000,d0
+			_SoundDispatch
+			move.w		(sp)+,d0
+			rts
+
+
+;31:29dbe
+MACEDispatch	Proc	Export
+			jmp		@jumptable(d0)
+@jumptable
+			Import	Version
+			jmp		Version
+			Import	__Comp3to1
+			jmp		__Comp3to1
+			Import	__Exp1to3
+			jmp		__Exp1to3
+			Import	__Comp6to1
+			jmp		__Comp6to1
+			Import	__Exp1to6
+			jmp		__Exp1to6
+
+
+;28:00106
+InstallSoundIntHandler	Proc	Export
+			Import	SoundIntHandler, SetupSoundInterruptVectors
+
+			leaResident	SoundIntHandler,a0
+			move.l	a0,$D80
+			jsr		SetupSoundInterruptVectors
+
+			move.l	a0,-(sp)
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.jSetupSoundInterrupt(a0),a0
+			jsr		(a0)
+			move.l	(sp)+,a0
+			rts
+
+
+;28:00122
+SoundIntHandler	Proc	Export
+			move.l	a0,-(sp)
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.jAcknowledgeSoundInterrupt(a0),a0
+			jsr		(a0)
+			move.l	(sp)+,a0
+
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.soundMgrGlobals(a0),a0
+			move.l	ASCBase,a1
+
+			clr.l	d0				; we use the high bit as a flag
+			move.b	ascFifoInt(a1),d0
+
+			move.l	30(a0),d1
+			beq.s	@doneChecking
+
+; try 0
+			cmp.b	#0,46(a0)
+			bne.s	@not0
+			btst	#0,d0
+			beq.s	@doneChecking
+			bset	#31,d0
+			bra.s	@defer
+
+@not0 ; try E0
+			cmp.b	#elsieSound,46(a0)
+			bne.s	@notElsie
+			bset	#0,d0
+			beq.s	@doneChecking
+			move.l	a0,-(sp)
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.jSuspendSoundInterrupt(a0),a0
+			jsr		(a0)
+			move.l	(sp)+,a0
+			bra.s	@defer
+
+@notElsie ; try B0
+			cmp.b	#batmanSnd,46(a0)
+			bne.s	@notBatman
+			tst.b	bmIntControlA(a1)
+			bne.s	@doneChecking
+			tst.b	47(a0)
+			beq.s	@otherpath
+			btst	#0,d0
+			beq.s	@doneChecking
+			bra.s	@common
+@otherpath	btst	#0,d0
+			bne.s	@doneChecking
+@common		move.b	#1,bmIntControlA(a1)
+			bset	#31,d0
+			bra.s	@defer
+
+@notBatman
+			_Debugger
+
+@defer		movem.l	d0/a0/a1,-(sp)
+			move.l	d1,a0
+			_DeferUserFn
+			movem.l	(sp)+,d0/a0/a1
+@doneChecking ; now do something similar for bmIntControlB...
+laber_barrier
+			move.l	34(a0),d1
+			beq.s	@doneChecking
+
+; try 0
+			cmp.b	#0,46(a0)
+			bne.s	@not0
+			btst	#2,d0
+			beq.s	@doneChecking
+			bset	#31,d0
+			bra.s	@defer
+
+@not0 ; try E0
+			cmp.b	#elsieSound,46(a0)
+			bne.s	@notElsie
+			btst	#0,d0
+			beq.s	@doneChecking
+			move.l	a0,-(sp)
+			move.l	ExpandMem,a0
+			move.l	ExpandMemRec.jSuspendSoundInterrupt(a0),a0
+			jsr		(a0)
+			move.l	(sp)+,a0
+			bra.s	@defer
+
+@notElsie ; try B0
+			cmp.b	#batmanSnd,46(a0)
+			bne.s	@notBatman
+			tst.b	bmIntControlB(a1)
+			bne.s	@doneChecking
+			btst	#2,d0
+			beq.s	@doneChecking
+			move.b	#1,bmIntControlB(a1)
+			bset	#31,d0
+			bra.s	@defer
+
+@notBatman
+			_Debugger
+
+@defer		movem.l	d0/a0/a1,-(sp)
+			move.l	d1,a0
+			_DeferUserFn
+			movem.l	(sp)+,d0/a0/a1
+
+@doneChecking
+; defer myself
+			btst	#31,d0
+			beq.s	@noInt
+			movem.l	d0/a0/a1,-(sp)
+			lea		SoundIntHandler,a0
+			_DeferUserFn
+			movem.l	(sp)+,d0/a0/a1
+@noInt		rts
+
+
+;28:00232
+EnableASCInts	ROMBind		(II,$1),(Portable,$232),(IIci,$a00e)
+DisableASCInts	ROMBind		(II,$1),(Portable,$232),(IIci,$a02e)
+ClearASCInt		ROMBind		(II,$1),(Portable,$232),(IIci,$a04c)
+
+SetupSoundInterruptVectors	Proc	Export
+			leaROM	EnableASCInts,a1
+			leaROM	DisableASCInts,a2
+			move.l	a1,a3
+			leaROM	ClearASCInt,a4
+
+			Import	ElsieEnableASCInts
+			move.l	ASCBase,a0				; nop out EnableASCInts on Elsie
+			move.b	ascVersion(a0),d0
+			and.b	#$F0,d0
+			cmp.b	#elsieSound,d0
+			bne.s	@notElsie
+			leaResident	ElsieEnableASCInts,a1
+@notElsie
+
+			Import	IIEnableASCInts, IIDisableASCInts, IIClearASCInt
+			move.l	a1,d0					; replace all on Mac II
+			btst	#0,d0
+			beq.s	@probablyBad
+			leaResident	IIEnableASCInts,a1
+			leaResident	IIDisableASCInts,a2
+			move.l	a1,a3
+			leaResident	IIClearASCInt,a4
+@probablyBad
+
+			move.l	ExpandMem,a0
+			lea		ExpandMemRec.jSetupSoundInterrupt(a0),a0
+			move.l	a1,(a0)+				; jSetupSoundInterrupt
+			move.l	a2,(a0)+				; jSuspendSoundInterrupt
+			move.l	a3,(a0)+				; jResumeSoundInterrupt
+			move.l	a4,(a0)+				; jAcknowledgeSoundInterrupt
+			rts
+
+
+;28:00284
+ElsieEnableASCInts	Proc	Export
+			rts
+
+
+;28:00286
+IIEnableASCInts	Proc	Export
+			move.l	VIA2,a0
+			bclr	#4,vPCR(a0)
+			move.b	#(1<<ifCB1)|(1<<ifIRQ),vIER(a0)
+			rts
+
+
+;28:00298
+IIDisableASCInts	Proc	Export
+			move.l	VIA2,a0
+			move.b	#(1<<ifCB1),vIER(a0)
+			rts
+
+
+;28:002a4
+IIClearASCInt	Proc	Export
+			move.l	VIA2,a0
+			move.b	#(1<<ifCB1)|(1<<ifIRQ),vIFR(a0)
+			rts
+
+
+;31:29dd6
+InstallNewGlobals	Proc	Export
+			; sound input
+			move.w	#MapFalse,ROMMapInsert
+			sub.l	#4,sp
+			move.l	#'proc',-(sp)
+			move.w	#-16497,-(sp)
+			_GetResource
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.l	(sp)+,14(a1)
+
+			; play from disk
+			move.w	#MapFalse,ROMMapInsert
+			sub.l	#4,sp
+			move.l	#'proc',-(sp)
+			move.w	#-16498,-(sp)
+			_GetResource
+			move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.l	(sp)+,20(a1)
+
+			rts
+
+
+;31:29e20
+SoundInDispatch	Proc	Export
+			tst.b	d0
+			bne.s	@notVersion
+			move.l	(sp)+,a0
+			move.l	#$01018000,(sp)
+			jmp		(a0)
+
+@notVersion	move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.l	14(a1),a0
+			lea		18(a1),a1
+			lsr.b	#1,d0
+			_ProcHelper
+
+
+;31:29e4a
+SndManagerDispatch	Proc	Export
+			clr.w	d1
+			move.b	d0,d1
+			jmp		@table(d1)
+@table
+			jmp		@easy
+			jmp		@easy
+			jmp		@easy
+			Import	__SNDSOUNDMANAGERVERSION
+			jmp		__SNDSOUNDMANAGERVERSION
+			Import	__SNDCHANNELSTATUS
+			jmp		__SNDCHANNELSTATUS
+			Import	__SNDMANAGERSTATUS
+			jmp		__SNDMANAGERSTATUS
+			Import	__SNDGETSYSBEEPSTATE
+			jmp		__SNDGETSYSBEEPSTATE
+			Import	__SNDSETSYSBEEPSTATE
+			jmp		__SNDSETSYSBEEPSTATE
+			Import	__SNDPLAYDOUBLEBUFFER
+			jmp		__SNDPLAYDOUBLEBUFFER
+			Import	__SND_NotSure
+			jmp		__SND_NotSure
+			Import	__SND_NotSure2
+			jmp		__SND_NotSure2
+
+@easy		move.l	ExpandMem,a1
+			move.l	ExpandMemRec.soundMgrGlobals(a1),a1
+			move.l	38(a1),a1
+			move.l	20(a1),a0
+			lea		24(a1),a1
+			lsr.b	#1,d0
+			_ProcHelper
+
+
+;31:29e9a
+_R253E	Proc	Export
+			move.l	4(sp),a0
+			_RmvTime
+			clr.l	tmWakeUp(a0)
+			_InsXTime
+			rts
+
+
+;31:29ea8
+_R2544	Proc	Export
+			move.l	16(sp),a0
+			tst.l	8(sp)
+			bne.s	@reinsert
+			move.w	4(a0),d0
+			btst	#15,d0
+			bne.s	@return
+			move.l	12(sp),d0
+			neg.l	d0
+			_PrimeTime
+@return		rts
+
+@reinsert	move.w	4(a0),d0
+			btst	#15,d0
+			beq.s	@doprime
+			_RmvTime
+			clr.l	tmWakeUp(a0)
+			_InsXTime
+@doprime	move.l	12(sp),d0
+			neg.l	d0
+			_PrimeTime
+			rts
+
+
+;31:29ee2
+_R254A	Proc	Export
+			dc.w	$0A
+			dc.w	$11
+			dc.w	$17
+			dc.w	$07
+			dc.w	$09
+			dc.w	$0B
+			dc.w	$10
+			dc.w	$21
+			dc.w	$2E
+			dc.w	$22
+			dc.w	$31
+			dc.w	$0E
+			dc.w	$18
+			dc.w	$21
+			dc.w	$2C
+			dc.w	$10
+			dc.w	$0D
+
+
+;31:29f04
+_R2550	Proc	Export
+			move.l	4(sp),a0
+			clr.l	d0
+			move.w	(a0),d0
+			mulu.w	#$A60,d0
+			clr.l	d1
+			move.w	TimeDBRA,d1
+			bne.s	@gotTimeDBRA
+			move.w	#$311,d1
+@gotTimeDBRA
+			divu.w	d1,d0
+			rts
+
+
+;31:29f20
+_R2556	Proc	Export
+			move.l	VIA,a0
+			bset	#7,(a0)
+			rts
+
+
+;31:29f2a
+_R255C	Proc	Export
+			move.w	sr,d0 ; set interrupt level to >= 2, save original in d0
+			move.w	d0,d1
+			and.w	#$700,d1
+			cmp.w	#$200,d1
+			bge.s	@return
+			move.w	d0,d1
+			and.w	#~$700,d1
+			or.w	#$200,d1
+			move.w	d1,sr
+@return		rts
+
+
+soundAttrGestalt	Proc	Export ; file=SoundMgrLowLevel.a (GestaltFunction.a changelog)
+			link	a6,#-$100
+			move.l	d3,-(sp)
+			move.l	#'mach',d0
+			_Gestalt
+			move.l	a0,d0
+			moveq	#8,d3
+			cmpi.w	#$36,d0
+			bne.s	loc_129F62
+			move.w	#$19,d0
+loc_129F62
+			cmp.w	byte_12A000,d0
+			bhi.s	loc_129F74
+			subq.w	#1,d0
+			lea		unk_12A002,a0
+			move.b	(a0,d0.w),d3
+			bra.s	loc_129FB0
+loc_129F74
+			move.l	$DD4,d1
+			move.l	d1,d2
+			andi.l	#$700,d2
+			beq.s	loc_129F86
+			bset	#4,d3
+loc_129F86
+			move.l	d1,d2
+			andi.l	#$800,d2
+			beq.s	loc_129F94
+			bset	#0,d3
+loc_129F94
+			move.l	d1,d2
+			andi.l	#$1000,d2
+			beq.s	loc_129FA2
+			bset	#1,d3
+loc_129FA2
+			move.l	d1,d2
+			andi.l	#$2000,d2
+			beq.s	loc_129FB0
+			bset	#6,d3
+loc_129FB0
+			move.l	#$A89F,d0
+			_GetToolTrapAddress
+			move.l	a0,-(sp)
+			move.l	#$A800,d0
+			_GetToolTrapAddress
+			cmpa.l	(sp)+,a0
+			beq.s	loc_129FEC
+			clr.l	-(sp)
+			moveq	#$14,d0
+			_SoundDispatch
+			tst.l	(sp)+
+			beq.s	loc_129FEC
+			clr.w	-(sp)
+			move.w	#1,-(sp)
+			pea		-$100(a6)
+			clr.l	-(sp)
+			move.l	#$5140014,d0
+			_SoundDispatch
+			tst.w	(sp)+
+			bne.s	loc_129FEC
+			bset	#5,d3
+loc_129FEC
+			movea.l	8(a6),a0
+			move.l	d3,(a0)
+			clr.w	$10(a6)
+			move.l	(sp)+,d3
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.l	#8,sp
+			jmp		(a0)
+byte_12A000	dc.b	0
+			dc.b	$1C
+unk_12A002	dc.b	8
+			dc.b	8
+			dc.b	8
+			dc.b	8
+			dc.b	8
+			dc.b	9
+			dc.b	9
+			dc.b	9
+			dc.b	$B
+			dc.b	9
+			dc.b	9
+			dc.b	0
+			dc.b	9
+			dc.b	0
+			dc.b	0
+			dc.b	0
+			dc.b	8
+			dc.b	$5B
+			dc.b	$18
+			dc.b	$5B
+			dc.b	$5B
+			dc.b	$5B
+			dc.b	$18
+			dc.b	8
+			dc.b	$5B
+			dc.b	$5B
+			dc.b	$18
+			dc.b	$5B
+
+
+_R2568	Proc	Export
+			link	a6,#-4
+			move.l	d7,-(sp)
+			move.l	#'hdwr',d0
+			lea		-4(a6),a0
+			movea.l	a0,a1
+			_Gestalt
+			move.l	a0,(a1)
+			move.w	d0,d7
+			moveq	#8,d0
+			and.l	-4(a6),d0
+			move.l	-8(a6),d7
+			unlk	a6
+			rts
+
+
+Snd_Func1	Proc	Export
+			Import	_R254A
+			Import	_R2550
+			Import	_R2568
+
+			link	a6,#-4
+			movem.l	d3/d6-d7/a3-a4,-(sp)
+			moveq	#$40,d0
+			_NewPtrSysClear
+			movea.l	a0,a3
+			movea.l	$2B6,a0
+			move.l	a3,$110(a0)
+			movea.l	$2AE,a0
+			tst.b	8(a0)
+			beq.s	loc_12A068
+			move.l	a3,$CC4
+loc_12A068
+			move.w	#$64,$16(a3)
+			move.w	#1,$18(a3)
+			jsr		_R2568
+			tst.w	d0
+			beq.w	loc_12A14C
+			move.l	#$400,d0
+			_NewPtrSysClear
+			movea.l	a0,a4
+			move.l	a4,$A(a3)
+			clr.w	d7
+			move.w	#$400,d3
+loc_12A092
+			dc.w	$18fc,$ff80		; move.b #$FF80,(a4)+
+			move.w	d7,d0
+			addq.w	#1,d7
+			cmp.w	d7,d3
+			bgt.s	loc_12A092
+			move.l	#'mach',d0
+			lea		-4(a6),a0
+			movea.l	a0,a1
+			_Gestalt
+			move.l	a0,(a1)
+			move.w	d0,d6
+			moveq	#$28,d0
+			_NewPtrSysClear
+			movea.l	a0,a4
+			clr.w	d7
+			move.l	d7,d0
+			add.w	d0,d0
+			lea		_R254A,a0
+			move.w	(a0,d0.w),(a4)
+			moveq	#1,d7
+loc_12A0C6
+			move.l	d7,d0
+			add.w	d0,d0
+			lea		_R254A,a0
+			pea		(a0,d0.w)
+			jsr		_R2550
+			ext.l	d7
+			move.l	d7,d1
+			add.l	d1,d1
+			add.l	a4,d1
+			movea.l	d1,a0
+			move.w	d0,(a0)
+			addq.w	#4,sp
+			move.w	d7,d0
+			addq.w	#1,d7
+			cmpi.w	#$11,d7
+			blt.s	loc_12A0C6
+			move.l	a4,$1A(a3)
+			move.l	#$100,d0
+			_NewHandle	,sys,clear
+			move.l	a0,6(a3)
+			movea.l	$CC0,a0
+			move.b	$800(a0),d0
+			ext.w	d0
+			move.w	#$F0,d1
+			and.b	d0,d1
+			move.b	d1,$2E(a3)
+			movea.l	$CC0,a0
+			moveq	#$F,d0
+			and.b	$800(a0),d0
+			move.b	d0,$2F(a3)
+			moveq	#0,d0
+			move.b	$2E(a3),d0
+			cmpi.w	#$B0,d0
+			bne.s	loc_12A152
+			movea.l	$CC0,a0
+			move.b	#1,$F09(a0)
+			movea.l	$CC0,a0
+			move.b	#1,$F29(a0)
+			movea.l	$CC0,a0
+			move.b	#1,$801(a0)
+			bra.s	loc_12A152
+loc_12A14C
+			move.b	#$FF,$2E(a3)
+loc_12A152
+			moveq	#0,d0
+			movem.l	-$18(a6),d3/d6-d7/a3-a4
+			unlk	a6
+			rts
+
+
+_R2574	Proc	Export
+			link	a6,#0
+			movem.l	d3/d5-d7/a3-a4,-(sp)
+			movea.l	8(a6),a3
+			move.w	$E(a6),d5
+			cmpi.w	#2,d5
+			bge.s	loc_12A178
+			moveq	#0,d0
+			bra.s	loc_12A1B6
+loc_12A178
+			movea.l	a3,a0
+			_HUnlock
+			movea.l	a3,a0
+			move.w	d5,d0
+			ext.l	d0
+			asl.l	#8,d0
+			_SetHandleSize
+			move.w	$220,d6
+			movea.l	a3,a0
+			_HLock
+			tst.w	d6
+			beq.s	loc_12A196
+			move.w	d6,d0
+			bra.s	loc_12A1B6
+loc_12A196
+			movea.l	(a3),a4
+			clr.w	d6
+			move.w	#$100,d3
+loc_12A19E
+			clr.w	d7
+			bra.s	loc_12A1A8
+loc_12A1A2
+			move.b	d6,(a4)+
+			move.w	d7,d0
+			addq.w	#1,d7
+loc_12A1A8
+			cmp.w	d7,d5
+			bgt.s	loc_12A1A2
+			move.w	d6,d0
+			addq.w	#1,d6
+			cmp.w	d6,d3
+			bgt.s	loc_12A19E
+			moveq	#0,d0
+loc_12A1B6
+			movem.l	-$18(a6),d3/d5-d7/a3-a4
+			unlk	a6
+			rts
+
+
+_R257A	Proc	Export
+			Import	_R255C
+
+			link	a6,#0
+			movem.l	d7/a4,-(sp)
+			movea.l	8(a6),a4
+			jsr		_R255C
+			move.w	d0,d7
+			move.w	$20(a4),d0
+			cmp.w	$22(a4),d0
+			bne.s	loc_12A1E6
+			ext.l	d7
+			move.l	d7,d0
+			move	d0,sr
+			moveq	#1,d0
+			bra.s	loc_12A228
+loc_12A1E6
+			moveq	#$FFFFFFFF,d0
+			cmp.w	$20(a4),d0
+			bne.s	loc_12A1FA
+			move.w	$22(a4),$20(a4)
+			andi.w	#$FFEF,$1C(a4)
+loc_12A1FA
+			movea.l	$C(a6),a0
+			move.w	$22(a4),d0
+			addq.w	#1,$22(a4)
+			ext.l	d0
+			asl.l	#3,d0
+			lea		$24(a4,d0.l),a1
+			move.l	(a0)+,(a1)+
+			move.l	(a0)+,(a1)+
+			move.w	$22(a4),d0
+			cmp.w	$1E(a4),d0
+			bne.s	loc_12A220
+			clr.w	$22(a4)
+loc_12A220
+			ext.l	d7
+			move.l	d7,d0
+			move	d0,sr
+			moveq	#0,d0
+loc_12A228
+			movem.l	-8(a6),d7/a4
+			unlk	a6
+			rts
+
+
+_R2580	Proc	Export
+			link	a6,#0
+			move.l	a4,-(sp)
+			movea.l	8(a6),a4
+			moveq	#$FFFFFFFF,d0
+			cmp.w	$20(a4),d0
+			bne.s	loc_12A248
+			moveq	#1,d0
+			bra.s	loc_12A286
+loc_12A248
+			move.w	$20(a4),d0
+			addq.w	#1,$20(a4)
+			ext.l	d0
+			asl.l	#3,d0
+			movea.l	$C(a6),a0
+			lea		$24(a4,d0.l),a1
+			move.l	(a1)+,(a0)+
+			move.l	(a1)+,(a0)+
+			move.w	$20(a4),d0
+			cmp.w	$1E(a4),d0
+			bne.s	loc_12A26E
+			clr.w	$20(a4)
+loc_12A26E
+			move.w	$20(a4),d0
+			cmp.w	$22(a4),d0
+			bne.s	loc_12A284
+			move.w	#$FFFF,$20(a4)
+			ori.w	#$10,$1C(a4)
+loc_12A284
+			moveq	#0,d0
+loc_12A286
+			movea.l	-4(a6),a4
+			unlk	a6
+			rts
+
+
+_R2586	Proc	Export
+			Import	_R2544
+
+			link	a6,#0
+			movem.l	d3/a3-a4,-(sp)
+			movea.l	8(a6),a0
+			movea.l	4(a0),a4
+			move.l	a4,d0
+			beq.w	def_12A2C6
+			bra.s	loc_12A2A8
+loc_12A2A6
+			movea.l	(a4),a4
+loc_12A2A8
+			tst.l	(a4)
+			bne.s	loc_12A2A6
+			movea.l	$C(a6),a0
+			move.w	(a0),d0
+			subq.w	#3,d0
+			bcs.w	def_12A2C6
+			cmpi.w	#$1C,d0
+			bhi.w	def_12A2C6
+			add.w	d0,d0
+			move.w	jtbl(d0),d0
+jtblbase	equ		*+2
+			jmp		jtblbase(d0)
+jtbl		dc.w	loc_12A304-jtblbase
+			dc.w	loc_12A312-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	loc_12A332-jtblbase
+			dc.w	loc_12A37A-jtblbase
+			dc.w	loc_12A388-jtblbase
+			dc.w	loc_12A3C6-jtblbase
+			dc.w	loc_12A3E2-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	loc_12A466-jtblbase
+			dc.w	loc_12A4A4-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+			dc.w	def_12A2C6-jtblbase
+loc_12A304
+			movea.l	8(a6),a0
+			ori.w	#2,$1C(a0)
+			bra.w	def_12A2C6
+loc_12A312
+			movea.l	8(a6),a0
+			move.w	#$FFFF,$20(a0)
+			movea.l	8(a6),a0
+			clr.w	$22(a0)
+			movea.l	8(a6),a0
+			ori.w	#$10,$1C(a0)
+			bra.w	def_12A2C6
+loc_12A332
+			movea.l	$C(a6),a0
+			moveq	#0,d0
+			move.w	2(a0),d0
+			tst.l	d0
+			movea.l	8(a6),a0
+			move.l	d0,$10(a0)
+			move.l	$42(a4),-(sp)
+			movea.l	8(a6),a0
+			move.l	$10(a0),d1
+			move.l	d1,d0
+			mulu.w	#$1F4,d1
+			swap	d0
+			mulu.w	#$1F4,d0
+			swap	d0
+			clr.w	d0
+			add.l	d0,d1
+			move.l	d1,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.l	8(a6),-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+			bra.w	def_12A2C6
+loc_12A37A
+			movea.l	8(a6),a0
+			ori.w	#4,$1C(a0)
+			bra.w	def_12A2C6
+loc_12A388
+			movea.l	8(a6),a0
+			andi.w	#$FFB3,$1C(a0)
+			moveq	#0,d0
+			move.l	d0,$10(a4)
+			movea.l	8(a6),a0
+			move.l	d0,$10(a0)
+			movea.l	8(a6),a0
+			moveq	#$FFFFFFFF,d1
+			cmp.w	$20(a0),d1
+			beq.w	def_12A2C6
+			move.l	$42(a4),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.l	d0,-(sp)
+			move.l	a0,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+			bra.w	def_12A2C6
+loc_12A3C6
+			movea.l	8(a6),a0
+			tst.l	8(a0)
+			beq.w	def_12A2C6
+			move.l	a0,-(sp)
+			move.l	$C(a6),-(sp)
+			movea.l	8(a0),a1
+			jsr		(a1)
+			bra.w	def_12A2C6
+loc_12A3E2
+			movea.l	$C(a6),a0
+			movea.l	8(a6),a1
+			lea		$14(a1),a1
+			move.l	(a0)+,(a1)+
+			move.l	(a0)+,(a1)+
+			movea.l	8(a6),a0
+			ori.w	#8,$1C(a0)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a3
+			bra.s	loc_12A460
+loc_12A408
+			moveq	#8,d0
+			and.w	$1C(a3),d0
+			beq.s	loc_12A45E
+			movea.l	$C(a6),a0
+			move.l	$18(a3),d0
+			cmp.l	4(a0),d0
+			bne.s	loc_12A45E
+			subq.w	#1,$16(a3)
+			tst.w	$16(a3)
+			bne.s	loc_12A45E
+			andi.w	#$FFF7,$1C(a3)
+			movea.l	4(a3),a4
+			bra.s	loc_12A436
+loc_12A434
+			movea.l	(a4),a4
+loc_12A436
+			tst.l	(a4)
+			bne.s	loc_12A434
+			movea.l	8(a6),a0
+			moveq	#$FFFFFFFF,d0
+			cmp.w	$20(a0),d0
+			beq.s	loc_12A45E
+			move.l	a4,d0
+			beq.s	loc_12A45E
+			move.l	$42(a4),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.l	d0,-(sp)
+			move.l	a0,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+loc_12A45E
+			movea.l	(a3),a3
+loc_12A460
+			move.l	a3,d0
+			bne.s	loc_12A408
+			bra.s	def_12A2C6
+loc_12A466
+			movea.l	$C(a6),a0
+			moveq	#0,d0
+			move.w	2(a0),d0
+			move.l	d0,$10(a4)
+			move.l	d0,$C(a4)
+			move.l	$3E(a4),-(sp)
+			move.l	$C(a4),d1
+			move.l	d1,d0
+			mulu.w	#$1F4,d1
+			swap	d0
+			mulu.w	#$1F4,d0
+			swap	d0
+			clr.w	d0
+			add.l	d0,d1
+			move.l	d1,-(sp)
+			move.l	a4,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+			bra.s	def_12A2C6
+loc_12A4A4
+			movea.l	$C(a6),a0
+			moveq	#0,d0
+			move.w	2(a0),d0
+			move.l	d0,$C(a4)
+			move.l	$3E(a4),-(sp)
+			move.l	$C(a4),d1
+			move.l	d1,d0
+			mulu.w	#$1F4,d1
+			swap	d0
+			mulu.w	#$1F4,d0
+			swap	d0
+			clr.w	d0
+			add.l	d0,d1
+			move.l	d1,-(sp)
+			move.l	a4,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+def_12A2C6
+			movem.l	-$C(a6),d3/a3-a4
+			unlk	a6
+			rts
+
+
+_R258C_OTHERNAME	Proc	Export
+			Import	_R2586
+			Import	_R258C
+
+			link	a6,#0
+			movem.l	d6-d7/a3-a4,-(sp)
+			movea.l	$10(a6),a3
+			movea.l	$C(a6),a4
+			clr.w	d6
+loc_12A4F8
+			moveq	#0,d0
+			move.w	(a4),d0
+			tst.l	d0
+			beq.s	loc_12A536
+			move.l	a3,d0
+			beq.s	loc_12A528
+			subq.l	#2,sp
+			move.l	8(a6),-(sp)
+			move.l	a4,-(sp)
+			move.l	a3,-(sp)
+			movea.l	4(a3),a0
+			jsr		(a0)
+			move.b	(sp)+,d7
+			move.l	(a3),-(sp)
+			move.l	a4,-(sp)
+			move.l	8(a6),-(sp)
+			jsr		_R258C ; this is an internal call, we need the assembler not to optimise it
+			lea		$C(sp),sp
+			bra.s	loc_12A536
+loc_12A528
+			clr.b	d7
+			move.l	a4,-(sp)
+			move.l	8(a6),-(sp)
+			jsr		_R2586
+			addq.w	#8,sp
+loc_12A536
+			move.w	#$15,(a4)
+			addq.w	#1,d6
+			move.w	d6,2(a4)
+			tst.b	d7
+			bne.s	loc_12A4F8
+			movem.l	-$10(a6),d6-d7/a3-a4
+			unlk	a6
+			rts
+
+
+_R2592	Proc	Export
+			Import	_R2580
+			Import	_R258C_OTHERNAME
+
+			link	a6,#-8
+			move.l	a4,-(sp)
+			movea.l	8(a6),a4
+			pea		-8(a6)
+			move.l	a4,-(sp)
+			jsr		_R2580
+			tst.b	d0
+			addq.w	#8,sp
+			beq.s	loc_12A56C
+			moveq	#1,d0
+			bra.s	loc_12A580
+loc_12A56C
+			move.l	4(a4),-(sp)
+			pea		-8(a6)
+			move.l	a4,-(sp)
+			jsr		_R258C_OTHERNAME
+			moveq	#0,d0
+			lea		$C(sp),sp
+loc_12A580
+			movea.l	-$C(a6),a4
+			unlk	a6
+			rts
+
+
+_R2598	Proc	Export
+			Import	_R253E
+			Import	_R258C_OTHERNAME
+
+			link	a6,#-8
+			movem.l	a3-a4,-(sp)
+			movea.l	8(a6),a3
+			moveq	#$10,d0
+			and.w	$1C(a3),d0
+			beq.s	loc_12A5D0
+			move.w	#$F,-8(a6)
+			move.l	4(a3),-(sp)
+			pea		-8(a6)
+			move.l	a3,-(sp)
+			jsr		_R258C_OTHERNAME
+			andi.w	#$FFEF,$1C(a3)
+			movea.l	4(a3),a4
+			lea		$C(sp),sp
+			bra.s	loc_12A5C2
+loc_12A5C0
+			movea.l	(a4),a4
+loc_12A5C2
+			tst.l	(a4)
+			bne.s	loc_12A5C0
+			move.l	$42(a4),-(sp)
+			jsr		_R253E
+			addq.w	#4,sp
+loc_12A5D0
+			movem.l	-$10(a6),a3-a4
+			unlk	a6
+			rts
+
+
+_R259E	Proc	Export
+			Import	_R258C_OTHERNAME
+
+			link	a6,#-8
+			move.w	#$14,-8(a6)
+			move.l	$C(a6),-(sp)
+			pea		-8(a6)
+			move.l	8(a6),-(sp)
+			jsr		_R258C_OTHERNAME
+			unlk	a6
+			rts
+
+
+_R25A4	Proc	Export
+			link	a6,#-4
+			movem.l	d3/a3-a4,-(sp)
+			move.l	8(a6),d0
+			_StripAddress
+			move.l	d0,-4(a6)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a3
+			bra.s	loc_12A634
+loc_12A616
+			movea.l	4(a3),a4
+			bra.s	loc_12A62E
+loc_12A61C
+			move.l	4(a4),d0
+			_StripAddress
+			cmp.l	-4(a6),d0
+			bne.s	loc_12A62C
+			move.l	a4,d0
+			bra.s	loc_12A63A
+loc_12A62C
+			movea.l	(a4),a4
+loc_12A62E
+			move.l	a4,d0
+			bne.s	loc_12A61C
+			movea.l	(a3),a3
+loc_12A634
+			move.l	a3,d0
+			bne.s	loc_12A616
+			moveq	#0,d0
+loc_12A63A
+			movem.l	-$10(a6),d3/a3-a4
+			unlk	a6
+			rts
+
+
+_R25AA	Proc	Export
+			Import	_R2568
+			Import	_R2574
+			Import	_R258C_OTHERNAME
+			Import	_R25A4
+
+			link	a6,#-8
+			movem.l	d3/a3-a4,-(sp)
+			move.l	8(a6),d0
+			_StripAddress
+			movea.l	d0,a4
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			lea		(a0),a3
+			bra.s	loc_12A674
+loc_12A660
+			move.l	(a3),d0
+			_StripAddress
+			cmpa.l	d0,a4
+			bne.s	loc_12A670
+			movea.l	8(a6),a0
+			move.l	(a0),(a3)
+			bra.s	loc_12A678
+loc_12A670
+			movea.l	(a3),a0
+			movea.l	a0,a3
+loc_12A674
+			tst.l	(a3)
+			bne.s	loc_12A660
+loc_12A678
+			movea.l	8(a6),a0
+			movea.l	4(a0),a4
+			bra.s	loc_12A6D2
+loc_12A682
+			movea.l	(a4),a3
+			move.w	#2,-8(a6)
+			move.l	a4,-(sp)
+			pea		-8(a6)
+			move.l	8(a6),-(sp)
+			jsr		_R258C_OTHERNAME
+			move.l	4(a4),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			lea		$10(sp),sp
+			bne.s	loc_12A6B4
+			tst.l	$16(a4)
+			beq.s	loc_12A6B4
+			movea.l	$16(a4),a0
+			_HUnlock
+loc_12A6B4
+			movea.l	$3E(a4),a0
+			_RmvTime
+			movea.l	$3E(a4),a0
+			_DisposePtr
+			movea.l	$42(a4),a0
+			_RmvTime
+			movea.l	$42(a4),a0
+			_DisposePtr
+			movea.l	a4,a0
+			_DisposePtr
+			movea.l	a3,a4
+loc_12A6D2
+			move.l	a4,d0
+			bne.s	loc_12A682
+			movea.l	8(a6),a0
+			move.w	$1C(a0),d0
+			btst	#0,d0
+			beq.s	loc_12A6E6
+			_DisposePtr
+loc_12A6E6
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			tst.w	4(a0)
+			ble.s	loc_12A72A
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			subq.w	#1,4(a0)
+			jsr		_R2568
+			tst.w	d0
+			beq.s	loc_12A72A
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.w	4(a0),d0
+			ext.l	d0
+			move.l	d0,-(sp)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	6(a0),-(sp)
+			jsr		_R2574
+			addq.w	#8,sp
+loc_12A72A
+			movem.l	-$14(a6),d3/a3-a4
+			unlk	a6
+			rts
+
+
+_R25B0	Proc	Export
+			link	a6,#-$C
+			movem.l	d3/d6-d7/a3-a4,-(sp)
+			movea.l	$C(a6),a0
+			movea.l	(a0),a3
+			lea		4(a3),a4
+			move.w	2(a3),d7
+			bra.s	loc_12A76A
+loc_12A74C
+			subq.l	#2,sp
+			move.l	8(a6),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.w	(a4),-(sp)
+			move.l	2(a4),-(sp)
+			_SndAddModifier
+			move.w	(sp)+,d6
+			beq.s	loc_12A766
+			move.w	d6,d0
+			bra.s	loc_12A7BE
+loc_12A766
+			subq.w	#1,d7
+			addq.w	#6,a4
+loc_12A76A
+			tst.w	d7
+			bgt.s	loc_12A74C
+			movea.l	a4,a0
+			move.w	(a0)+,d7
+			move.l	a0,-$C(a6)
+			bra.s	loc_12A7B8
+loc_12A778
+			move.l	-$C(a6),d0
+			addq.l	#8,-$C(a6)
+			movea.l	d0,a0
+			lea		-8(a6),a1
+			move.l	(a0)+,(a1)+
+			move.l	(a0)+,(a1)+
+			moveq	#0,d0
+			move.w	-8(a6),d0
+			move.w	#$8000,d1
+			and.w	d0,d1
+			beq.s	loc_12A7A4
+			move.l	a3,d0
+			add.l	d0,-4(a6)
+			andi.w	#$7FFF,-8(a6)
+loc_12A7A4
+			subq.l	#2,sp
+			move.l	8(a6),-(sp)
+			pea		-8(a6)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDoCommand
+			addq.w	#2,sp
+			subq.w	#1,d7
+loc_12A7B8
+			tst.w	d7
+			bgt.s	loc_12A778
+			moveq	#0,d0
+loc_12A7BE
+			movem.l	-$20(a6),d3/d6-d7/a3-a4
+			unlk	a6
+			rts
+
+
+_R25B6	Proc	Export
+			Import	_R2544
+			Import	_R259E
+
+			link	a6,#-4
+			movem.l	a3-a4,-(sp)
+			move.l	a1,d0
+			movea.l	d0,a3
+			move.l	$16(a3),-4(a6)
+			movea.l	$1A(a3),a4
+			move.l	a4,-(sp)
+			move.l	-4(a6),-(sp)
+			jsr		_R259E
+			tst.l	$10(a4)
+			addq.w	#8,sp
+			ble.s	loc_12A81E
+			move.l	$10(a4),$C(a4)
+			move.l	a3,-(sp)
+			move.l	$10(a4),d1
+			move.l	d1,d0
+			mulu.w	#$1F4,d1
+			swap	d0
+			mulu.w	#$1F4,d0
+			swap	d0
+			clr.w	d0
+			add.l	d0,d1
+			move.l	d1,-(sp)
+			move.l	a4,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+loc_12A81E
+			movem.l	-$C(a6),a3-a4
+			unlk	a6
+			rts
+
+
+_R25BC	Proc	Export
+			Import	_R253E
+			Import	_R2592
+			Import	_R2598
+			Import	NGETTRAPADDRESS
+
+			link	a6,#-4
+			movem.l	d7/a3-a4,-(sp)
+			move.l	a1,d0
+			move.l	d0,-4(a6)
+			movea.l	d0,a0
+			movea.l	$16(a0),a4
+			movea.l	-4(a6),a0
+			movea.l	$1A(a0),a3
+			move.l	$10(a4),d7
+			moveq	#0,d0
+			move.l	d0,$10(a4)
+			tst.l	d7
+			bne.s	loc_12A884
+			movea.l	4(a4),a3
+			bra.s	loc_12A85A
+loc_12A858
+			movea.l	(a3),a3
+loc_12A85A
+			tst.l	(a3)
+			bne.s	loc_12A858
+			move.l	$42(a3),-(sp)
+			jsr		_R253E
+			addq.w	#4,sp
+			bra.s	loc_12A884
+loc_12A86A
+			move.l	a4,-(sp)
+			jsr		_R2592
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12A884
+			tst.l	d7
+			beq.s	loc_12A892
+			move.l	a4,-(sp)
+			jsr		_R2598
+			addq.w	#4,sp
+			bra.s	loc_12A892
+loc_12A884
+			tst.l	$10(a4)
+			bne.s	loc_12A892
+			moveq	#$4C,d0
+			and.w	$1C(a4),d0
+			beq.s	loc_12A86A
+loc_12A892
+			movem.l	-$10(a6),d7/a3-a4
+			unlk	a6
+			rts
+
+
+IsDeadProcess	Proc	Export
+			Import	NGETTRAPADDRESS
+
+			link	a6,#-$A
+			clr.b	-1(a6)
+			subq.l	#4,sp
+			move.w	#$A89F,-(sp)
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			jsr		NGETTRAPADDRESS
+			subq.l	#4,sp
+			move.w	#$A88F,-(sp)
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			jsr		NGETTRAPADDRESS
+			move.l	(sp)+,d0
+			cmp.l	(sp)+,d0
+			beq.s	loc_12A8EC
+			subq.l	#2,sp
+			pea		-$A(a6)
+			move.w	#$37,-(sp)
+			_OSDispatch
+			tst.w	(sp)+
+			bne.s	loc_12A8EC
+			subq.l	#2,sp
+			pea		-$A(a6)
+			pea		8(a6)
+			pea		-1(a6)
+			move.w	#$3D,-(sp)
+			_OSDispatch
+			addq.w	#2,sp
+loc_12A8EC
+			move.b	-1(a6),d0
+			unlk	a6
+			rts
+
+
+__SNDAPPDEAD	PatchProc	_SndAppDead,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R2556
+			Import	IsDeadProcess
+
+			link	a6,#-4
+			movem.l	d3/a3-a4,-(sp)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a3
+			bra.s	loc_12A93C
+loc_12A908
+			move.l	(a3),-4(a6)
+			movea.l	4(a3),a4
+			bra.s	loc_12A934
+loc_12A912
+			lea		$84(a4),a0
+			move.l	-(a0),-(sp)
+			move.l	-(a0),-(sp)
+			jsr		IsDeadProcess
+			tst.b	d0
+			addq.w	#8,sp
+			beq.s	loc_12A932
+			subq.l	#2,sp
+			move.l	a3,-(sp)
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			_SndDisposeChannel
+			addq.w	#2,sp
+			bra.s	loc_12A938
+loc_12A932
+			movea.l	(a4),a4
+loc_12A934
+			move.l	a4,d0
+			bne.s	loc_12A912
+loc_12A938
+			movea.l	-4(a6),a3
+loc_12A93C
+			move.l	a3,d0
+			bne.s	loc_12A908
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	$26(a0),a0
+			movea.l	2(a0),a3
+			bra.s	loc_12A976
+loc_12A952
+			movea.l	(a3),a4
+			lea		$5C(a3),a0
+			move.l	-(a0),-(sp)
+			move.l	-(a0),-(sp)
+			jsr		IsDeadProcess
+			tst.b	d0
+			addq.w	#8,sp
+			beq.s	loc_12A974
+			subq.l	#2,sp
+			move.l	a3,-(sp)
+			move.l	#$21C0014,d0
+			_SoundDispatch
+			addq.w	#2,sp
+loc_12A974
+			movea.l	a4,a3
+loc_12A976
+			move.l	a3,d0
+			bne.s	loc_12A952
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			tst.w	4(a0)
+			bne.s	loc_12A98C
+			jsr		_R2556
+loc_12A98C
+			movem.l	-$10(a6),d3/a3-a4
+			unlk	a6
+			rts
+
+
+__SNDDOCOMMAND	PatchProc	_SndDoCommand,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R2544
+			Import	_R255C
+			Import	_R257A
+			Import	_R261C
+
+			link	a6,#0
+			movem.l	d6-d7/a3-a4,-(sp)
+			move.b	8(a6),d6
+			movea.l	$E(a6),a3
+			move.l	a3,-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12A9BA
+			move.w	#$FF33,$12(a6)
+			bra.s	loc_12AA2C
+loc_12A9BA
+			movea.l	4(a3),a4
+			move.l	a4,d0
+			bne.s	loc_12A9CC
+			move.w	#$FF33,$12(a6)
+			bra.s	loc_12AA2C
+loc_12A9CA
+			movea.l	(a4),a4
+loc_12A9CC
+			tst.l	(a4)
+			bne.s	loc_12A9CA
+loc_12A9D0
+			move.l	$A(a6),-(sp)
+			move.l	a3,-(sp)
+			jsr		_R257A
+			move.b	d0,d7
+			addq.w	#8,sp
+			beq.s	loc_12A9E4
+			tst.b	d6
+			beq.s	loc_12A9D0
+loc_12A9E4
+			jsr		_R255C
+			move.w	d0,d6
+			tst.l	$10(a3)
+			bgt.s	loc_12AA14
+			moveq	#$4C,d0
+			and.w	$1C(a3),d0
+			bne.s	loc_12AA14
+			moveq	#$FFFFFFFF,d0
+			cmp.w	$20(a3),d0
+			beq.s	loc_12AA14
+			move.l	$42(a4),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.l	d0,-(sp)
+			move.l	a3,-(sp)
+			jsr		_R2544
+			lea		$10(sp),sp
+loc_12AA14
+			ext.l	d6
+			move.l	d6,d0
+			move	d0,sr
+			tst.b	d7
+			beq.s	loc_12AA26
+			move.l	#$FFFFFF35,d0
+			bra.s	loc_12AA28
+loc_12AA26
+			moveq	#0,d0
+loc_12AA28
+			move.w	d0,$12(a6)
+loc_12AA2C
+			movem.l	-$10(a6),d6-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			lea		$A(sp),sp
+			jmp		(a0)
+
+
+__SNDDOIMMEDIATE	PatchProc	_SndDoImmediate,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R253E
+			Import	_R255C
+			Import	_R258C_OTHERNAME
+			Import	_R261C
+
+			link	a6,#-8
+			movem.l	d7/a3-a4,-(sp)
+			movea.l	$C(a6),a3
+			move.l	a3,-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12AA5C
+			move.w	#$FF33,$10(a6)
+			bra.s	loc_12AAB2
+loc_12AA5C
+			movea.l	8(a6),a0
+			moveq	#0,d0
+			move.w	(a0),d0
+			moveq	#$28,d1
+			cmp.l	d0,d1
+			bne.s	loc_12AA84
+			movea.l	4(a3),a4
+			bra.s	loc_12AA72
+loc_12AA70
+			movea.l	(a4),a4
+loc_12AA72
+			tst.l	(a4)
+			bne.s	loc_12AA70
+			move.l	a4,d0
+			beq.s	loc_12AA84
+			move.l	$42(a4),-(sp)
+			jsr		_R253E
+			addq.w	#4,sp
+loc_12AA84
+			movea.l	8(a6),a0
+			lea		-8(a6),a1
+			move.l	(a0)+,(a1)+
+			move.l	(a0)+,(a1)+
+			jsr		_R255C
+			move.w	d0,d7
+			move.l	4(a3),-(sp)
+			pea		-8(a6)
+			move.l	a3,-(sp)
+			jsr		_R258C_OTHERNAME
+			ext.l	d7
+			move.l	d7,d0
+			move	d0,sr
+			clr.w	$10(a6)
+			lea		$C(sp),sp
+loc_12AAB2
+			movem.l	-$14(a6),d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#8,sp
+			jmp		(a0)
+
+
+__SNDNEWCHANNEL	PatchProc	_SndNewChannel,(Plus,SE,II,Portable,IIci,notAUX)
+; Touched by AIncludes Release Notes, 5/27/92 10:41:35 PM
+			Import	_R255C
+			Import	_R2568
+			Import	_R2574
+			Import	_R25AA
+
+			link	a6,#-4
+			movem.l	d3/d5-d7/a3-a4,-(sp)
+			move.w	$10(a6),d5
+			tst.l	$12(a6)
+			bne.s	loc_12AADC
+			move.w	#$FF33,$16(a6)
+			bra.w	loc_12AC74
+loc_12AADC
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			tst.l	$1E(a0)
+			beq.s	loc_12AB10
+			move.l	#'snd ',d0
+			lea		-4(a6),a0
+			movea.l	a0,a1
+			_Gestalt
+			move.l	a0,(a1)
+			tst.w	d0
+			bne.s	loc_12AB10
+			moveq	#6,d0
+			and.l	-4(a6),d0
+			bne.s	loc_12AB10
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12AC74
+loc_12AB10
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a4
+			bra.s	loc_12AB42
+loc_12AB1C
+			movea.l	(a4),a3
+			movea.l	$12(a6),a0
+			cmpa.l	(a0),a4
+			bne.s	loc_12AB30
+			move.w	#$FF2F,$16(a6)
+			bra.w	loc_12AC74
+loc_12AB30
+			moveq	#$20,d0
+			and.w	$1C(a4),d0
+			beq.s	loc_12AB40
+			move.l	a4,-(sp)
+			jsr		_R25AA
+			addq.w	#4,sp
+loc_12AB40
+			movea.l	a3,a4
+loc_12AB42
+			move.l	a4,d0
+			bne.s	loc_12AB1C
+			clr.b	d7
+			movea.l	$12(a6),a0
+			movea.l	(a0),a4
+			move.l	a4,d0
+			bne.s	loc_12AB80
+			move.l	#$424,d0
+			_NewPtrSysClear
+			movea.l	$12(a6),a1
+			move.l	a0,(a1)
+			movea.l	a0,a4
+			move.l	a4,d0
+			bne.s	loc_12AB70
+			move.w	$220,$16(a6)
+			bra.w	loc_12AC74
+loc_12AB70
+			moveq	#1,d7
+			move.w	#1,$1C(a4)
+			move.w	#$80,$1E(a4)
+			bra.s	loc_12AB94
+loc_12AB80
+			tst.w	$1E(a4)
+			bne.s	loc_12AB90
+			move.w	#$FF33,$16(a6)
+			bra.w	loc_12AC74
+loc_12AB90
+			clr.w	$1C(a4)
+loc_12AB94
+			moveq	#0,d0
+			move.l	d0,4(a4)
+			move.l	8(a6),8(a4)
+			move.l	d0,$C(a4)
+			move.l	d0,$10(a4)
+			move.w	#$FFFF,$20(a4)
+			clr.w	$22(a4)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	(a0),(a4)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			addq.w	#1,4(a0)
+			tst.w	d5
+			beq.s	off_12ABFA
+			subq.l	#2,sp
+			move.l	a4,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.w	d5,-(sp)
+			move.l	$C(a6),-(sp)
+			_SndAddModifier
+			move.w	(sp)+,d6
+			beq.s	off_12ABFA
+			tst.b	d7
+			beq.s	loc_12ABEC
+			movea.l	$12(a6),a0
+			moveq	#0,d0
+			move.l	d0,(a0)
+loc_12ABEC
+			move.l	a4,-(sp)
+			jsr		_R25AA
+			move.w	d6,$16(a6)
+			addq.w	#4,sp
+			bra.s	loc_12AC74
+off_12ABFA	jsr		_R255C
+			move.w	d0,d5
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	a4,(a0)
+			ext.l	d5
+			move.l	d5,d0
+			move	d0,sr
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			moveq	#1,d0
+			cmp.w	4(a0),d0
+			bge.s	loc_12AC70
+			jsr		_R2568
+			tst.w	d0
+			beq.s	loc_12AC70
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.w	4(a0),d0
+			ext.l	d0
+			move.l	d0,-(sp)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	6(a0),-(sp)
+			jsr		_R2574
+			tst.w	d0
+			sne		d0
+			neg.b	d0
+			ext.w	d0
+			move.w	d0,d6
+			addq.w	#8,sp
+			beq.s	loc_12AC70
+			tst.b	d7
+			beq.s	loc_12AC62
+			movea.l	$12(a6),a0
+			moveq	#0,d0
+			move.l	d0,(a0)
+loc_12AC62
+			move.l	a4,-(sp)
+			jsr		_R25AA
+			move.w	d6,$16(a6)
+			addq.w	#4,sp
+			bra.s	loc_12AC74
+loc_12AC70
+			clr.w	$16(a6)
+loc_12AC74
+			movem.l	-$1C(a6),d3/d5-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			lea		$E(sp),sp
+			jmp		(a0)
+
+
+__SNDDISPOSECHANNEL	PatchProc	_SndDisposeChannel,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R25AA
+			Import	_R261C
+
+			link	a6,#-$C
+			move.l	a4,-(sp)
+			movea.l	$A(a6),a4
+			move.l	a4,-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12ACA2
+			move.w	#$FF33,$E(a6)
+			bra.s	loc_12AD10
+loc_12ACA2
+			tst.l	4(a4)
+			beq.s	loc_12ACF8
+			moveq	#2,d0
+			and.w	$1C(a4),d0
+			bne.s	loc_12ACF8
+			tst.b	8(a6)
+			beq.s	loc_12ACDA
+			move.w	#4,-$C(a6)
+			subq.l	#2,sp
+			move.l	a4,-(sp)
+			pea		-$C(a6)
+			_SndDoImmediate
+			move.w	#3,-$C(a6)
+			subq.l	#2,sp
+			move.l	a4,-(sp)
+			pea		-$C(a6)
+			_SndDoImmediate
+			addq.w	#4,sp
+			bra.s	loc_12ACF0
+loc_12ACDA
+			move.w	#3,-$C(a6)
+			subq.l	#2,sp
+			move.l	a4,-(sp)
+			pea		-$C(a6)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDoCommand
+			addq.w	#2,sp
+loc_12ACF0
+			moveq	#2,d0
+			and.w	$1C(a4),d0
+			beq.s	loc_12ACF0
+loc_12ACF8
+			movea.w	#3,a0
+			lea		-4(a6),a1
+			_Delay
+			move.l	d0,(a1)
+			move.l	a4,-(sp)
+			jsr		_R25AA
+			clr.w	$E(a6)
+			addq.w	#4,sp
+loc_12AD10
+			movea.l	-$10(a6),a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#6,sp
+			jmp		(a0)
+
+
+__SNDPLAY	PatchProc	_SndPlay,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R2568
+			Import	_R2574
+			Import	_R25AA
+			Import	_R25B0
+			Import	_R261C
+
+			link	a6,#-$C
+			movem.l	d4-d7/a3-a4,-(sp)
+			move.b	8(a6),d4
+			movea.l	$E(a6),a3
+			movea.l	$A(a6),a4
+			move.l	a3,d0
+			seq		d0
+			andi.w	#1,d0
+			ext.l	d0
+			move.b	d0,d6
+			beq.s	loc_12AD40
+			clr.b	d4
+loc_12AD40
+			move.l	a4,d0
+			beq.s	loc_12AD48
+			tst.l	(a4)
+			bne.s	loc_12AD52
+loc_12AD48
+			move.w	#$FF34,$12(a6)
+			bra.w	loc_12AF1E
+loc_12AD52
+			movea.l	(a4),a0
+			moveq	#1,d0
+			cmp.w	(a0),d0
+			beq.s	loc_12AD6A
+			moveq	#2,d0
+			cmp.w	(a0),d0
+			beq.s	loc_12AD6A
+			move.w	#$FF32,$12(a6)
+			bra.w	loc_12AF1E
+loc_12AD6A
+			movea.l	a4,a0
+			_HGetState
+			move.b	d0,d5
+			movea.l	a4,a0
+			_HLock
+			tst.b	d6
+			beq.s	loc_12ADA2
+			moveq	#0,d0
+			move.l	d0,-$C(a6)
+			subq.l	#2,sp
+			pea		-$C(a6)
+			moveq	#0,d0
+			move.w	d0,-(sp)
+			moveq	#0,d1
+			move.l	d1,-(sp)
+			move.l	d1,-(sp)
+			_SndNewChannel
+			move.w	(sp)+,d7
+			beq.s	loc_12ADC2
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			move.w	d7,$12(a6)
+			bra.w	loc_12AF1E
+loc_12ADA2
+			move.l	a3,-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12ADBE
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			move.w	#$FF33,$12(a6)
+			bra.w	loc_12AF1E
+loc_12ADBE
+			move.l	a3,-$C(a6)
+loc_12ADC2
+			movea.l	(a4),a0
+			moveq	#1,d0
+			cmp.w	(a0),d0
+			bne.w	loc_12AE66
+			tst.w	2(a0)
+			bne.s	loc_12AE38
+			movea.l	-$C(a6),a0
+			tst.l	4(a0)
+			bne.s	loc_12AE38
+			subq.l	#2,sp
+			move.l	-$C(a6),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			moveq	#1,d1
+			move.w	d1,-(sp)
+			move.l	d0,-(sp)
+			_SndAddModifier
+			move.w	(sp)+,d7
+			beq.s	loc_12AE38
+			tst.b	d6
+			beq.s	loc_12AE00
+			move.l	-$C(a6),-(sp)
+			jsr		_R25AA
+			addq.w	#4,sp
+loc_12AE00
+			jsr		_R2568
+			tst.w	d0
+			beq.s	loc_12AE2A
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.w	4(a0),d0
+			ext.l	d0
+			move.l	d0,-(sp)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	6(a0),-(sp)
+			jsr		_R2574
+			addq.w	#8,sp
+loc_12AE2A
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			move.w	d7,$12(a6)
+			bra.w	loc_12AF1E
+loc_12AE38
+			move.l	a4,-(sp)
+			move.l	-$C(a6),-(sp)
+			jsr		_R25B0
+			move.w	d0,d7
+			addq.w	#8,sp
+			beq.w	loc_12AED8
+			tst.b	d6
+			beq.s	loc_12AE58
+			move.l	-$C(a6),-(sp)
+			jsr		_R25AA
+			addq.w	#4,sp
+loc_12AE58
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			move.w	d7,$12(a6)
+			bra.w	loc_12AF1E
+loc_12AE66
+			subq.l	#2,sp
+			move.l	-$C(a6),-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			moveq	#5,d1
+			move.w	d1,-(sp)
+			move.l	d0,-(sp)
+			_SndAddModifier
+			move.w	(sp)+,d7
+			beq.s	loc_12AE98
+			tst.b	d6
+			beq.s	loc_12AE8A
+			move.l	-$C(a6),-(sp)
+			jsr		_R25AA
+			addq.w	#4,sp
+loc_12AE8A
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			move.w	d7,$12(a6)
+			bra.w	loc_12AF1E
+loc_12AE98
+			move.w	#$51,-8(a6)
+			clr.w	-6(a6)
+			movea.l	(a4),a3
+			addq.w	#4,a3
+			move.l	a3,d0
+			addq.l	#2,d0
+			move.w	(a3),d1
+			ext.l	d1
+			asl.l	#3,d1
+			add.l	d0,d1
+			move.l	d1,-4(a6)
+			subq.l	#2,sp
+			move.l	-$C(a6),-(sp)
+			pea		-8(a6)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDoCommand
+			move.w	(sp)+,d7
+			beq.s	loc_12AED8
+			tst.b	d6
+			beq.s	loc_12AED8
+			move.l	-$C(a6),-(sp)
+			jsr		_R25AA
+			addq.w	#4,sp
+loc_12AED8
+			tst.b	d4
+			bne.s	loc_12AF1A
+			tst.b	d6
+			beq.s	loc_12AEF0
+			subq.l	#2,sp
+			move.l	-$C(a6),-(sp)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDisposeChannel
+			move.w	(sp)+,d7
+			bra.s	loc_12AF14
+loc_12AEF0
+			move.w	#3,-8(a6)
+			subq.l	#2,sp
+			move.l	-$C(a6),-(sp)
+			pea		-8(a6)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDoCommand
+			addq.w	#2,sp
+loc_12AF08
+			movea.l	-$C(a6),a0
+			moveq	#2,d0
+			and.w	$1C(a0),d0
+			beq.s	loc_12AF08
+loc_12AF14
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+loc_12AF1A
+			move.w	d7,$12(a6)
+loc_12AF1E
+			movem.l	-$24(a6),d4-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			lea		$A(sp),sp
+			jmp		(a0)
+
+
+__SNDCONTROL	PatchProc	_SndControl,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R2568
+			Import	_R2586
+
+			link	a6,#-4
+			movem.l	d5-d7/a3-a4,-(sp)
+			movea.l	8(a6),a3
+			move.w	$C(a6),d7
+			beq.w	loc_12AFEC
+			move.w	d7,d6
+			cmpi.w	#$800,d7
+			bge.s	loc_12AF74
+			jsr		_R2568
+			tst.w	d0
+			beq.s	loc_12AF70
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			moveq	#0,d0
+			move.b	$2E(a0),d0
+			tst.l	d0
+			beq.s	loc_12AF6A
+			cmpi.w	#5,d7
+			bne.s	loc_12AF70
+loc_12AF6A
+			addi.w	#$800,d6
+			bra.s	loc_12AF74
+loc_12AF70
+			addi.w	#$1000,d6
+loc_12AF74
+			moveq	#0,d5
+			move.b	$A5E,d5
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			_SetResLoad
+			subq.l	#4,sp
+			move.l	#'snth',-(sp)
+			move.w	d6,-(sp)
+			_GetResource
+			movea.l	(sp)+,a4
+			move.l	a4,d0
+			bne.s	loc_12AFC0
+			subq.l	#4,sp
+			move.l	#'snth',-(sp)
+			move.w	d7,-(sp)
+			_GetResource
+			movea.l	(sp)+,a4
+			move.l	a4,d0
+			bne.s	loc_12AFC0
+			subq.l	#2,sp
+			_ResError
+			move.w	(sp)+,d7
+			beq.s	loc_12AFB0
+			move.w	d7,d0
+			bra.s	loc_12AFB4
+loc_12AFB0
+			move.w	#$FF34,d0
+loc_12AFB4
+			move.w	d0,d7
+			move.b	d5,-(sp)
+			_SetResLoad
+			move.w	d7,$E(a6)
+			bra.s	loc_12AFFC
+loc_12AFC0
+			move.b	d5,-(sp)
+			_SetResLoad
+			movea.l	a4,a0
+			_HGetState
+			move.b	d0,d5
+			movea.l	a4,a0
+			_HLock
+			move.l	(a4),-4(a6)
+			subq.l	#2,sp
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			move.l	a3,-(sp)
+			move.l	d0,-(sp)
+			movea.l	-4(a6),a0
+			jsr		(a0)
+			movea.l	a4,a0
+			move.b	d5,d0
+			_HSetState
+			addq.w	#2,sp
+			bra.s	loc_12AFF8
+loc_12AFEC
+			move.l	a3,-(sp)
+			moveq	#0,d0
+			move.l	d0,-(sp)
+			jsr		_R2586
+			addq.w	#8,sp
+loc_12AFF8
+			clr.w	$E(a6)
+loc_12AFFC
+			movem.l	-$18(a6),d5-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#6,sp
+			jmp		(a0)
+
+
+__SNDADDMODIFIER	PatchProc	_SndAddModifier,(Plus,SE,II,Portable,IIci,notAUX)
+			Import	_R255C
+			Import	_R2568
+			Import	_R258C_OTHERNAME
+			Import	_R25A4
+			Import	_R25B6
+			Import	_R25BC
+			Import	NGETTRAPADDRESS
+
+			link	a6,#-$C
+			movem.l	d3-d7/a3-a4,-(sp)
+			move.l	8(a6),d5
+			move.w	$C(a6),d7
+			tst.l	$12(a6)
+			bne.s	loc_12B02A
+			move.w	#$FF33,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B02A
+			tst.l	$E(a6)
+			bne.w	loc_12B146
+			tst.w	d7
+			bne.s	loc_12B03E
+			clr.w	$16(a6)
+			bra.w	loc_12B3AE
+loc_12B03E
+			tst.b	$27E
+			beq.s	loc_12B0BC
+			tst.b	$27E
+			bge.s	loc_12B054
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B054
+			cmpi.w	#1,d7
+			bne.s	loc_12B064
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B064
+			cmpi.w	#5,d7
+			bne.s	loc_12B07C
+			jsr		_R2568
+			tst.w	d0
+			bne.s	loc_12B07C
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B07C
+			cmpi.w	#3,d7
+			beq.s	loc_12B088
+			cmpi.w	#5,d7
+			bne.s	loc_12B09C
+loc_12B088
+			move.b	$27E,d0
+			ext.w	d0
+			cmp.w	d0,d7
+			beq.s	loc_12B09C
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B09C
+			cmpi.w	#3,d7
+			bne.s	loc_12B0BC
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			moveq	#4,d0
+			cmp.w	4(a0),d0
+			bge.s	loc_12B0BC
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B0BC
+			move.w	d7,d6
+			cmpi.w	#$800,d7
+			bge.s	loc_12B0EE
+			jsr		_R2568
+			tst.w	d0
+			beq.s	loc_12B0EA
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			moveq	#0,d0
+			move.b	$2E(a0),d0
+			tst.l	d0
+			beq.s	loc_12B0E4
+			cmpi.w	#5,d7
+			bne.s	loc_12B0EA
+loc_12B0E4
+			addi.w	#$800,d6
+			bra.s	loc_12B0EE
+loc_12B0EA
+			addi.w	#$1000,d6
+loc_12B0EE
+			moveq	#0,d4
+			move.b	$A5E,d4
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			_SetResLoad
+			subq.l	#4,sp
+			move.l	#'snth',-(sp)
+			move.w	d6,-(sp)
+			_GetResource
+			movea.l	(sp)+,a3
+			move.l	a3,d0
+			bne.s	loc_12B142
+			cmpi.w	#$800,d7
+			bge.s	loc_12B120
+			subq.l	#4,sp
+			move.l	#'snth',-(sp)
+			move.w	d7,-(sp)
+			_GetResource
+			movea.l	(sp)+,a3
+loc_12B120
+			move.l	a3,d0
+			bne.s	loc_12B142
+			subq.l	#2,sp
+			_ResError
+			move.w	(sp)+,d6
+			beq.s	loc_12B130
+			move.w	d6,d0
+			bra.s	loc_12B134
+loc_12B130
+			move.w	#$FF34,d0
+loc_12B134
+			move.w	d0,d6
+			move.b	d4,-(sp)
+			_SetResLoad
+			move.w	d6,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B142
+			move.b	d4,-(sp)
+			_SetResLoad
+loc_12B146
+			movea.l	$12(a6),a0
+			movea.l	4(a0),a4
+			bra.s	loc_12B170
+loc_12B150
+			move.l	4(a4),d0
+			_StripAddress
+			move.l	d0,-$C(a6)
+			move.l	(a3),d0
+			_StripAddress
+			move.l	-$C(a6),d1
+			cmp.l	d1,d0
+			bne.s	loc_12B16E
+			clr.w	$16(a6)
+			bra.w	loc_12B3AE
+loc_12B16E
+			movea.l	(a4),a4
+loc_12B170
+			move.l	a4,d0
+			bne.s	loc_12B150
+			tst.l	$E(a6)
+			bne.s	loc_12B17E
+			movea.l	a3,a0
+			_HLock
+loc_12B17E
+			move.l	#$84,d0
+			_NewPtrSysClear
+			movea.l	a0,a4
+			move.l	a4,d0
+			bne.s	loc_12B1AE
+			move.w	$220,d6
+			tst.l	$E(a6)
+			bne.s	loc_12B1A6
+			move.l	(a3),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			addq.w	#4,sp
+			bne.s	loc_12B1A6
+			movea.l	a3,a0
+			_HUnlock
+loc_12B1A6
+			move.w	d6,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B1AE
+			moveq	#$1E,d0
+			_NewPtrSysClear
+			move.l	a0,$3E(a4)
+			move.l	a0,d0
+			bne.s	loc_12B1DC
+			move.w	$220,d6
+			tst.l	$E(a6)
+			bne.s	loc_12B1D4
+			move.l	(a3),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			addq.w	#4,sp
+			bne.s	loc_12B1D4
+			movea.l	a3,a0
+			_HUnlock
+loc_12B1D4
+			move.w	d6,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B1DC
+			lea		_R25B6,a0
+			movea.l	$3E(a4),a1
+			move.l	a0,6(a1)
+			movea.l	$3E(a4),a0
+			move.l	$12(a6),$16(a0)
+			movea.l	$3E(a4),a0
+			move.l	a4,$1A(a0)
+			moveq	#$1E,d0
+			_NewPtrSysClear
+			move.l	a0,$42(a4)
+			move.l	a0,d0
+			bne.s	loc_12B232
+			move.w	$220,d6
+			tst.l	$E(a6)
+			bne.s	loc_12B220
+			move.l	(a3),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			addq.w	#4,sp
+			bne.s	loc_12B220
+			movea.l	a3,a0
+			_HUnlock
+loc_12B220
+			movea.l	$3E(a4),a0
+			_DisposePtr
+			movea.l	a4,a0
+			_DisposePtr
+			move.w	d6,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B232
+			lea		_R25BC,a0
+			movea.l	$42(a4),a1
+			move.l	a0,6(a1)
+			movea.l	$42(a4),a0
+			move.l	$12(a6),$16(a0)
+			tst.l	$E(a6)
+			bne.s	loc_12B258
+			move.l	(a3),4(a4)
+			move.l	a3,$16(a4)
+			bra.s	loc_12B25E
+loc_12B258
+			move.l	$E(a6),4(a4)
+loc_12B25E
+			cmpi.w	#5,d7
+			bne.w	loc_12B300
+			jsr		_R2568
+			tst.w	d0
+			beq.w	loc_12B300
+			move.w	#$1A,-8(a6)
+			move.l	d5,-4(a6)
+			subq.l	#2,sp
+			moveq	#5,d0
+			move.w	d0,-(sp)
+			pea		-8(a6)
+			_SndControl
+			move.w	(sp)+,d6
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.w	-6(a6),d0
+			cmp.w	$16(a0),d0
+			ble.s	loc_12B2DA
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			moveq	#1,d0
+			cmp.w	4(a0),d0
+			bge.s	loc_12B2DA
+			tst.l	$E(a6)
+			bne.s	loc_12B2C0
+			move.l	(a3),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			addq.w	#4,sp
+			bne.s	loc_12B2C0
+			movea.l	a3,a0
+			_HUnlock
+loc_12B2C0
+			movea.l	$3E(a4),a0
+			_DisposePtr
+			movea.l	$42(a4),a0
+			_DisposePtr
+			movea.l	a4,a0
+			_DisposePtr
+			move.w	#$FF37,$16(a6)
+			bra.w	loc_12B3AE
+loc_12B2DA
+			move.w	#$1B,-8(a6)
+			move.l	d5,-4(a6)
+			subq.l	#2,sp
+			moveq	#5,d0
+			move.w	d0,-(sp)
+			pea		-8(a6)
+			_SndControl
+			move.w	(sp)+,d6
+			move.w	-6(a6),d0
+			ext.l	d0
+			move.l	d0,$68(a4)
+			move.l	d5,$64(a4)
+loc_12B300
+			move.w	#1,-8(a6)
+			move.l	d5,-4(a6)
+			move.l	a4,-(sp)
+			pea		-8(a6)
+			move.l	$12(a6),-(sp)
+			jsr		_R258C_OTHERNAME
+			moveq	#$FFFFFFFF,d0
+			cmp.l	-4(a6),d0
+			lea		$C(sp),sp
+			bne.s	loc_12B352
+			tst.l	$E(a6)
+			bne.s	loc_12B33A
+			move.l	(a3),-(sp)
+			jsr		_R25A4
+			tst.l	d0
+			addq.w	#4,sp
+			bne.s	loc_12B33A
+			movea.l	a3,a0
+			_HUnlock
+loc_12B33A
+			movea.l	$3E(a4),a0
+			_DisposePtr
+			movea.l	$42(a4),a0
+			_DisposePtr
+			movea.l	a4,a0
+			_DisposePtr
+			move.w	#$FF94,$16(a6)
+			bra.s	loc_12B3AE
+loc_12B352
+			movea.l	$3E(a4),a0
+			_InsXTime
+			movea.l	$42(a4),a0
+			_InsXTime
+			subq.l	#4,sp
+			move.w	#$A89F,-(sp)
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			jsr		NGETTRAPADDRESS
+			subq.l	#4,sp
+			move.w	#$A88F,-(sp)
+			moveq	#1,d0
+			move.b	d0,-(sp)
+			jsr		NGETTRAPADDRESS
+			move.l	(sp)+,d0
+			cmp.l	(sp)+,d0
+			beq.s	loc_12B38E
+			subq.l	#2,sp
+			pea		$7C(a4)
+			move.w	#$37,-(sp)
+			_OSDispatch
+			addq.w	#2,sp
+loc_12B38E
+			jsr		_R255C
+			move.w	d0,d5
+			movea.l	$12(a6),a0
+			move.l	4(a0),(a4)
+			movea.l	$12(a6),a0
+			move.l	a4,4(a0)
+			ext.l	d5
+			move.l	d5,d0
+			move	d0,sr
+			clr.w	$16(a6)
+loc_12B3AE
+			movem.l	-$28(a6),d3-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			lea		$E(sp),sp
+			jmp		(a0)
+
+
+__SNDSOUNDMANAGERVERSION	Proc	Export
+			link	a6,#0
+			move.l	#$2018000,8(a6)
+			unlk	a6
+			rts
+
+
+Version	Proc	Export
+			link	a6,#0
+			move.l	#$1018000,8(a6)
+			unlk	a6
+			rts
+
+
+__SNDCHANNELSTATUS	Proc	Export
+			Import	_R261C
+			Import	_R2634
+			Import	_R263A
+			Import	_UTOX
+
+			link	a6,#-$24
+			movem.l	a3-a4,-(sp)
+			movea.l	8(a6),a3
+			moveq	#$18,d0
+			cmp.w	$C(a6),d0
+			beq.s	loc_12B3FC
+			move.w	#$FFCE,$12(a6)
+			bra.w	loc_12B566
+loc_12B3FC
+			move.l	$E(a6),-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12B414
+			move.w	#$FF33,$12(a6)
+			bra.w	loc_12B566
+loc_12B414
+			move.l	$E(a6),-$1A(a6)
+			bne.s	loc_12B426
+			move.w	#$FF33,$12(a6)
+			bra.w	loc_12B566
+loc_12B426
+			movea.l	-$1A(a6),a0
+			movea.l	4(a0),a4
+			move.l	a4,d0
+			bne.s	loc_12B43E
+			move.w	#$FF33,$12(a6)
+			bra.w	loc_12B566
+loc_12B43C
+			movea.l	(a4),a4
+loc_12B43E
+			tst.l	(a4)
+			bne.s	loc_12B43C
+			moveq	#5,d0
+			cmp.b	$27E,d0
+			beq.s	loc_12B46C
+			move.l	#$FF,d0
+			and.l	8(a4),d0
+			move.b	d0,$C(a3)
+			clr.w	$E(a3)
+			moveq	#0,d0
+			move.l	d0,(a3)
+			move.l	d0,4(a3)
+			move.l	d0,8(a3)
+			bra.w	loc_12B54A
+loc_12B46C
+			move.l	8(a4),-8(a6)
+			beq.s	loc_12B48C
+			movea.l	-8(a6),a0
+			move.w	$11A(a0),d0
+			ext.l	d0
+			move.l	d0,-(sp)
+			jsr		_R2634
+			move.l	d0,$10(a3)
+			addq.w	#4,sp
+			bra.s	loc_12B492
+loc_12B48C
+			move.l	$64(a4),$10(a3)
+loc_12B492
+			movea.l	-8(a6),a0
+			move.l	(a0),-4(a6)
+			move.l	$68(a4),$14(a3)
+			move.l	-$1A(a6),-(sp)
+			jsr		_R263A
+			move.l	d0,-$16(a6)
+			movea.l	d0,a0
+			tst.b	(a0)
+			addq.w	#4,sp
+			bne.s	loc_12B4DA
+			movea.l	-4(a6),a0
+			tst.w	$1E(a0)
+			sne		d0
+			andi.w	#1,d0
+			ext.l	d0
+			move.b	d0,$C(a3)
+			clr.w	$E(a3)
+			moveq	#0,d0
+			move.l	d0,(a3)
+			move.l	d0,4(a3)
+			move.l	d0,8(a3)
+			bra.s	loc_12B54A
+loc_12B4DA
+			movea.l	-$16(a6),a0
+			movea.l	8(a0),a4
+			movea.l	-4(a6),a0
+			tst.w	$1E(a0)
+			sne		d0
+			andi.w	#1,d0
+			ext.l	d0
+			move.b	d0,$C(a3)
+			movea.l	-$16(a6),a0
+			move.b	3(a0),$E(a3)
+			clr.b	$F(a3)
+			move.l	$5E(a4),(a3)
+			move.l	$62(a4),4(a3)
+			pea		-$24(a6)
+			move.l	$72(a4),-(sp)
+			jsr		_UTOX
+			pea		$4C(a4)
+			pea		-$24(a6)
+			move.w	#6,-(sp)
+			_Pack4
+			lea		-$24(a6),a0
+			lea		-$12(a6),a1
+			move.l	(a0)+,(a1)+
+			move.l	(a0)+,(a1)+
+			move.w	(a0)+,(a1)+
+			subq.l	#4,sp
+			pea		-$12(a6)
+			_X2Fix
+			move.l	$62(a4),d0
+			sub.l	(sp)+,d0
+			move.l	d0,8(a3)
+			addq.w	#8,sp
+loc_12B54A
+			movea.l	$E(a6),a0
+			moveq	#$20,d0
+			and.w	$1C(a0),d0
+			beq.s	loc_12B55E
+			move.b	#1,$D(a3)
+			bra.s	loc_12B562
+loc_12B55E
+			clr.b	$D(a3)
+loc_12B562
+			clr.w	$12(a6)
+loc_12B566
+			movem.l	-$2C(a6),a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			lea		$A(sp),sp
+			jmp		(a0)
+
+
+__SNDMANAGERSTATUS	Proc	Export
+			link	a6,#-4
+			movem.l	d3/d6-d7/a3-a4,-(sp)
+			moveq	#6,d0
+			cmp.w	$C(a6),d0
+			beq.s	loc_12B590
+			move.w	#$FFCE,$E(a6)
+			bra.w	loc_12B654
+loc_12B590
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	8(a6),a1
+			move.w	4(a0),2(a1)
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	8(a6),a1
+			move.w	$16(a0),(a1)
+			movea.l	8(a6),a0
+			clr.w	4(a0)
+			clr.w	d6
+			clr.w	d7
+			moveq	#5,d0
+			cmp.b	$27E,d0
+			bne.s	loc_12B622
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a3
+			bra.s	loc_12B604
+loc_12B5D2
+			movea.l	4(a3),a4
+			move.l	a4,d0
+			beq.s	loc_12B602
+			bra.s	loc_12B5DE
+loc_12B5DC
+			movea.l	(a4),a4
+loc_12B5DE
+			tst.l	(a4)
+			bne.s	loc_12B5DC
+			move.l	8(a4),-4(a6)
+			beq.s	loc_12B602
+			subq.l	#2,sp
+			movea.l	-4(a6),a0
+			move.w	$11A(a0),-(sp)
+			move.l	#$240008,d0
+			_SoundDispatch
+			add.w	(sp)+,d7
+			move.w	d6,d0
+			addq.w	#1,d6
+loc_12B602
+			movea.l	(a3),a3
+loc_12B604
+			move.l	a3,d0
+			bne.s	loc_12B5D2
+			subq.l	#2,sp
+			move.w	d6,-(sp)
+			move.l	#$280008,d0
+			_SoundDispatch
+			move.w	(sp)+,d0
+			add.w	d7,d0
+			movea.l	8(a6),a0
+			move.w	d0,4(a0)
+			bra.s	loc_12B650
+loc_12B622
+			moveq	#1,d0
+			cmp.b	$27E,d0
+			bne.s	loc_12B636
+			movea.l	8(a6),a0
+			move.w	#$64,4(a0)
+			bra.s	loc_12B650
+loc_12B636
+			moveq	#3,d0
+			cmp.b	$27E,d0
+			bne.s	loc_12B650
+			movea.l	8(a6),a0
+			moveq	#$19,d0
+			muls.w	2(a0),d0
+			movea.l	8(a6),a0
+			move.w	d0,4(a0)
+loc_12B650
+			clr.w	$E(a6)
+loc_12B654
+			movem.l	-$18(a6),d3/d6-d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#6,sp
+			jmp		(a0)
+
+
+__SNDGETSYSBEEPSTATE	Proc	Export
+			link	a6,#0
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	8(a6),a1
+			move.w	$18(a0),(a1)
+			unlk	a6
+			move.l	(sp)+,(sp)
+			rts
+
+
+__SNDSETSYSBEEPSTATE	Proc	Export
+			link	a6,#0
+			move.l	d7,-(sp)
+			move.w	8(a6),d7
+			blt.s	loc_12B68E
+			cmpi.w	#1,d7
+			ble.s	loc_12B696
+loc_12B68E
+			move.w	#$FFCE,$A(a6)
+			bra.s	loc_12B6A6
+loc_12B696
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.w	d7,$18(a0)
+			clr.w	$A(a6)
+loc_12B6A6
+			move.l	-4(a6),d7
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#2,sp
+			jmp		(a0)
+
+
+_R261C	Proc	Export
+			link	a6,#0
+			movem.l	d3/a3-a4,-(sp)
+			movea.l	8(a6),a3
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	(a0),a4
+			moveq	#0,d3
+			bra.s	loc_12B6D6
+loc_12B6CC
+			cmpa.l	a3,a4
+			bne.s	loc_12B6D4
+			moveq	#0,d0
+			bra.s	loc_12B6DC
+loc_12B6D4
+			movea.l	(a4),a4
+loc_12B6D6
+			cmp.l	a4,d3
+			bne.s	loc_12B6CC
+			moveq	#1,d0
+loc_12B6DC
+			movem.l	-$C(a6),d3/a3-a4
+			unlk	a6
+			rts
+
+
+__SNDPLAYDOUBLEBUFFER	Proc	Export
+			Import	_R261C
+
+			link	a6,#-8
+			movem.l	d7/a4,-(sp)
+			movea.l	$C(a6),a4
+			move.l	a4,-(sp)
+			jsr		_R261C
+			tst.b	d0
+			addq.w	#4,sp
+			beq.s	loc_12B706
+			move.w	#$FF33,$10(a6)
+			bra.s	loc_12B72A
+loc_12B706
+			move.w	#$54,-8(a6)
+			clr.w	-6(a6)
+			move.l	8(a6),-4(a6)
+			subq.l	#2,sp
+			move.l	a4,-(sp)
+			pea		-8(a6)
+			moveq	#0,d0
+			move.b	d0,-(sp)
+			_SndDoCommand
+			move.w	(sp)+,d7
+			move.w	d7,$10(a6)
+loc_12B72A
+			movem.l	-$10(a6),d7/a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#8,sp
+			jmp		(a0)
+
+
+__SND_NotSure	Proc	Export
+			Import	_R2550
+
+			link	a6,#0
+			movem.l	d7/a3-a4,-(sp)
+			move.w	8(a6),d7
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			tst.l	$E(a0)
+			bne.s	loc_12B794
+			subq.l	#4,sp
+			move.l	#'bst#',-(sp)
+			moveq	#1,d0
+			move.w	d0,-(sp)
+			_GetResource
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	(sp)+,$E(a0)
+			bne.s	loc_12B778
+			subq.l	#2,sp
+			_ResError
+			move.w	(sp)+,$A(a6)
+			bra.s	loc_12B7F0
+loc_12B778
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			move.l	$E(a0),-(sp)
+			_DetachResource
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	$E(a0),a0
+			_HLock
+loc_12B794
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	$E(a0),a3
+			movea.l	(a3),a4
+			addq.w	#2,a4
+			bra.s	loc_12B7E6
+loc_12B7A6
+			cmp.w	(a4),d7
+			bne.s	loc_12B7E2
+			moveq	#0,d0
+			move.w	$C(a4),d0
+			moveq	#$64,d1
+			cmp.l	d0,d1
+			bne.s	loc_12B7D2
+			subq.l	#2,sp
+			moveq	#1,d0
+			move.w	d0,-(sp)
+			move.l	#$280008,d0
+			_SoundDispatch
+			move.w	(sp)+,d0
+			ext.l	d0
+			moveq	#$64,d1
+			sub.l	d0,d1
+			move.w	d1,$A(a6)
+			bra.s	loc_12B7F0
+loc_12B7D2
+			pea		$C(a4)
+			jsr		_R2550
+			move.w	d0,$A(a6)
+			addq.w	#4,sp
+			bra.s	loc_12B7F0
+loc_12B7E2
+			lea		$14(a4),a4
+loc_12B7E6
+			tst.l	2(a4)
+			bne.s	loc_12B7A6
+			clr.w	$A(a6)
+loc_12B7F0
+			movem.l	-$C(a6),d7/a3-a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#2,sp
+			jmp		(a0)
+
+
+__SND_NotSure2	Proc	Export
+			link	a6,#0
+			movem.l	d6-d7/a4,-(sp)
+			move.w	8(a6),d7
+			movea.l	$2B6,a0
+			movea.l	$110(a0),a0
+			movea.l	$1A(a0),a4
+			move.l	a4,d0
+			beq.s	loc_12B85C
+			tst.w	d7
+			beq.s	loc_12B85C
+			move.w	(a4),d6
+			cmpi.w	#5,d7
+			bge.s	loc_12B838
+			ext.l	d6
+			ext.l	d7
+			move.l	d6,d0
+			add.l	d7,d0
+			add.l	d0,d0
+			move.w	(a4,d0.l),$A(a6)
+			bra.s	loc_12B860
+loc_12B838
+			ext.l	d6
+			move.l	d6,d0
+			addq.l	#5,d0
+			add.l	d0,d0
+			move.w	d7,d1
+			muls.w	(a4,d0.l),d1
+			ext.l	d6
+			move.l	d6,d0
+			addq.l	#6,d0
+			add.l	d0,d0
+			move.w	(a4,d0.l),d0
+			ext.l	d0
+			add.l	d1,d0
+			move.w	d0,$A(a6)
+			bra.s	loc_12B860
+loc_12B85C
+			clr.w	$A(a6)
+loc_12B860
+			movem.l	-$C(a6),d6-d7/a4
+			unlk	a6
+			movea.l	(sp)+,a0
+			addq.w	#2,sp
+			jmp		(a0)
+
+
+_R2634	Proc	Export
+			link	a6,#0
+			movem.l	d6-d7,-(sp)
+			move.w	$A(a6),d6
+			moveq	#3,d0
+			and.w	d6,d0
+			add.w	d0,d0
+			move.w	jtbl(d0),d0
+jtblbase	equ		*+2
+			jmp		jtblbase(d0)
+jtbl		dc.w	loc_12B890-jtblbase
+			dc.w	loc_12B898-jtblbase
+			dc.w	loc_12B8A0-jtblbase
+			dc.w	loc_12B8A8-jtblbase
+loc_12B890
+			move.l	#$80,d7
+			bra.s	loc_12B8AE
+loc_12B898
+			move.l	#$C0,d7
+			bra.s	loc_12B8AE
+loc_12B8A0
+			move.l	#$82,d7
+			bra.s	loc_12B8AE
+loc_12B8A8
+			move.l	#$83,d7
+loc_12B8AE
+			moveq	#4,d0
+			and.w	d6,d0
+			beq.s	loc_12B8BA
+			ori.l	#4,d7
+loc_12B8BA
+			moveq	#8,d0
+			and.w	d6,d0
+			beq.s	loc_12B8C6
+			ori.l	#8,d7
+loc_12B8C6
+			ext.l	d6
+			move.w	#$FF00,d0
+			and.w	d6,d0
+			moveq	#0,d1
+			move.w	d0,d1
+			or.l	d1,d7
+			move.l	d7,d0
+			movem.l	-8(a6),d6-d7
+			unlk	a6
+			rts
+
+
+_R263A	Proc	Export
+			link	a6,#0
+			movem.l	a3-a4,-(sp)
+			movea.l	8(a6),a0
+			movea.l	4(a0),a4
+			bra.s	loc_12B8F4
+loc_12B8F2
+			movea.l	(a4),a4
+loc_12B8F4
+			tst.l	(a4)
+			bne.s	loc_12B8F2
+			lea		$1A(a4),a3
+			move.l	a3,d0
+			movem.l	-8(a6),a3-a4
+			unlk	a6
+			rts
+
+
+			END

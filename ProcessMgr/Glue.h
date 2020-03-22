@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Added MyGestalt prototype here (original location uncertain) for
+							Startup.c and DAHandler.c.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Glue.h
 
 	Contains:	Assembly glue header for Process Manager.
@@ -150,4 +158,8 @@ debugger(StringPtr message)
 /*	_Debugger
  */
  
+/* <Sys7.1> Assembly-language glue */
+pascal OSErr
+MyGestalt(OSType selector,long *response);
+
 #endif __GLUE__

@@ -1,3 +1,16 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored the machine-specific equates for Plus/SE/Portable/"Universal
+;							16-bit", which required some of the default equates to be
+;							conditionalised for onMac32 ("Universal 32-bit") to prevent double-
+;							defines. Restored vBufD equate for SE. Reconstructed some of the
+;							"private sound defines" that <SM27> moved to the lost SoundPrivate.a.
+;							Commented out a small number of newer equates that conflict with other
+;							files.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;__________________________________________________________________________________________________
 ;
 ;	File:		HardwarePrivateEqu.a
@@ -218,6 +231,25 @@ __INCLUDINGHARDWAREPRIVATEEQU__	SET	1
 
 
 
+; <Sys7.1> Assume onMac32 unless one of the old machines is defined
+	IF	(&TYPE('onMac') = 'UNDEFINED') THEN
+		onMac: EQU 0
+	ENDIF
+	IF	(&TYPE('onMacPP') = 'UNDEFINED') THEN
+		onMacPP: EQU 0
+	ENDIF
+	IF	(&TYPE('onHcMac') = 'UNDEFINED') THEN
+		onHcMac: EQU 0
+	ENDIF
+	IF	(&TYPE('onMac16') = 'UNDEFINED') THEN
+		onMac16: EQU 0
+	ENDIF
+	IF	(&TYPE('onMac32') = 'UNDEFINED') THEN
+		onMac32: EQU NOT (onMac OR onMacPP OR onHcMac OR onMac16)
+	ENDIF
+
+
+
 ;__________________________________________________________________________________________
 ;
 ; Welcome to the New Hardware Equates File.  By following some simple procedures this file
@@ -431,6 +463,34 @@ sDADDR			EQU			$100
 sDTIME			EQU			$140
 
 sTEST			equ			$180
+
+;---------------------------------------------------
+;  Apple Sound Chip register offsets ex<SM27> <Sys7.1>
+;---------------------------------------------------
+
+ascVersion		EQU			$800					; [byte]
+ascMode			EQU			$801					; [byte] 2 means waveform
+ascChipControl	EQU			$802					; [byte]
+ascFifoControl	EQU			$803					; [byte]
+ascFifoInt		EQU			$804					; [byte]
+ascWaveOneShot	EQU			$805					; [byte]
+ascVolControl	EQU			$806					; [byte]
+ascClockRate	EQU			$807					; [byte]
+ascPlayRecA		EQU			$80a					; [byte]
+ascPlayRecB		EQU			$80b					; [byte]
+ascTestReg		EQU			$80f					; [byte]
+
+bmSrcTimeIncrA	EQU			$f04					; [byte]
+bmSrcTimeIncrB	EQU			$f24					; [byte]
+bmLeftScaleA	EQU			$f06					; [byte]
+bmLeftScaleB	EQU			$f26					; [byte]
+bmRightScaleA	EQU			$f07					; [byte]
+bmRightScaleB	EQU			$f27					; [byte]
+bmFifoControlA	EQU			$f08					; [byte]
+bmFifoControlB	EQU			$f28					; [byte]
+bmIntControlA	EQU			$f09					; [byte]
+bmIntControlB	EQU			$f29					; [byte]
+
 
 ;__________________________________________________________________________________________
 ;
@@ -651,7 +711,9 @@ vPCR  			EQU 		$1800 					; PERIPH. CONTROL REG.
 vIFR  			EQU 		$1A00 					; INT. FLAG REG.
 vIER  			EQU 		$1C00 					; INT. ENABLE REG.
 vBufA 			EQU 		$1E00 					; BUFFER A
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 vBufD 			EQU 		vBufA 					; disk head select is buffer A			<3.5>
+	ENDIF											; <Sys7.1>
 
 ;---------------------------------------------------
 ; VIA IFR/IER bits
@@ -673,7 +735,9 @@ ifIRQ 			EQU 		7 						; any interrupt
 
 vSound			EQU 		$7    					; sound volume bits (0..2)	(output)
 
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 vTestJ			EQU 		0 						; Burn In Test jumper		(input)
+	ENDIF											; <Sys7.1>
 
 vCpuId0			EQU			1						; CPU Identification bit 0	(input)
 vCpuId1			EQU			2						; CPU Identification bit 1	(input)
@@ -2235,20 +2299,28 @@ MEMCRefresh			EQU		MEMCconfig+4			; DRAM refresh rate register
 ; Interrupt Masks
 ;---------------------------------------------------
 
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 hiIntMask 		EQU 		$0700					; programmer switch only
+	ENDIF											; <Sys7.1>
 pwrOffEnbl		EQU 		$2500					; mask to allow poweroff interrupts
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 sccIntMask		EQU 		$0400					; SCC interrupt level
 sccEnblMask   	EQU 		$FBFF					; mask to enable SCC interrupts
+	ENDIF											; <Sys7.1>
 slotIntMask   	EQU 		$0200		   			; slot's interrupt level	<v1.4><1.9>
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 viaIntMask		EQU 		$0100					; VIA1 interrupt level
 loIntMask 		EQU 		$0100
+	ENDIF											; <Sys7.1>
 
 
 ;---------------------------------------------------
 ; Hardware Base Addresses
 ;---------------------------------------------------
 
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 WrOffs			EQU			0						; SCSI write addrs are same as read base
+	ENDIF											; <Sys7.1>
 MskIOP1			EQU			1						; IOP 1 (SWIM) is level 1 interrupt
 MskVIA1			EQU			1						; VIA 1 is level 1
 MskADB			EQU			1						; ADB is level 1
@@ -2336,23 +2408,30 @@ CACR_WA_030				EQU		13				; bit # of write allocate enable on 030s				<T8>
 
 
 
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 Machine   		EQU 		7						; new Machine number for patches			<18>
+	ENDIF											; <Sys7.1>
 
 ;---------------------------------------------------
 ; System Software Information
 ;---------------------------------------------------
 
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 numOsTrap 		EQU 		256   					; number of os traps
 ToolTable 		EQU 		$0E00 					; start of toolbox trap table
 numTbTrap 		EQU 		1024   					; number of toolbox traps
 numTrapMask   	EQU 		numTbTrap-1				; mask for number of tb traps
+	ENDIF											; <Sys7.1>
 JMemMgr24		EQU			$1E00					; jump vector start for 24 bit Memory Manager 		<v1.9>
 JMemMgr32		EQU			$1F00					; jump vector start for 32 bit Memory Manager 		<v1.9>
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 HeapStart 		EQU 		$2800 					; Low mem is now 10k bytes							<SM13>
 defSysHeap		EQU 		$18000    				; Default size of the system heap
 nDfltStackSize	EQU 		$6000 					; Default stack size
+	ENDIF											; <Sys7.1>
 
 **** maybe not so temporary to allow things to build ****									<3.5>
+	IF onMac32 THEN									; <Sys7.1> Prevent double-define below
 oneSecConst   	EQU 		8 						; gets converted to $80000 for onesec constant<3.5>
 	IF BlackBirdDebug THEN
 ROMStart  		EQU 		$40000000 				; ••PN BlackBirdstarting address of final ROM code	<3.5>
@@ -2362,13 +2441,15 @@ ROMStart  		EQU 		$40800000 				; starting address of final ROM code	<3.5>
 snd2MemTop		EQU 		$300  					; SoundLow to Memtop
 pwm2MemTop		EQU 		$2FF  					; PWMBuffer to MemTop
 bufWorldSize  	EQU 		8192		   			; total size of the BufPtr world		<H16>
+	ENDIF											; <Sys7.1>
 
 ;---------------------------------------------------								<SM4> rb, start
 ;  Sound parameters																			<P4>
+;  <Sys7.1> Commented out because they conflict with TextEditPriv.a
 ;---------------------------------------------------
-sampleSize		equ			4				; number of bytes per sample
-bufferSize		equ			960				; number of samples per buffer
-sampleRate		equ			24 * 1024		; 24KHz sample rate
+;sampleSize		equ			4				; number of bytes per sample
+;bufferSize		equ			960				; number of samples per buffer
+;sampleRate		equ			24 * 1024		; 24KHz sample rate
 
 ;---------------------------------------------------------------------
 ;  Whitney Sound Register Offsets (from ASC base in UniversalTables.a)
@@ -2718,7 +2799,11 @@ pdspSet			equ			7				; "0" clears, "1" sets for any bit field [0:6] containing a
 ; ???
 ;---------------------------------------------------
 
+	IF onMac OR onMacPP THEN						; <Sys7.1> Work around this definition being moved up here
+seRegs			EQU 		$3FFC80 				; <Sys7.1>
+	ELSE											; <Sys7.1>
 seRegs			EQU 		$0C30 					; offset to Sys Error Regs w/o Overlay
+	ENDIF											; <Sys7.1>
 
 ;---------------------------------------------------
 ; Hardware configuration bits.
@@ -2932,16 +3017,16 @@ PrattSysStatReg	EQU		$50080007
 				btst.b	#PrattFlashLBit,PrattSysStatReg		; Is this a flash rom system
 			ENDM	
 
-ForAmusementOnly	equ		0
-				If	ForAmusementOnly then
 ;__________________________________________________________________________________________
 ;
 ;
 ; Old 16 bit Equates for onMac, onMacPP, and onHcMac
+; <Sys7.1> Removed forAmusementOnly conditional, and restored onMac etc
 ;
 ;
 ;__________________________________________________________________________________________
 
+				IF			onMac THEN				; <Sys7.1>
 ;=======================================;
 ;  Macintosh Plus Hardware Information	;
 ;=======================================;
@@ -3063,8 +3148,10 @@ halfSec   		EQU 		onesec/2				;								*** patch only ***
 stlDelay  		EQU 		$30   					; default bus settle delay		*** patch only ***
 ROMDoEject		EQU 		$40001E   				; jump to DoEject utility		*** patch only ***
 dACKRd			EQU 		$200  					; offset of psuedo-DMA - READ	*** patch only ***
+				ENDIF								; onMac <Sys7.1>
 
 
+				IF			onMacPP THEN			; <Sys7.1>
 ;=======================================;
 ;	Macintosh SE Hardware Information	;
 ;=======================================;
@@ -3102,6 +3189,7 @@ vAInit 			EQU 		(1)|\					; sound volume level initially 1
 							(1<<vPage2)|\			; main screen buffer selected
 							(0<<vSCCWrReq)			; SCC write/request line is an input
 
+vBufD 			EQU 		vBufA 					; disk head select is buffer A <Sys7.1> restored
 
 
 ; === VIA1 BUFFER B ===
@@ -3182,8 +3270,10 @@ HeapStart 		EQU 		$1600 					; Aladdin starting point
 
 defSysHeap		EQU 		$18000    				; Default size of the system heap
 nDfltStackSize	EQU 		$2000 					; Default stack size
+				ENDIF								; onMacPP <Sys7.1>
 
 
+				IF			onHcMac THEN			; <Sys7.1>
 ;===========================================;
 ;	Macintosh Portable Hardware Information	;
 ;===========================================;
@@ -3299,8 +3389,10 @@ numTrapMask   	EQU 		numTbTrap-1				; mask for number of tb traps
 HeapStart 		EQU 		$1E00 					; Portable starting point	<1.2>
 DefSysHeap		EQU 		$18000    				; Default size of the system heap
 NDfltStackSize	EQU 		$2000 					; Default stack size
+				ENDIF								; onHcMac <Sys7.1>
 
 
+				IF			onMac16 THEN			; <Sys7.1>
 ;===================================================;
 ;	Universal 16 bit Macintosh Hardware Information	;
 ;===================================================;
@@ -3365,10 +3457,9 @@ numTrapMask   	EQU 		numTbTrap-1				; mask for number of tb traps
 HeapStart 		EQU 		$1E00 					; Laguna starting point	<1.2>
 DefSysHeap		EQU 		$18000    				; Default size of the system heap
 NDfltStackSize	EQU 		$2000 					; Default stack size
+				ENDIF								; onMac16 <Sys7.1>
 
 
-
-  				ENDIF								; ForAmusementOnly
 
 HardwarePrivate EQU 		1
 

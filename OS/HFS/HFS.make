@@ -1,4 +1,15 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Removed TFS.a (i.e. HFS) from the lpch build altogether -- all the
+#							supported ROMs have it. Moved DiskCache.a back from the lpch to ptch 41.
+#							Removed BTreeMgr.lib from here, to be included in the lpch build
+#							elsewhere. Added (Later)FileMgrPatches.a and CMSvcsExtras.a back to the
+#							lpch build.
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		HFS.make
 #
 #	Contains:	Makefile for HFS.
@@ -19,34 +30,40 @@ HFSBTreeDir			=	{HFSExtensionsDir}BTreeMgr:
 #include {HFSBTreeDir}BTreeMgr.Make
 
 
-HFSObjs							=	"{LibDir}BTreeMgr.lib"							∂
+HFSObjs							= ∂
 									"{ObjDir}BTAlloc.a.o"							∂
 									"{ObjDir}BTMaint1.a.o"							∂
 									"{ObjDir}BTMaint2.a.o"							∂
-									"{ObjDir}BTSVCS.a.o"							∂
-									"{ObjDir}QMgr.a.o"								∂
-									"{ObjDir}cache.a.o"								∂
-									"{ObjDir}TFS.a.o"								∂
-									"{ObjDir}cacheio.a.o"							∂
-									"{ObjDir}cmmaint.a.o"							∂
-									"{ObjDir}cmsvcs.a.o"							∂
-									"{ObjDir}FXM.a.o"								∂
-									"{ObjDir}ExternalMakeFSSpec.a.o"				∂
 									"{ObjDir}BTPScan.a.o"							∂
+									"{ObjDir}BTSVCS.a.o"							∂
+									"{ObjDir}cache.a.o"								∂
+									"{ObjDir}cacheio.a.o"							∂
 									"{ObjDir}CacheControl.a.o"						∂
 									"{ObjDir}CatSearch.a.o"							∂
+									"{ObjDir}cmmaint.a.o"							∂
+									"{ObjDir}cmsvcs.a.o"							∂
+									"{ObjDir}CMSvcsExtras.a.o"			# <Sys7.1>	∂
+									"{ObjDir}DTDBMgr.a.o"							∂
+									"{ObjDir}ExternalMakeFSSpec.a.o"				∂
+									"{ObjDir}FileMgrPatches.a.o"		# <Sys7.1>	∂
+									"{ObjDir}LaterFileMgrPatches.a.o"	# <Sys7.1>	∂
 									"{ObjDir}FileIDs.a.o"							∂
 									"{ObjDir}FileIDsSvcs.a.o"						∂
 									"{ObjDir}FSpDispatch.a.o"						∂
 									"{ObjDir}FSSpecCalls.c.o"						∂
+									"{ObjDir}FXM.a.o"								∂
 									"{ObjDir}MakeFSSpec.a.o"						∂
+									"{ObjDir}QMgr.a.o"								∂
 									"{ObjDir}vsm.a.o"								∂
-									"{ObjDir}DTDBMgr.a.o"							∂
-									"{ObjDir}DiskCache.a.o"
 
 
 "{LibDir}HFS.lib"				ƒ 	{HFSObjs}
 	Lib {StdLibOpts} -o "{Targ}" {HFSObjs}
+
+
+# <Sys7.1>
+"{RsrcDir}DiskCache.a.rsrc"		ƒ	"{ObjDir}DiskCache.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}DiskCache.a.o"
 
 
 "{ObjDir}BTAlloc.a.o"			ƒ	"{ObjDir}StandardEqu.d"							∂
@@ -212,3 +229,16 @@ HFSObjs							=	"{LibDir}BTreeMgr.lib"							∂
 									"{IntAIncludes}DiskCachePriv.a"					∂
 									"{IntAIncludes}FileMgrPrivate.a"
 	Asm {StdAOpts} -o "{Targ}" "{HFSCacheDir}DiskCache.a"
+
+
+# <Sys7.1>
+"{ObjDir}CMSvcsExtras.a.o"			ƒ	"{HFSExtensionsDir}CMSvcsExtras.a"
+	Asm {StdAOpts} -o "{Targ}" "{HFSExtensionsDir}CMSvcsExtras.a"
+
+# <Sys7.1>
+"{ObjDir}FileMgrPatches.a.o"	ƒ	"{HFSDir}FileMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" -d SonyNonPortable -i "{HFSDir}Extensions:" "{HFSDir}FileMgrPatches.a"
+
+# <Sys7.1>
+"{ObjDir}LaterFileMgrPatches.a.o"	ƒ	"{HFSDir}LaterFileMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{HFSDir}LaterFileMgrPatches.a"

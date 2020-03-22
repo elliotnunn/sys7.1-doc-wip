@@ -1,4 +1,15 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored the IIci check that <SM7> removed around Power Manager code.
+;							Added TSM clean-up code to CleanupApp. Added ExpandMem-based dispatchers
+;							for several Packs. Added includes to support this new code, plus
+;							HardwarePrivateEqu.a to support UniversalEqu.a (odd that this was
+;							missing).
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		MiscPatches.a
 ;
 ;	Contains:	Miscellaneous patches that don't fit anyplace else.  Currently contains the following patches:
@@ -135,6 +146,12 @@
 			PRINT		PUSH,OFF
 
 			LOAD	'StandardEqu.d'
+			include 'Dictionary.a'				; <Sys7.1>
+			include 'HardwarePrivateEqu.a'		; <Sys7.1>
+			include 'Processes.a'				; <Sys7.1>
+			include 'SysEqu.a'					; <Sys7.1>
+			include 'SysPrivateEqu.a'			; <Sys7.1>
+			include 'TSMPrivate.a'				; <Sys7.1>
 			INCLUDE 'LinkedPatchMacros.a'
 			INCLUDE	'BTreeEqu.a'
 			include 'MMUEqu.a'
@@ -243,7 +260,9 @@ SynchIdleTimeProc	PatchProc	_SynchIdleTime
 				_PPC											; PPC trap <PN>
 
 				WITH	PMgrRec,PowerDispRec					;
-				BRA.S	@Done									; <PN> branch always because we are SM ROM
+				MOVE.L	ROMBase,A0								; ex<SM7> <Sys7.1> check for IIci
+				CMP.W	#$67C,8(A0)
+				BNE.S	@Done
 				Testfor	hwCbPwrMgr								; do we have a power manager?
 				BEQ.S	@Done									; no power cycling
 				MOVE.L	PMgrBase,A0								; Get the Power Manager Globals
@@ -338,6 +357,31 @@ CleanupApp		PatchProc	_CleanupApplication
 @noEditionMgr				
 		ENDIF
 		
+				;
+				; Clean up Text Services Manager <Sys7.1>
+				;
+				SUBQ	#8,SP								; make space for PSN
+				CLR.W	-(SP)								; clear space to return OSErr
+				PEA		2(SP)								; push PSN buf ptr
+				_GetCurrentProcess
+				TST.W	(SP)+
+				BNE.S	@noKillTSM
+
+				CLR.W	-(SP)								; room for result
+				PEA		2(SP)								; PSN
+				MOVE.W	#0,-(SP)							; flag = false
+				_InlineAware
+				TST.B	(SP)+
+				BEQ.S	@noKillTSM
+
+				CLR.W	-(SP)
+				MOVE.W	#kMsgKillTSMApp,-(SP)
+				PEA		4(SP)
+				_InformTSM
+				TST.W	(SP)+
+@noKillTSM
+				ADDQ	#8,SP								; clean up PSN on stack
+
 				;
 				; Clean up Compoents and Component insetances belong to this app.
 				;
@@ -443,6 +487,64 @@ get70MgrAttr	PROC
 ;	Additional patch code goes here
 ;
 ;___________________________________________________________________________________
+
+; <Sys7.1> Dispatch Apple Event Manager through ExpandMem.
+Pack8Patch		PatchProc	_Pack8
+
+				MOVE.L	App2Packs,A0
+				MOVE.L	ExpandMem,A1
+				LEA		ExpandMemRec.emPack8Globals(A1),A1
+				_ProcHelper
+
+
+; <Sys7.1> Dispatch PPC Manager through ExpandMem.
+Pack9Patch		PatchProc	_Pack9
+
+				MOVE.L	App2Packs+4,A0
+				MOVE.L	ExpandMem,A1
+				LEA		ExpandMemRec.emPack9Globals(A1),A1
+				_ProcHelper
+
+
+; <Sys7.1> Dispatch Edition Manager through ExpandMem.
+Pack11Patch		PatchProc	_Pack11
+
+				MOVE.L	App2Packs+12,A0
+				MOVE.L	ExpandMem,A1
+				LEA		ExpandMemRec.emPack11Globals(A1),A1
+				_ProcHelper
+
+
+; <Sys7.1> Dispatch Data Access Manager through ExpandMem.
+Pack13Patch		PatchProc	_Pack13
+
+				TST.B	D0
+				BEQ.S	@initialize
+	; If not initializing right now, check that SnarfMan is initialized.
+				MOVE.L	ExpandMem,A0
+				TST.L	ExpandMemRec.emSnarfGlobals(A0)
+				BEQ.S	@uninitialized
+@initialize		MOVE.L	App2Packs+20,A0
+				MOVE.L	ExpandMem,A1
+				LEA		ExpandMemRec.emPack13Globals(A1),A1
+				_ProcHelper
+	; And if not already initialized, then fail.
+@uninitialized	MOVE.L	(SP)+,A0
+				LSR.W	#8,D0
+				LSL.W	#1,D0
+				ADD.W	D0,SP
+				MOVE.W	#rcDBPackNotInited,(SP)
+				JMP		(A0)
+
+
+; <Sys7.1> Dispatch Picture Utilities through ExpandMem.
+Pack15Patch		PatchProc	_Pack15
+
+				MOVE.L	App2Packs+28,A0
+				MOVE.L	ExpandMem,A1
+				LEA		ExpandMemRec.emPack15Globals(A1),A1
+				_ProcHelper
+
 
 ;___________________________________________________________________________________
 ;

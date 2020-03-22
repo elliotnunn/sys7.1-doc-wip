@@ -1,4 +1,14 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Split hypothetical library ModalDialogMenuPatches.lib off from
+#							a reordered DialogMgr.lib, and put DialogMgrPatches.a back in
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+#							Clean diff against SuperMario
+#
+
+#
 #	File:		DialogMgr.make
 #
 #	Contains:	Makefile for the Dialog Manager.
@@ -12,17 +22,27 @@
 
 
 DialogMgrObjects						=	"{ObjDir}DialogMgr.a.o"						∂
+											"{ObjDir}DialogDispatch.a.o"				∂
+											"{ObjDir}DialogMgrPatches.a.o"	# <Sys7.1>	∂
 											"{ObjDir}DialogMgrExtensions.a.o"			∂
 											"{ObjDir}DialogMgrExtensions.c.o"			∂
-											"{ObjDir}ModalDialogMenuExtensions.a.o"		∂
-											"{ObjDir}ModalDialogMenuExtensions.c.o"		∂
-											"{ObjDir}DialogDispatch.a.o"
 
 
 "{LibDir}DialogMgr.lib"				ƒ	{DialogMgrObjects}
 	Lib {StdLibOpts} -o "{Targ}" {DialogMgrObjects}
 
 	
+# <Sys7.1>
+ModalDialogMenuPatchObjs				=	"{ObjDir}ModalDialogMenuPatches.a.o"		∂
+											"{ObjDir}ModalDialogMenuExtensions.a.o"		∂
+											"{ObjDir}ModalDialogMenuExtensions.c.o"
+
+
+# <Sys7.1>
+"{LibDir}ModalDialogMenuPatches.lib"	ƒ	{ModalDialogMenuPatchObjs}
+	Lib {StdLibOpts} -o "{Targ}" {ModalDialogMenuPatchObjs}
+
+
 "{ObjDir}DialogMgr.a.o"					ƒ	"{ObjDir}StandardEqu.d"						∂
 											"{IntAIncludes}ColorEqu.a"					∂
 											"{IntAIncludes}DialogsPriv.a"				∂
@@ -73,3 +93,13 @@ DialogMgrObjects						=	"{ObjDir}DialogMgr.a.o"						∂
 									"{IntAIncludes}DialogsPriv.a"					∂
 									"{DialogDir}DialogDispatch.a"
 	Asm {StdAOpts} -o "{Targ}" "{DialogDir}DialogDispatch.a"
+
+
+# <Sys7.1>
+"{ObjDir}DialogMgrPatches.a.o"	ƒ 	"{DialogDir}DialogMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{DialogDir}DialogMgrPatches.a"
+
+
+# <Sys7.1>
+"{ObjDir}ModalDialogMenuPatches.a.o"	ƒ 	"{DialogDir}ModalDialogMenuPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{DialogDir}ModalDialogMenuPatches.a"

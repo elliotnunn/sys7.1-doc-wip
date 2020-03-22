@@ -1,3 +1,18 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Overall, changed this file back from 'BassExtensions' ROM routines to
+;							'BassPatches' linked patches (but without actually renaming it). Changed
+;							several plain exported Procs back to self-executing Patch/InstallProcs.
+;							Reverted <SM3> to use the nice dcImportResident-based dispatch table
+;							from <1>. Recovered PatchProcs from MemMgrBoot.a to flush the outline
+;							font cache when an app heap is clobbered (unclear when the code was
+;							deleted). Recreated the <5> patch that was removed some time before
+;							<SM2> in 6/8/92, which rescues ATM's FMSwapFont and StdText patches from
+;							crashing when a spline font is loaded.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;	File:		BassExtensions.a
 ;
 ;	Contains:	This file was formerly part of the 'lpch' resource which loads the Spline
@@ -191,9 +206,25 @@ JStdTxMeas 	PROC	EXPORT
 ;	application heap. 																		
 ;——————————————————————————————————————————————————————————————————————————————————————————	
 																							
-;SetAppBaseCacheCleaner	PatchProc	$A057,(Plus,SE,II,Portable,IIci) ;SetAppBase				
+			MACRO								; start of code from MemMgrBoot.a	<Sys7.1>
+			oneCopyOfPatchCode					;									<Sys7.1>
+				MOVEM.L		A0-A2/D0-D3,-(sp)	; save registers					<Sys7.1>
+				CLR.L		-(SP)				; room for result					<Sys7.1>
+				MOVE.L		applZone,A0			; point to zone hdr					<Sys7.1>
+				MOVE.L		A0,-(SP)			; push start ptr					<Sys7.1>
+				MOVE.L		(A0),-(SP)			; push zone trailer					<Sys7.1>
+				_sbKillSomeCaches				;									<Sys7.1>
+				ADDQ		#4,SP				; ignore result						<Sys7.1>
+				MOVEM.L		(sp)+,A0-A2/D0-D3	; restore registers					<Sys7.1>
+@SkipIt
+				JMPOLD							; (changed from MemMgrBoot.a RTS)	<Sys7.1>
+			ENDM								; ...end of code from MemMgrBoot.a	<Sys7.1>
 
-;InitApplZoneCacheCleaner	PatchProc	$A02C,(Plus,SE,II,Portable,IIci) ;InitApplZone
+SetAppBaseCacheCleaner	PatchProc	$A057,(Plus,SE,II,Portable,IIci) ;SetAppBase	<Sys7.1> Changed back from a plain PROC
+			oneCopyOfPatchCode					;									<Sys7.1>
+
+InitApplZoneCacheCleaner	PatchProc	$A02C,(Plus,SE,II,Portable,IIci) ;InitApplZone	<Sys7.1> Changed back from a plain PROC
+			oneCopyOfPatchCode					;									<Sys7.1>
 
 
 
@@ -201,13 +232,164 @@ JStdTxMeas 	PROC	EXPORT
 ;					ATM lovely hack remains with system files
 ;——————————————————————————————————————————————————————————————————————————————————————————
 
+ATMSwapFontWrapper	PROC	EXPORT				; <Sys7.1> reconstruction of <5>
+		CLR.L	-(SP)							; First call the pre-ATM FMSwapFont to safely change the font.
+		MOVE.L	8(SP),-(SP)
+		MOVE.L	ATMSwapFontWrapperCallees+4,A0
+		JSR		(A0)
+		MOVE.L	(SP)+,A1
+
+		MOVE.L	WidthTabHandle,A0				; Test whether it set a spline font.
+		MOVE.L	(A0),A0
+		TST.B	WidthIsSpline(A0)
+		BNE.S	@unsafe
+
+		MOVE.L	ATMSwapFontWrapperCallees,A0	; Non-spline font => safe to call ATM trap handler.
+		JMP		(A0)							; (ATM will call FMSwapFont again, but no harm done.)
+
+@unsafe	MOVE.L	(SP)+,A0						; Spline font => unsafe to call ATM trap handler.
+		ADDQ	#4,SP
+		MOVE.L	A1,(SP)							; We already called FMSwapFont above, so just return the saved result.
+		JMP		(A0)
+
+		EXPORT	ATMSwapFontWrapperCallees		; These fields are initialized by ATMPatch:
+ATMSwapFontWrapperCallees
+		DC.L	0								; Address of ATM trap handler
+		DC.L	0								; Address of Pre-ATM trap handler
+
+
+ATMStdTextWrapper	PROC	EXPORT				; <Sys7.1> reconstruction of <5>
+		LINK	A6,#0							; Do the 'numer' and 'denom' scaling args imply a spline font?
+		CLR.W	-(SP)
+		MOVE.L	12(A6),-(SP)
+		MOVE.L	8(A6),-(SP)
+		_IsOutline
+		TST.W	(SP)+
+		UNLK	A6
+		BNE.S	@unsafe
+
+		MOVE.L	ATMStdTextWrapperCallees,A0		; Non-spline font => safe to call ATM trap handler.
+		JMP		(A0)
+
+@unsafe	MOVE.L	ATMStdTextWrapperCallees+4,A0	; Spline font => unsafe to call ATM trap handler.
+		JMP		(A0)
+
+		EXPORT	ATMStdTextWrapperCallees		; These fields are initialized by ATMPatch:
+ATMStdTextWrapperCallees
+		DC.L	0								; Address of ATM trap handler
+		DC.L	0								; Address of Pre-ATM trap handler
+
+
+; Compare the routine passed to SetToolTrapAddress against ATMPatch's checksum table
+;
+; Args:		A0 = proposed new trap routine
+;			A1 = table of checksums from various ATM versions
+; Returns:	EQ if checksum matches
+
+ChecksumATMPatch	PROC	EXPORT				; <Sys7.1> reconstruction of <5>
+
+		MOVEM.L	D0/D1/A0,-(SP)					; Save registers.
+
+		MOVE.W	(A0)+,D0						; Check for and follow the initial JMP $xxxxxxxx.
+		CMP.W	#$4EF9,D0
+		BNE.S	@return							; (If no JMP, return NE.)
+
+		MOVE.L	(A0),A0							; Checksum the target of the JMP.
+		MOVEQ	#0,D0
+		MOVE.W	#50,D1
+@mksum	ADD.L	(A0)+,D0
+		DBRA	D1,@mksum
+
+@chksum	MOVE.L	(A1)+,D1						; Return EQ if there is a match, NE if not.
+		BEQ.S	@notfnd
+		CMP.L	D1,D0
+		BEQ.S	@return
+		BRA.S	@chksum
+@notfnd	MOVEQ	#1,D0
+
+@return	MOVEM.L	(SP)+,D0/D1/A0					; Restore registers (except CCR) and return.
+		RTS
+
+
+; Sniff ATM's non-Spline-savvy patches to FMSwapFont and StdText, and wrap
+; them in our protective routines (above) to prevent a crash.
+
+ATMPatch	PatchProc	_SetTrapAddress, (Plus,SE,II,Portable,IIci)	; <Sys7.1> reconstruction of <5>
+		EXPORT	ATMPatchReturn
+		IMPORT	ATMSwapFontWrapper, ATMSwapFontWrapperCallees
+		IMPORT	ATMStdTextWrapper, ATMStdTextWrapperCallees
+
+; ATMPatchReturn is exported so that ATMPatchDisable can disable this patch
+; by copying our own 'JMPOLD' right here.
+
+		CMP.W	#$A647,D1						; Patch SetToolTrapAddress only.
+		BNE.S	ATMPatchReturn
+
+		CMP.W	#$A901,D0						; SetToolTrapAddress(A0, FMSwapFont)?
+		BNE.S	@NotThatTrap
+	LEARESIDENT	ATMSwapFontWrapper,A2
+		PEA		ATMSwapFontWrapperCallees
+		LEA		ATMSwapFontChecksums,A1
+
+		BRA.S	@GotOurTrap
+@NotThatTrap
+
+		CMP.W	#$A882,D0						; SetToolTrapAddress(A0, StdText)?
+		BNE.S	ATMPatchReturn
+	LEARESIDENT	ATMStdTextWrapper,A2
+		PEA		ATMStdTextWrapperCallees
+		LEA		ATMStdTextChecksums,A1
+
+@GotOurTrap
+		JSR		ChecksumATMPatch				; Compare the patch to our checksum list: is it from ATM?
+		MOVE.L	(SP)+,A1
+		BNE.S	ATMPatchReturn					; Prepare our wrapper if so, otherwise proceed with SetToolTrapAddress.
+
+		MOVE.L	A0,(A1)+						; Tell our wrapper about ATM's patch.
+		MOVEM.L	D0,-(SP)
+		_GetToolTrapAddress
+		MOVEM.L	(SP)+,D0
+		MOVE.L	A0,(A1)							; Tell our wrapper about the pre-ATM trap code.
+		MOVE.L	A2,A0							; Finally, SetToolTrapAddress with OUR WRAPPER.
+
+ATMPatchReturn
+		JMPOLD
+
+ATMSwapFontChecksums							; These checksums were derived from various ATM versions.
+		DC.L	$417FFC36
+		DC.L	$2D71904E
+		DC.L	$44EDD323
+		DC.L	$40CFFC7E
+		DC.L	$2CC19096
+		DC.L	$4535D273
+		DC.L	0
+ATMStdTextChecksums
+		DC.L	$E339FCB4
+		DC.L	$86FDFDCE
+		DC.L	$36B5833C
+		DC.L	$E335FCB4
+		DC.L	$86F9FDCE
+		DC.L	$36B1833C
+		DC.L	0
+
+
+; Disable the above ATMPatch when system startup is complete
+
+ATMPatchDisable	PatchProc	_Launch, (Plus,SE,II,Portable,IIci)	; <Sys7.1> reconstruction of <5>
+		IMPORT	ATMPatch, ATMPatchReturn
+
+		LEA		ATMPatch,A1						; A1 = destination of JMPOLD
+		MOVE.W	#$4EF9,(A1)+
+		LEA		ATMPatchReturn,A2				; A2 = source of JMPOLD
+		ADDQ	#2,A2
+		MOVE.L	(A2),(A1)						; Slam it home
+		JMPOLD
 
 ;——————————————————————————————————————————————————————————————————————————————————————————
 ;				Bass Dispatcher
 ;——————————————————————————————————————————————————————————————————————————————————————————
 
-;SplineCall PatchProc $A854,(Plus,SE,II,Portable,IIci)
-SPLINECALL 	Proc 	Export
+SplineCall PatchProc $A854,(Plus,SE,II,Portable,IIci)	; <Sys7.1> Changed back from a plain PROC
 		MOVE.L	expandMem, A0				; get low mem expand
 		MOVE.L	ExpandMemRec.emSplineKey(A0),D1		; splineKey invalid?
 		BEQ.S	@bailOut				; yes -> bail out
@@ -222,10 +404,11 @@ SPLINECALL 	Proc 	Export
 @fontCache
 		MOVE.L	(A1)+,D1				; load vector table size.
 		CMP.W	D1,D0					; valid selector?
-		BHS.S	@bailOut				; no -> bail out.		<SM3 chp>
+		BGE.S	@bailOut				; no -> bail out.		<SM3 chp> <Sys7.1>
 @loadVector
-		move.l	(a1,d0*4),a1				; Get address of routine	<SM3 chp>
-		jmp	(a1)					; Jump to routine		<SM3 chp>
+		lsl.l	#2,D0					;						ex<SM3 chp> <Sys7.1> Instead of d0*4 below...
+		move.l	(a1,d0),a1				; Get address of routine	<SM3 chp> <Sys7.1>
+		jmp	(a1)					; Jump to routine		<SM3 chp> <Sys7.1>
 
 @bailOut
 		SWAP	D0					; Get number of params
@@ -324,40 +507,56 @@ vfs_GetBitMapData	ds.l	1		; selector  11
 size			equ	*
 			endr						; <SM3 chp>
 
+FontCacheTable		PROC	EXPORT		; ex<SM3> <Sys7.1>
+	dc.l				(@end-*)/4
+			CASE	OFF
+	dcImportResident	IsOutline
+	dcImportResident	SetOutlinePreferred
+	dcImportResident	SB_KillSomeCaches
+	dcImportResident	sb_FillPrinterWidths
+	dcImportResident	sb_RetrieveGlyph
+	dcImportResident	sb_FillWidthTab
+	dcImportResident	sb_SearchForCache
+	dcImportResident	sb_PreflightFontMem
+	dcImportResident	OutlineMetrics
+	dcImportResident	GetOutlinePreferred
+	dcImportResident	SetPreserveGlyph
+	dcImportResident	GetPreserveGlyph
+	dcImportResident	sb_FlushFonts
+	dcImportResident	sb_SFNTMatchSize
+	dcImportResident	fs_LowestPPEM
+	dcImportResident	InitializePartialFonts
+	dcImportResident	InitializeDiskCache
+			CASE	OBJ
+@end
+
+FontScalerTable		PROC	EXPORT		; ex<SM3> <Sys7.1>
+	dc.l				(@end-*)/4
+			CASE	OFF
+	dcImportResident	fs_OpenFonts
+	dcImportResident	fs_Initialize
+	dcImportResident	fs_NewSfnt
+	dcImportResident	fs_NewTransformation
+	dcImportResident	fs_NewGlyph
+	dcImportResident	fs_GetAdvanceWidth
+	dcImportResident	fs_ContourGridFit
+	dcImportResident	fs_ContourNoGridFit
+	dcImportResident	fs_FindBitMapSize
+	dcImportResident	fs_SizeOfOutlines
+	dcImportResident	fs_SaveOutlines
+	dcImportResident	fs_RestoreOutlines
+	dcImportResident	fs_ContourScan
+	dcImportResident	fs_CloseFonts
+			CASE	OBJ
+@end
+
 
 
 ;——————————————————————————————————————————————————————————————————————————————————————————
 ;	Boot-time initialization code, if any, goes here.
 ;——————————————————————————————————————————————————————————————————————————————————————————
 
-;InstallBassCommon	InstallProc	(Plus,SE,II,Portable,IIci)
-INSTALLBASSCOMMON	Proc	Export
-
-; <SM3 chp>	Since the above-described dispatch tables are no longer initialized by the
-; <SM3 chp>	link patch mechanism and cannot be placed in ROM, all of the following
-; <SM3 chp>	entry points are imported and initialized into the tables by this routine.
-;
-		case		off
-		import		IsOutline, SetOutlinePreferred, SB_KillSomeCaches
-		import		sb_FillPrinterWidths, sb_RetrieveGlyph, sb_FillWidthTab
-		import		sb_SearchForCache, sb_PreflightFontMem
-		import		OutlineMetrics, GetOutlinePreferred
-		import		SetPreserveGlyph, GetPreserveGlyph
-		import		sb_FlushFonts, sb_SFNTMatchSize, fs_LowestPPEM
-		import		InitializePartialFonts, InitializeDiskCache
-
-		import		fs_OpenFonts, fs_Initialize, fs_NewSfnt
-		import		fs_NewTransformation, fs_NewGlyph
-		import		fs_GetAdvanceWidth
-		import		fs_ContourGridFit, fs_ContourNoGridFit
-		import		fs_FindBitMapSize, fs_SizeOfOutlines
-		import		fs_SaveOutlines, fs_RestoreOutlines
-		import		fs_ContourScan, fs_CloseFonts
-	if TheFuture then
-		import		fs_GetGlyphInfo, fs_GetGlyphData
-		import		fs_GetBitMapInfo, fs_GetBitMapData
-	endif
-		case		obj
+InstallBassCommon	InstallProc	(Plus,SE,II,Portable,IIci)	; <Sys7.1> Changed back from a plain PROC
 
 ;——————————————————————————————————————————————————————————————————————————————————————————
 ;					Allocate splinekey memory…
@@ -374,95 +573,12 @@ INSTALLBASSCOMMON	Proc	Export
 ;——————————————————————————————————————————————————————————————————————————————————————————
 ;					Fill out dispatch tables…
 ;——————————————————————————————————————————————————————————————————————————————————————————
-		moveq		#DispatchFontCache.size,d0		; <SM3 chp>
-		_NewPtr		,sys,clear
+		leaResident	FontCacheTable,A0					; ex<SM3> <Sys7.1> Instead of making a NewPtr
 		MOVE.L		A0, splineKeyRec.vFontCache(A2)		; Save dispatch table ptr (fontCache)
-		beq.b		@endDFCInit
-
-		moveq		#(DispatchFontCache.size/4)-1,d0	; number of vector entries in table
-		move.l		d0,(a0)+
-		lea		IsOutline,a1			; selector  0
-		move.l		a1,(a0)+
-		lea		SetOutlinePreferred,a1		; selector  1
-		move.l		a1,(a0)+
-		lea		SB_KillSomeCaches,a1		; selector  2
-		move.l		a1,(a0)+
-		lea		sb_FillPrinterWidths,a1		; selector  3
-		move.l		a1,(a0)+
-		lea		sb_RetrieveGlyph,a1		; selector  4
-		move.l		a1,(a0)+
-		lea		sb_FillWidthTab,a1		; selector  5
-		move.l		a1,(a0)+
-		lea		sb_SearchForCache,a1		; selector  6
-		move.l		a1,(a0)+
-		lea		sb_PreFlightFontMem,a1		; selector  7
-		move.l		a1,(a0)+
-		lea		OutlineMetrics,a1		; selector  8
-		move.l		a1,(a0)+
-		lea		GetOutlinePreferred,a1		; selector  9
-		move.l		a1,(a0)+
-		lea		SetPreserveGlyph,a1		; selector  a
-		move.l		a1,(a0)+
-		lea		GetPreserveGlyph,a1		; selector  b
-		move.l		a1,(a0)+
-		lea		sb_FlushFonts,a1		; selector  c
-		move.l		a1,(a0)+
-		lea		sb_SFNTMatchSize,a1		; selector  d
-		move.l		a1,(a0)+
-		lea		fs_LowestPPEM,a1		; selector  e
-		move.l		a1,(a0)+
-		lea		InitializePartialFonts,a1	; selector  f	<14>
-		move.l		a1,(a0)+
-		lea		InitializeDiskCache,a1		; selector  10	<14>
-		move.l		a1,(a0)+
-@endDFCInit
-
-		moveq		#DispatchFontScaler.size,d0
-		_NewPtr		,sys,clear
+														; ex<SM3> <Sys7.1> ...No need to fill table
+		leaResident	FontScalerTable,A0					; ex<SM3> <Sys7.1> Instead of making a NewPtr
 		MOVE.L		A0, splineKeyRec.vFontScaler(A2)	; Save dispatch table ptr (fontScaler)
-		beq.b		@endDFSInit
-
-		moveq		#(DispatchFontScaler.size/4)-1,d0	; number of vector entries in table
-		move.l		d0,(a0)+
-		lea		fs_OpenFonts,a1			; selector  0
-		move.l		a1,(a0)+
-		lea		fs_Initialize,a1		; selector  1
-		move.l		a1,(a0)+
-		lea		fs_NewSfnt,a1			; selector  2
-		move.l		a1,(a0)+
-		lea		fs_NewTransformation,a1		; selector  3
-		move.l		a1,(a0)+
-		lea		fs_NewGlyph,a1			; selector  4
-		move.l		a1,(a0)+
-		lea		fs_GetAdvanceWidth,a1		; selector  5
-		move.l		a1,(a0)+
-		lea		fs_ContourGridFit,a1		; selector  6
-		move.l		a1,(a0)+
-		lea		fs_ContourNoGridFit,a1		; selector  7
-		move.l		a1,(a0)+
-		lea		fs_FindBitMapSize,a1		; selector  8
-		move.l		a1,(a0)+
-		lea		fs_SizeOfOutlines,a1		; selector  9
-		move.l		a1,(a0)+
-		lea		fs_SaveOutlines,a1		; selector  a
-		move.l		a1,(a0)+
-		lea		fs_RestoreOutlines,a1		; selector  b
-		move.l		a1,(a0)+
-		lea		fs_ContourScan,a1		; selector  c
-		move.l		a1,(a0)+
-		lea		fs_CloseFonts,a1		; selector  d
-		move.l		a1,(a0)+
-	if TheFuture then
-		lea		fs_GetGlyphInfo,a1		; selector  e
-		move.l		a1,(a0)+
-		lea		fs_GetGlyphData,a1		; selector  f
-		move.l		a1,(a0)+
-		lea		fs_GetBitMapInfo,a1		; selector  10
-		move.l		a1,(a0)+
-		lea		fs_GetBitMapData,a1		; selector  11
-		move.l		a1,(a0)+
-	endif
-@endDFSInit								; <SM3 chp>
+														; ex<SM3> <Sys7.1> ...No need to fill table
 
 ;——————————————————————————————————————————————————————————————————————————————————————————
 ;					Initialize the splinePreferred flag…
@@ -501,21 +617,42 @@ INSTALLBASSCOMMON	Proc	Export
 ; Force _InitFonts to be called.
 ; Don’t include Mac Plus in ROM list, since FMExist doesn’t on the Plus.
 ;——————————————————————————————————————————————————————————————————————————————————————————
-;ForceInitFontsCall	InstallProc	(SE,II,Portable,IIci)
-FORCEINITFONTSCALL	Proc	Export
+ForceInitFontsCall	InstallProc	(SE,II,Portable,IIci)	; <Sys7.1> Changed back from a plain PROC
 		ST		FMExist
 		rts
 		ENDPROC
 		
 
 ;——————————————————————————————————————————————————————————————————————————————————————————
+; <Sys7.1> Correct the proc that contains a pointer into the trap table.
+;——————————————————————————————————————————————————————————————————————————————————————————
+PlusCorrectTxMeasVector	InstallProc	(Plus)				; <Sys7.1> Recreated
+		IMPORT	JStdTxMeas
+		LEA		JStdTxMeas,A0
+		SUB.L	#$200,(A0)			; Delta between ToolTable on Plus vs everywhere else
+		RTS
+		ENDPROC
+
+
+;——————————————————————————————————————————————————————————————————————————————————————————
+; <Sys7.1> Init the outline font cache
+;——————————————————————————————————————————————————————————————————————————————————————————
+InitPartialFonts		InstallProc	(Plus,SE,II,Portable,IIci)	; <Sys7.1> Recreated
+		SUBQ	#2,SP
+		MOVE.L	#10*1024,-(SP)		; Font cache size
+		_InitializePartialFonts
+		ADDQ	#2,SP
+		RTS
+		ENDPROC
+
+
+;——————————————————————————————————————————————————————————————————————————————————————————
 ; Register our selector 'font' 
 ;——————————————————————————————————————————————————————————————————————————————————————————
-;InstallFontGestalt	InstallProc	(Plus,SE,II,Portable,IIci)
-INSTALLFONTGESTALT	Proc	Export
+InstallFontGestalt	InstallProc	(Plus,SE,II,Portable,IIci)	; <Sys7.1> Changed back from a plain PROC
 		IMPORT		FontMgrGestalt
 		MOVE.L		#gestaltFontMgrAttr, D0
-		LEA		FontMgrGestalt, A0
+		LEARESIDENT	FontMgrGestalt, A0						; <Sys7.1>
 		_NewGestalt								; Install our function
 ;		BEQ.S		@noError						; error is in D0
 ;		DC.W		$A9FF							; let me know if it failed

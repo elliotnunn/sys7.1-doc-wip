@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Made build rule for linked patch file SonyPatches.a
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		Sony.make
 #
 #	Contains:	Makefile for the Sony Driver.
@@ -40,4 +47,9 @@
 
 "{RsrcDir}Sony.rsrc"		ƒ		"{ObjDir}SonyHdr.a.o"
 	Link {StdLOpts} {StdAlign} -o "{Targ}" "{ObjDir}SonyHdr.a.o" -sn Main=".Sony" -rt DRVR=4
+
+
+# <Sys7.1>
+"{ObjDir}SonyPatches.a.o"	ƒ		"{SonyDir}SonyPatches.a"
+	Asm {StdAOpts} -o "{Targ}" -d SonyNonPortable=1 -d onMac32=1 "{SonyDir}SonyPatches.a"
 

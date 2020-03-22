@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM2>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		AppleTalk.a
 ;
 ; 	Created: Friday, October 20, 1989 at 9:11:59 PM
@@ -136,7 +143,7 @@ lengthErr 		EQU 		-4
 ;
 ; SCC interrupt priority		Should NEVER MOVE.W this value, just ORI.W						<SM2> rb
 ;
-sccLockout		EQU 		$600     				; This value works on both Mac and Lisa		<SM2> rb
+sccLockout		EQU 		$2600     				; This value works on both Mac and Lisa		<SM2> rb <Sys7.1>
 ;
 ;
 ;+ MPP (control calls to NBP, DDP and ABLAP)

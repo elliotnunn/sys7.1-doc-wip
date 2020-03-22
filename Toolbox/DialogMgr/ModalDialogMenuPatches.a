@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored TheFuture conditional removed by <17> from around 'MakeInstall
+;							InitDialogMgrGlobals', matching ModalDialogMenuExtensions.a.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ModalDialogMenuPatches.a
 ;
 ;	Contains:	Implementation to allow menu bar access during Modal Dialogs
@@ -60,8 +68,10 @@ DEBUG	default		false						; Required for InternalMacros.a
 ; allocate and initialize globals stored in emDialogGlobals
 ;
 
+		IF		TheFuture THEN						; ex<17> <Sys7.1>
 			import		InitDialogMgrGlobals
 			MakeInstall	InitDialogMgrGlobals,(Plus,SE,II,Portable,IIci)
+		ENDIF										; ex<17> <Sys7.1>
 
 ;————————————————————————————————————————————————————————————————————————————————————————————————————
 ; ModalDialog — set up flags so we can recognize modal dialogs, and put in a new improved filter

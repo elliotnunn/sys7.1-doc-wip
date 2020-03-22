@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Conditionalized the 'bra fcExit' from <SM4> as forROM (all other SM changes are forROM)
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		DiskCache.a
 ;
 ;	Contains:	an LRU cache of disk blocks
@@ -453,7 +460,6 @@ fcFile		MOVEA.L FCBSPtr,A1			; A1 = FCB ptr
 			BNE.S	@1					; br if so (go flush)
 			BTST	#noFlushBit,FHFlags(A4) ; avoid intermediate flushes?		<08Dec85>
 			BEQ.S	@1					; br if not (go flush)					<08Dec85>
-			bra.s	fcExit				; exit if so (skip flush)				<SM4>
 
 	IF NOT forROM THEN					; We don't need MacPlus ROM check		<SM3> rb <SM4>
 			MOVE.L	ROMBase,A3			;<11Dec86> make sure we have the correct ROM
@@ -463,6 +469,7 @@ fcFile		MOVEA.L FCBSPtr,A1			; A1 = FCB ptr
 			BNE.S	fcExit				; exit if not (skip flush)				<08Dec85>
 	ELSE								;										<SM3> rb
 			; if FlushFlag is 0, then if this file is control file skip flushing
+			bra.s	fcExit				; exit if so (skip flush)				<SM4> <Sys7.1>
 	ENDIF								;										<SM3> rb
 	
 @1			BSR 	FlushFCache 		; flush the A4 cache

@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Removed the struct elements inserted by <H3>. Worked around
+;							hasPwrControls/hasPowerMgr being incorrectly set on Plus/Portable.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		SonyEqu.a
 ;
 ;	Contains:	xxx put contents here xxx
@@ -362,7 +370,7 @@ chipState 		EQU 		sonyVarEnd    			; Byte holds flag to indicate IWM on or off
 sonyVarEnd		SET 		chipState+2       		; end of sony vars excluding DCD
   				ENDIF
 
-  				IF  		hasPwrControls | hasPowerMgr THEN		; <1.1>
+  				IF  		(hasPwrControls | hasPowerMgr) and NOT onHcMac and NOT onMac THEN		; <1.1> <Sys7.1>
 chipState 		EQU 		sonyVarEnd    			; Bit7 - saved VIA dir, 6..0 - pmgr enables <1.1>
 diskSleepQEL	EQU			chipState+2				; sleep/wakeup queue element
 sonyVarEnd		SET 		diskSleepQEL+SleepqRec.SleepqSize	; end of sony vars excluding DCD
@@ -371,9 +379,7 @@ sonyVarEnd		SET 		diskSleepQEL+SleepqRec.SleepqSize	; end of sony vars excluding
 				IF			forDiskDup THEN
 fmtParams		EQU			sonyVarEnd				;pointer to parameters for special format command
 gcrFmtByte		EQU			fmtParams+4				; saved GCR format byte for duplicator
-clock32Mhz		EQU			gcrFmtByte+2			; ( 1) Clock speed: $FF=32Mhz, $00=16Mhz				<H3><SM4>
-DisableRetries	EQU			clock32Mhz+1			; ( 1) $FF=Don't perform retries, $00=normal			<H4><SM4>
-sonyVarEnd		SET			DisableRetries+1
+sonyVarEnd		SET			gcrFmtByte+1			; <Sys7.1> removed clock32Mhz <H3> and DisableRetries <H4> (1 byte each)
 				ENDIF
 
 

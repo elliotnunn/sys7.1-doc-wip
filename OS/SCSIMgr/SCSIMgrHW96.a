@@ -1,4 +1,14 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM9> boxFlag checks and tacked-on flags from <SM14>/<SM16>
+;							Commented out the nonSerializedIO nops from <SM7> and <SM12>, and
+;							restored a short branch that the nops blew out
+;							Restored useless MaxBusErr code to Transfer_96 (from SCSIMgrHW96BIOS.a)
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		SCSIMgrHW96.a
 ;
 ;	Contains:	SCSI Manager 53C96 Hardware-Specific routines
@@ -166,13 +176,13 @@ InitHW_SCSI96
 
 			move.b	#cRstSChp, rCMD(a3)			; Reset the Chip (not the bus)
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM12>
+;			nop									; Force write to complete.				<SM12><Sys7.1>
 		endif
 			move.b	#cNOP, rCMD(a3)				; C96 NOP required after HW or SW reset
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO
 			
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM12>
+;			nop									; Force write to complete.				<SM12><Sys7.1>
 		endif
 			move.b	#initCF1, rCF1(a3)			; load init config. value which affects:
 												;	busID, SCSI reset reporting & parity checking
@@ -181,47 +191,20 @@ InitHW_SCSI96
 			
 			move.b	#initCF3, rCF3(a3)			; load init config. value
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			
 ;	Check whether or not we're 25 or 33MHz and set SCSI bus speed values appropriately			<T6> thru next <T6>
 
 			TestFor	VIA2Exists					; see if we should check 25/33MHz VIA2 bit
-			beq		@dontChk					; if there's not a VIA2, don't do it.
+			beq.s	@dontChk					; if there's not a VIA2, don't do it.				ex<SM9> <Sys7.1>
+			TestFor	DAFBExists					;		vs BoxFlags for Spike/Eclipse/Zydeco		ex<SM9> <Sys7.1>
+			beq.s	@dontChk					;		if there's not a DAFB						ex<SM9> <Sys7.1>
 
-;  	Change to check for BoxFlags for Spike/Eclipse/Zydeco, instead of DAFBExists, since this
-;   special stuff only applies to those 3 machines.												<SM9>
-
-			move.l	UnivInfoPtr,A0				; get pointer to universal table					
-			cmp.b	#BoxQuadra700,ProductInfo.ProductKind(A0)	; check for a Spike	
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco
-			cmp.b	#BoxQuadra900,ProductInfo.ProductKind(A0)	; check for a Eclipse	
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco
-			cmp.b	#BoxQuadra950,ProductInfo.ProductKind(A0)	; check for a Zydeco	
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco
-		IF forSmurf THEN
-			cmp.b	#boxRiscQuadra700,ProductInfo.ProductKind(A0)	; check for a RISC Spike	<SM15>				
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscQuadra900,ProductInfo.ProductKind(A0)	; check for a RISC Quadra900<SM15>
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscQuadra950,ProductInfo.ProductKind(A0)	; check for a RISC Quadra950<SM15>				
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscCentris610,ProductInfo.ProductKind(A0)	; check for a RISC Centris610<SM15>					
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscCentris650,ProductInfo.ProductKind(A0)	; check for a RISC Centris650<SM15>					
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscQuadra800,ProductInfo.ProductKind(A0)	; check for a RISC Quadra800<SM15>					
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM15>
-			cmp.b	#boxRiscQuadra610,ProductInfo.ProductKind(A0)	; check for a RISC Quadra610<SM16>					
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM16>
-			cmp.b	#boxRiscQuadra650,ProductInfo.ProductKind(A0)	; check for a RISC Quadra650<SM16>					
-			beq.s	@DoSpikeEclipseZydeco		; Special setup for Spike/Eclipse/Zydeco		<SM16>
-		ENDIF									; for Smurf
-			bra.s	@dontChk					; only Spike/Eclipse have a VIA2 and DAFB
-
-@DoSpikeEclipseZydeco							;												<SM9>
+			move.l	a0,-(sp)					;		needlessly save a0...						ex<SM9> <Sys7.1>
 			move.l	VIA2,a0						; and get VIA2 so that we can check the speed bit
 			move.b	vBufB(a0),d0				; read PBx values for 25/33MHz checks
+			move.l	(sp)+,a0					;		...and restore a0							ex<SM9> <Sys7.1>
 			btst	#v2Speed,d0					; are we 25 MHz or 33 Mhz?
 			beq.s	@25MHz						; IF Speed == 33MHz THEN
 			move.l	#tsc_cf_stg_33,(a4)			;     setup DAFB SCSI config register.
@@ -245,20 +228,6 @@ InitHW_SCSI96
 			move.l	UnivInfoPtr,A0				; get pointer to universal table					<T9>
 			cmp.b	#boxQuadra700,ProductInfo.ProductKind(A0)	; check for a Spike					<T9><2>
 			beq.s	@ForSpike					; (note - BoxFlag is not defined yet!)				<T9>
-		IF forSmurf THEN
-			cmp.b	#boxRiscQuadra700,ProductInfo.ProductKind(A0)	; check for a RISC Quadra700	<SM15>	
-			beq.s	@ForSpike					; (note - BoxFlag is not defined yet!)				<SM15>
-			cmp.b	#boxRiscCentris610,ProductInfo.ProductKind(A0)	; check for a RISC Centris610	<SM15>
-			beq.s	@ForSpike					; (note - BoxFlag is not defined yet!) 				<SM15>
-			cmp.b	#boxRiscCentris650,ProductInfo.ProductKind(A0)	; check for a RISC Centris650	<SM15>
-			beq.s	@ForSpike					; (note - BoxFlag is not defined yet!) 				<SM15>
-			cmp.b	#boxRiscQuadra800,ProductInfo.ProductKind(A0)	; check for a RISC Quadra800	<SM15>
-			beq.s	@ForSpike					; (note - BoxFlag is not defined yet!) 				<SM15>
-			cmp.b	#boxRiscQuadra610,ProductInfo.ProductKind(A0)	; check for a RISC Quadra610	<SM16>					
-			beq.s	@ForSpike					;													<SM16>
-			cmp.b	#boxRiscQuadra650,ProductInfo.ProductKind(A0)	; check for a RISC Quadra650	<SM16>					
-			beq.s	@ForSpike					; 													<SM16>
-		ENDIF									; for Smurf
 
 ;	Check for difference between 25 and 33MHz Eclipse machines:										<T6>
 
@@ -301,7 +270,7 @@ InitHW_SCSI96
 												;	synch data xfer
 @4
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			move.b	rINT(a3), d0				; read & clear rFOS, rSTA & rINT into throwaway		<T6>
 			rts
@@ -400,6 +369,12 @@ linkSize		EQU	*
 		
 Transfer_96:
 			link	a6, #linkSize				; allocate local storage
+
+			moveq	#Max020030BusErrs,d0		; upper limit for 020s and 030s					<Sys7.1>
+			cmp.b	#cpu68040,CpuFlag			; check if we're on an 040						<Sys7.1>
+			bne.s	@storeValue					; NO  ... leave BusErrCount alone				<Sys7.1>
+			moveq	#Max040BusErrs,d0			; YES ... use 040 MaxBusErr value				<Sys7.1>
+@storeValue										;												<Sys7.1>
 			move.l	#0, BusErrAddr(a6)			; init so first bus err is seen as a new one
 
 			moveq.l	#noErr, d0					; assume no error
@@ -418,7 +393,7 @@ Transfer_96:
 
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO									<T8>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 
 ;			move.l	BusErrVct, D0				; compare old vector (at 8)						<2> <3>removed
@@ -478,7 +453,7 @@ Transfer_96:
 OneByteRead										;														<T2> thru next <T2>
 			move.b	#cIOXfer, rCMD(a3)			; load IO transfer cmd & begin xfers
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			jsr.w	WaitForIntNoTime			; Wait for intrp w/o timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
@@ -494,11 +469,11 @@ OneByteRead										;														<T2> thru next <T2>
 OneByteWrite
 			move.b	(a2)+, rFFO(a3)				; preload the FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			move.b	#cIOXfer, rCMD(a3)			; load IO transfer cmd & begin xfers
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM12>
+;			nop									; Force write to complete.				<SM12><Sys7.1>
 		endif
 			jsr.w	WaitForIntNoTime			; Wait for intrp w/o timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
@@ -522,7 +497,7 @@ errExit
 			clr.l	d1							; no bytes transferred
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			rts									;													<T4>
 
@@ -553,7 +528,7 @@ errExit
 Xfer1Byte
 			move.b	#cIOXfer, rCMD(a3)			; load IO transfer cmd & begin xfers
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			jsr.w	WaitForIntNoTime			; Wait for intrp w/o timeout
 												;    on exit d5 = rFOS|rINT|0|rSTA
@@ -630,7 +605,7 @@ SlowRead_96
 			move.b	#0, rXCM(a3)				; rXCM = 0, clear most-sig. byte count
 			move.b	#$10, rXCL(a3)				; rXCL = 16 bytes, least-sig. byte value
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			and.l	#$F, d2						; d2 = remainder word count after 16-byte moves
 @read16			
@@ -709,7 +684,7 @@ SlowRead_96
 			bne.s	@phaseErr					; bra. on phase err
 			move.b	#cIOXfer, rCMD(a3)			; load IO transfer cmd & begin xfers
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 @3
 			btst.b	#bINT, rSTA(a3)				; check for c96 INTRP
@@ -780,7 +755,7 @@ SlowRead_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.			<SM7>
+;			nop									; Force write to complete.			<SM7><Sys7.1>
 		endif
 			rts									; 									<T5>
 			
@@ -834,7 +809,7 @@ SlowWrite_96
 			move.l	d2, d6						; d6 = number 64KB block to perform
 			swap	d6							; upper word of d6 = lower word of d2
 			andi.l	#$0000FFFF, d2				; mask out upper word
-			beq		@2							; if 0 then we have $10000 (64K) bytes to xfer
+			beq.s	@2							; if 0 then we have $10000 (64K) bytes to xfer	ex<SM7> ex<SM12> <Sys7.1>
 @next64KB
 			moveq.l	#iPhaseMsk, d3				; load mask bits for phase value
 			and.b	rSTA(a3), d3				; are we still in data-out phase?
@@ -847,7 +822,7 @@ SlowWrite_96
 			lsr.l	#8, d4						; get upper byte of low word
 			move.b	d4, rXCM(a3)				; TC regr (most-sig. byte) <- d4.b
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM12>
+;			nop									; Force write to complete.				<SM12><Sys7.1>
 		endif
 			move.b	#cDMAXfer, rCMD(a3)			; load DMA transfer cmd & begin xfers
 			nop									; squoosh pipeline								<T8>
@@ -891,7 +866,7 @@ SlowWrite_96
 @residual			
 			move.b	(a2)+, rDMA(a3)				; xfer residual byte							<T8>
 		if nonSerializedIO Then
-			nop									; Force write to complete.						<SM7>
+;			nop									; Force write to complete.						<SM7><Sys7.1>
 		endif
 @noResidual			 
 			bsr.w	WaitForIntNoTime			; Wait for intrp w/o timeout
@@ -938,7 +913,7 @@ SlowWrite_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO											<T4>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			rts									; 
 
@@ -991,7 +966,7 @@ FastWrite_96
 @doWrite
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO										<T8>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			moveq.l	#iPhaseMsk, d0				;
 			and.b	rSTA(a3), d0				; are we in data-out phase?
@@ -1014,12 +989,12 @@ FastWrite_96
 			lsr.l	#8, d4						; get upper byte of low word
 			move.b	d4, rXCM(a3)				; TC regr (most-sig. byte) <- d4.b						
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM12>
+;			nop									; Force write to complete.				<SM12><Sys7.1>
 		endif
 			move.b	#cDMAXfer, rCMD(a3)			; load DMA transfer cmd & begin xfers
 												;   DREQ* should be active at this time
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			move.w	d2, d4						; d4 = copy of transfer count
 			lsr.w	#5, d4						; divide xfer count by 32 
@@ -1057,7 +1032,7 @@ FastWrite_96
 @residual			
 			move.b	(a2)+, rDMA(a3)				; xfer residual byte					<T8>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 @noResidual			 
 			bsr.w	WaitForIntNoTime			; Wait for intrp w/o timeout
@@ -1075,7 +1050,7 @@ FastWrite_96
 			subq.l	#1, d2						; adjust for transfer count calc
 			move.b	(a2)+, rFFO(a3)				; ...preload fifo with odd byte			<T4> thru next <T4>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			bra.w	@next64KB					; now we're word aligned
 @phaseErr
@@ -1101,7 +1076,7 @@ FastWrite_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO							<T4>
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			rts									; 
 
@@ -1153,7 +1128,7 @@ FastRead_96
 @doRead
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO										<T8>
 		if nonSerializedIO Then
-			nop									; Force write to complete.							<SM7>
+;			nop									; Force write to complete.							<SM7><Sys7.1>
 		endif
 			moveq.l	#iPhaseMsk, d0				; load mask for phase bits								<T4> thru next <T4>
 			and.b	rSTA(a3), d0				; are we in data-in phase?
@@ -1175,7 +1150,7 @@ FastRead_96
 			move.b	#cDMAXfer, rCMD(a3)			; load DMA transfer cmd & begin xfers
 												;   DREQ* should be active at this time
 		if nonSerializedIO Then
-			nop									; Force write to complete.							<SM7>
+;			nop									; Force write to complete.							<SM7><Sys7.1>
 		endif
 ;			move.l	a2, d5						;
 ;			btst.l	#0, d5						; check if input buffer is on word boundary
@@ -1258,7 +1233,7 @@ FastRead_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO										<T4>
 		if nonSerializedIO Then
-			nop									; Force write to complete.							<SM7>
+;			nop									; Force write to complete.							<SM7><Sys7.1>
 		endif
 			rts									;
 
@@ -1304,7 +1279,7 @@ ResetBus_96
 			move.b	#cRstSBus, rCMD(a3)			; load reset scsi bus cmd							<T3>
 												; re-enable all intrps
 		if nonSerializedIO Then
-			nop									; Force write to complete.							<SM7>
+;			nop									; Force write to complete.							<SM7><Sys7.1>
 		endif
 			rts	
 
@@ -1379,7 +1354,7 @@ HandleSelInProg
 			bsr.w	WaitForIntNoTime
 			move.b	#cFlshFFO, rCMD(a3)				; Flush FIFO							<3>
 		if nonSerializedIO Then
-			nop									; Force write to complete.					<SM7>
+;			nop									; Force write to complete.					<SM7><Sys7.1>
 		endif
 			moveq.l	#0, d0
 			bra.s	@gotInt
@@ -1565,7 +1540,7 @@ FastComp_96
 			move.b	#cDMAXfer, rCMD(a3)			; load DMA transfer cmd & begin xfers
 												;   DREQ* should be active at this time
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 
 			ror.l	#1, d2						; xfer byte count to word & remember odd byte
@@ -1615,7 +1590,7 @@ FastComp_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			rts									; 
 			
@@ -1691,7 +1666,7 @@ SlowComp_96
 @read16			
 			move.b	#cDMAXfer, rCMD(a3)			; load DMA transfer cmd & start loading FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 @1												;   currently loaded transfer count is used/reused
 			btst.b	#bINT, rSTA(a3)				; poll for unexpected intrp while waiting
@@ -1741,7 +1716,7 @@ SlowComp_96
 			bne.s	@phaseErr					; bra. on phase err
 			move.b	#cIOXfer, rCMD(a3)			; load IO transfer cmd & begin xfers
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 @3
 			btst.b	#bINT, rSTA(a3)				; check for c96 INTRP
@@ -1789,7 +1764,7 @@ SlowComp_96
 			jsr		Error						; call Error proc - for debug
 			move.b	#cFlshFFO, rCMD(a3)			; Flush FIFO
 		if nonSerializedIO Then
-			nop									; Force write to complete.				<SM7>
+;			nop									; Force write to complete.				<SM7><Sys7.1>
 		endif
 			rts									; 										<T5>
 			

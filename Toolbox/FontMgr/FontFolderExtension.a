@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <13> maxFontFiles to 129. Added a separate check for 128 font
+;							files (and a user notification), rendering maxFontFiles irrelevant.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FontFolderExtension.a
 ;
 ;	Contains:	Code which opens fonts in the Font Folder and keeps them in
@@ -50,8 +58,9 @@
 			include		'FileMgrPrivate.a'		; <SM2> CSS
 			include		'LinkedPatchMacros.a'	; <SM2> CSS
 			include		'ResourceMgrPriv.a'
+			include		'Notification.a'		; <Sys7.1>
 
-maxFontFiles		equ	128					; Open a maximum of 128 files
+maxFontFiles		equ	129					; Open a maximum of 129 files	ex<13> <Sys7.1>
 isAlias				equ	15
 resolveSpecialFolderAliases	equ	0			; Bummers.  Not allowed to resolve aliases yet.
 
@@ -176,6 +185,32 @@ stackFrameSize	equ	*
 			cmp.l	d1,d0 					; Is it a font file?
 			bne.s	@fileTypeLoop			; Nope
 
+			cmp.w	#128,d5					; <Sys7.1> On the 129th file, put up a Notification.
+			blt.s	@notTooMany				; <Sys7.1>
+			subq	#4,sp					; <Sys7.1>
+			move.w	#-16392,-(sp)			; <Sys7.1> "Some fonts may not be available for use."
+			_GetString						; <Sys7.1> 
+			move.l	(sp)+,a1				; <Sys7.1> (Actually, they WILL not be available.)
+
+		WITH NMRec							; <Sys7.1>
+			move.l	#NMRecSize,d0			; <Sys7.1>
+			_NewPtr	,sys,clear				; <Sys7.1>
+			move.w	#nmType,qType(a0)		; <Sys7.1>
+			move.l	#-1,nmSound(a0)			; <Sys7.1>
+			move.l	a1,nmRefCon(a0)			; <Sys7.1>
+			move.l	(a1),a1					; <Sys7.1>
+			move.l	a1,nmStr(a0)			; <Sys7.1>
+			leaResident	TooManyResponder,a1	; <Sys7.1>
+			move.l	a1,nmResp(a0)			; <Sys7.1>
+		ENDWITH								; <Sys7.1>
+
+			subq	#2,sp					; <Sys7.1>
+			_NMInstall						; <Sys7.1>
+			addq	#2,sp					; <Sys7.1>
+
+			bra.s	@expandFCBArray			; <Sys7.1> Stop opening files, preempting the check below.
+@notTooMany									; <Sys7.1>
+
 ;
 ;	Add the file to the resource chain.
 ;
@@ -233,5 +268,22 @@ fileTypeTable
 			dc.b	'ffil', 'tfil', 'FFIL'
 			dc.l	0
 			EndProc
+
+
+TooManyResponder	Proc	Export			; <Sys7.1> Generic NotificationMgr responder routine
+			move.l	(sp)+,d0				; <Sys7.1>
+			move.l	(sp)+,a0				; <Sys7.1>
+			move.l	d0,-(sp)				; <Sys7.1>
+			move.l	NMRec.nmRefCon(a0),-(sp); <Sys7.1>
+
+			subq	#2,sp					; <Sys7.1>
+			_NMRemove						; <Sys7.1>
+			addq	#2,sp					; <Sys7.1>
+
+			_ReleaseResource				; <Sys7.1>
+
+			rts								; <Sys7.1>
+
+			EndProc							; <Sys7.1>
 			End
 			

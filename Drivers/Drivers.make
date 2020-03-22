@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Un-#included the missing files Serial.make and SerialDMA.make
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		Drivers.make
 #
 #	Contains:	makefile for the drivers in ROM
@@ -21,9 +28,6 @@ EDiskDir		=	{DriverDir}EDisk:
 BackLightDir	=	{DriverDir}BackLight:
 
 #include {SonyDir}Sony.make
-
-#include {SerialDir}Serial.make
-#include {SerialDMADir}SerialDMA.make
 
 #include {NewAgeDir}NewAge.make
 

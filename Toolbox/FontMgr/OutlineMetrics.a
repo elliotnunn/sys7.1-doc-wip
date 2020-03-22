@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Added missing colon to <SM5> equate (otherwise it wouldn't compile).
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		OutlineMetrics.a
 ;
 ;	Written by:	Charlton E. Lui
@@ -64,7 +71,7 @@
 
 
 	IF (&TYPE('hasDoubleByte') = 'UNDEFINED') THEN
-		hasDoubleByte		EQU		1
+		hasDoubleByte:		EQU		1			; ex<SM5> <Sys7.1>
 	ENDIF
 	
 		LOAD		'StandardEqu.d'

@@ -179,6 +179,7 @@ XOFFSET 		EQU 	22			;WORD
 RASTER			EQU 	24			;WORD
 
 
+		MakePatch	BWStdText,_StdText,(Plus,SE,Portable)				; <Sys7.1>
 BWStdText	PROC	EXPORT
 		IMPORT	BWDrText
 	
@@ -744,6 +745,7 @@ NOTPIC	MOVE	D6,-(SP)					;PUSH COUNT
 GOHOME	MOVEM.L (SP)+,D5-D7/A3-A4			;RESTORE REGS
 		UNLINK	PARAMSIZE,'STDTEXT '
 
+		MakePatch	BWStdTxMeas,_StdTxMeas,(Plus,SE,Portable)			; <Sys7.1>
 BWStdTxMeas	FUNC	EXPORT
 	
 	IF SCRIPT_CHAR_EXTRA THEN
@@ -959,6 +961,8 @@ noOverFlow									;									<24-CEL/RWB>
 
 
 	IF	(SCRIPT_CHAR_EXTRA OR hasDoubleByte) THEN	;<1.4-4april89-CEL> <6> CEL
+		MakePatch	BWMeasureText,_MeasureText,(Plus,SE,Portable)		; <Sys7.1>
+
 		PROC
 		
 		EXPORT	BWMeasureText

@@ -1,4 +1,14 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <SM4> expectation of finding the menu-widening "wrapper" MDEF
+							(really a proc resource) in ROM -- probably a bug, because the defproc
+							resource needs to be writeable. Reverted <43> to use the old array
+							definition of Pattern.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		PopupCDEF.c
 
 	Contains:	Source code for Popup Menu CDEF
@@ -287,6 +297,7 @@
 		Make popup return different part codes
 */
 
+#define dangerousPattern						// ex<43> <Sys7.1>
 #include <Types.h>
 #include <Controls.h>
 #include <Fonts.h>
@@ -860,8 +871,7 @@ long DoTrack(ControlHandle hControl, short theVar)
 	useSpandex = (growWidth > 0);
 
 	if (useSpandex) {										// invoke spandex MDEF
-		*(short*) RomMapInsert = mapTrue;												// <SM4> rb
-		theHandle = (SpandexH) GetResource(SpandexResType, SpandexMDEF);				// <SM4> rb
+		theHandle = (SpandexH) GetResource(SpandexResType, SpandexMDEF);				// <SM4> rb <Sys7.1>
 		if (theHandle != nil) {								// load in spandex MDEF
 			LoadResource( (Handle) theHandle );				// load in case of purged -- now unpurgeable so remove this
 			HLock( (Handle) theHandle );

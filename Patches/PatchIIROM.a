@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Clobbered SlotVBLQ after disposing the block to prevent use-after-free.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		PatchIIROM.a
 ;
 ;	Contains:	patches for the ROMs first shipped in a Macintosh II ($0178)
@@ -6978,6 +6985,7 @@ InitSlotStuff
 ;and dispose the old vbl queue header ptr structure
 			movea.l	SlotVBLQ,a0					; release storage for old SlotVBLQ
 			_DisposPtr
+			move.l	#-1,SlotVBLQ				; prevent use-after-free				<Sys7.1>
 
 
 

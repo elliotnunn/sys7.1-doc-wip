@@ -1,4 +1,14 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted Horror and SuperMario changes
+							Brought Get_AtoD/Get_PGEButton/GetPortableValues/PotControl back from backlightinput.c
+							Recreated PWMStatus (similar code to PWMControl)
+							Reduced the amount of indirection through global procedure pointers
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		PWM.c
 
 	Contains:	This file contains the hardware specific routines to control a PWM-based
@@ -78,30 +88,86 @@
 #include "PowerMgr.h"
 #include "backlight.h"
 
+/* <Sys7.1> copied from backlightcpu.c */
+#define	BACKLIGHT_POT_CHANNEL	0
+#define STATUS					0
+#define POWERBYTE				1
+#define TEMPBYTE				2
+
+/* <Sys7.1> reclaimed from backlightinput.c */
+#define	READ_ATOD_CHANNEL	0xD8
+#define	READ_BUTTON_VALUE	0xD9
+extern short			PotInputRangeShiftTblPWM[];
+
+/* <Sys7.1> enable access to these assembly "procedures" (really tables) */
+extern unsigned char	timTblLow[];
+extern unsigned char	timTbl[];
+extern unsigned char	asahiTbl[];
+extern short			PWMMaxTbl[];
+
 /*page
  ***************************************************************************************************
  ** PWM software ***********************************************************************************
  ***************************************************************************************************
  */
 
-OSErr InitPWMControls(driverGlobalPtr	globalPtr)
+/* <Sys7.1> don't return OSErr */
+/* <Sys7.1> reverted to old-style tables despite <H8> */
+void InitPWMControls(driverGlobalPtr	globalPtr)
 
 {
 	unsigned int	startvalue;
+	int boxFlag;
+
+	/* <Sys7.1> setup default values */
+	globalPtr->flyByWire = true;
+	globalPtr->freeflag = true;
+	globalPtr->dualTable = true;
+	globalPtr->userInputSampleRate = 10;
+	globalPtr->maximumTable = &PWMMaxTbl;
+	globalPtr->settingTableLow = &timTblLow;
+	globalPtr->settingTable = globalPtr->settingTableHigh = &timTbl;
+
+	/* <Sys7.1> override for some specific machines */
+	boxFlag = *(unsigned char *)0xCB3;
+	switch (boxFlag)
+		{
+		case 18: // PowerBook 100, Asahi
+			globalPtr->freeflag = false;
+			globalPtr->dualTable = false;
+			globalPtr->settingTable = &asahiTbl;
+			break;
+		case 15: // PowerBook 170, TIM
+			if (*JAWS_SPEED_FSTN_REG_PTR & JAWS_FSTN)
+				globalPtr->dualTable = false;
+			break;
+		}
 
 	/* initialize dual table variables */
 	if (globalPtr->dualTable) 
 		{
 		globalPtr->slewLimit		= true;				/* maximum change per/accrun */
-		(*globalPtr->tableProc)(globalPtr);				/* determine table based on current charger state */
+
+		/* <Sys7.1> determine table directly instead of using a tableProc */
+		globalPtr->lowThreshold		= 163;
+		globalPtr->hiThreshold		= 173;
+		globalPtr->tableProc		= ChargerAdjust;
+		globalPtr->lowTable			= LowTable(globalPtr);
+		if (globalPtr->lowTable)
+			globalPtr->settingTable = globalPtr->settingTableLow;
 		};
 
+	/* <Sys7.1> not really sure why these procs weren't being set */
+	globalPtr->setlevelproc = SetPWM;
+	globalPtr->userInputProc = PotControl;
+	globalPtr->closeProc = PWMCloseRoutine;
+	globalPtr->controlProc = PWMControl;
+	globalPtr->statusProc = PWMStatus;
+
 	/* initialize backlight hardware */	
-	startvalue 						= (*globalPtr->userInputProc)(globalPtr);				/* <H8> */
+	startvalue 						= PotControl(globalPtr);								/* <H8> */
 	globalPtr->userBrightness 		= -1;
-	globalPtr->userBrightness 		= (*globalPtr->setlevelproc)(startvalue,globalPtr);		/* <H8> */
-	
-	return(noErr);
+	globalPtr->userBrightness 		= SetPWM(startvalue,globalPtr);							/* <H8> */
 };
 
 /*
@@ -113,8 +179,153 @@ OSErr InitPWMControls(driverGlobalPtr	globalPtr)
 int PWMCloseRoutine (driverGlobalPtr	globalPtr)
 
 {
-	(*globalPtr->setlevelproc)(globalPtr->settingTable->minimum,globalPtr);
+	SetPWM(0,globalPtr);																	/* <Sys7.1> no global setlevelproc */
 	return(0);
+};
+
+/*
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+
+/* <Sys7.1> moved from bottom of file and edited */
+/* <Sys7.1> reverted to old-style tables despite <H8> */
+int SetPWM(int	new,driverGlobalPtr	globalPtr)
+{
+	PMgrPBlock		pb;									/* power manager pb */
+	unsigned char	val;								/* hardware value setting */
+	
+	PEG_TO_LIMITS(new, globalPtr->maximumTable[globalPtr->powerRange], 0);	/* <H8> use new tables */				/* limit value to valid range */
+	val = globalPtr->settingTable[new];					/* look up value from table */
+
+	if ((globalPtr->userBrightness >= 0) && (val == globalPtr->lastHWSetting)) return(new);/* nothing to do; 90/05/15 just turn on; 90/07/02 avoid touching */
+	if (globalPtr->slewChange)
+		{
+		if (abs(globalPtr->lastHWSetting - val) > globalPtr->slewLimit)
+			val = globalPtr->lastHWSetting + ((globalPtr->lastHWSetting > val) ? -globalPtr->slewLimit : globalPtr->slewLimit);
+		else
+			globalPtr->slewChange = false;
+		};
+	globalPtr->lastHWSetting	= val;					/* save the new hardware setting */
+
+	pb.pmgrCmd					= ScreenSetCmd;			/* <Sys7.1> don't do what they do */ /*  everyone else uses "set brightness" */
+	pb.pmgrCnt					= 1;
+	pb.pmgrXPtr 				= &val;
+	pb.pmgrRPtr 				= nil;
+	PMgr(&pb);											/* set the pwm */
+
+	return(new);										/* return the current value */
+};
+
+/*page
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+
+/* <Sys7.1> verbatim from backlightinput.c */
+unsigned char Get_AtoD(int	channel)
+{
+	PMgrPBlock		pb;									/* power manager pb */
+	char			atodChannel;						/* a to d channel to read [0-8] */
+	unsigned char	value;								/* return value */
+	OSErr			error;								/* pmgr error */
+
+
+	atodChannel	= channel;								/* load channel value into buffer */
+
+	pb.pmgrCmd	= READ_ATOD_CHANNEL;					/* load read channel command */
+	pb.pmgrCnt	= 1;									/* transmit buffer count is 1 byte */
+	pb.pmgrXPtr = &atodChannel;							/* pointer to transmit buffer */
+	pb.pmgrRPtr = &value;								/* pointer to receive buffer */
+	
+	error = PMgr(&pb);
+
+	return( (error) ? 0 : value);
+};
+
+/*page
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+
+/* <Sys7.1> verbatim from backlightinput.c */
+unsigned char Get_PGEButton(int	channel)
+{
+	PMgrPBlock		pb;									/* power manager pb */
+	char			atodChannel;						/* a to d channel to read [0-8] */
+	unsigned char	value;								/* return value */
+	OSErr			error;								/* pmgr error */
+
+
+	atodChannel	= channel;								/* load channel value into buffer */
+
+	pb.pmgrCmd	= READ_BUTTON_VALUE;					/* load read channel command */
+	pb.pmgrCnt	= 1;									/* transmit buffer count is 1 byte */
+	pb.pmgrXPtr = &atodChannel;							/* pointer to transmit buffer */
+	pb.pmgrRPtr = &value;								/* pointer to receive buffer */
+	
+	error = PMgr(&pb);
+
+	return( (error) ? 0 : value);
+};
+
+/*page
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+/* <Sys7.1> verbatim from backlightinput.c */
+unsigned char GetPortableValues(int	parameter)
+{
+
+	PMgrPBlock		pb;									/* power manager pb */
+	OSErr			err;								/* power manager error */
+	unsigned char	rbuf[3];							/* buffer for send command */
+
+	pb.pmgrCmd = BatteryStatusImmCmd;					/* on old pmgr, read battery status (immediate not averaged) */
+	pb.pmgrCnt = 0;
+	pb.pmgrXPtr = nil;
+	pb.pmgrRPtr = rbuf;
+
+	err = PMgr(&pb);
+	return( (err) ? 0 : rbuf[parameter]);				/* return 0 if error, else read value */
+}
+
+/*page
+ ***************************************************************************************************
+ *
+ *
+ ***************************************************************************************************
+ */
+/* <Sys7.1> modified from backlightinput.c */
+int PotControl (driverGlobalPtr	globalPtr)
+
+{
+#pragma	unused (globalPtr)
+
+	unsigned int	potvalue;
+	
+	/* <Sys7.1> no proc for this in driver globals */
+	potvalue = globalPtr->freeflag ? Get_AtoD(BACKLIGHT_POT_CHANNEL) : GetPortableValues(TEMPBYTE);
+
+	if (abs(globalPtr->lastatod - potvalue) <= 5) 		/* was the change less than 100mv */
+		potvalue = globalPtr->lastatod;					/* is less than, the use old value */
+
+	globalPtr->lastatod = potvalue;						/* update last a to d value */
+	potvalue >>= 3;										/* scale to 0 to 31 */
+	if (potvalue)										/* if non-zero, check for subrange limiting */
+		{
+		potvalue >>= PotInputRangeShiftTblPWM[globalPtr->powerRange]; /* rescale in low power levels */
+		if (!potvalue) potvalue = 1;					/* make sure we don't change the backlight state */
+		};
+	return(potvalue);
 };
 
 /*page
@@ -144,7 +355,7 @@ OSErr PWMControl(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)		/* 'open' entry p
 			{
 			case kSetScreenBrightness:					/* set brightness level */
 				tempvalue = ctlPB->csParam[0];
-				globalPtr->userBrightness 	= (*globalPtr->setlevelproc)(tempvalue,globalPtr);
+				globalPtr->userBrightness 	= SetPWM(tempvalue,globalPtr);	/* <Sys7.1> no proc for this in driver globals */
 				break;
 				
 			default:
@@ -154,37 +365,44 @@ OSErr PWMControl(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)		/* 'open' entry p
 	return(error);
 };
 
-/*
+/*page
  ***************************************************************************************************
+ *
+ * The status routine…
+ *
+ *	return:
+ *		noErr		- task completed successfully
+ *		statusErr	- illegal status selector
  *
  *
  ***************************************************************************************************
  */
 
-int SetPWM(int	new,driverGlobalPtr	globalPtr)
+/* <Sys7.1> recreated from scratch */
+OSErr PWMStatus(CntrlParam *ctlPB,driverGlobalPtr	globalPtr)
 {
-	PMgrPBlock		pb;									/* power manager pb */
-	unsigned char	val;								/* hardware value setting */
-	
-	PEG_TO_LIMITS(new, globalPtr->maximumTable[globalPtr->powerRange], globalPtr->settingTable->minimum);	/* <H8> use new tables */				/* limit value to valid range */
-	val = globalPtr->settingTable->table[new];					/* look up value from table */
+	OSErr 		error;
 
-	if ((globalPtr->userBrightness >= 0) && (val == globalPtr->lastHWSetting)) return(new);/* nothing to do; 90/05/15 just turn on; 90/07/02 avoid touching */
-	if (globalPtr->slewChange)
+	error	= noErr;
+
+	switch(ctlPB->csCode) 
 		{
-		if (abs(globalPtr->lastHWSetting - val) > globalPtr->slewLimit)
-			val = globalPtr->lastHWSetting + ((globalPtr->lastHWSetting > val) ? -globalPtr->slewLimit : globalPtr->slewLimit);
-		else
-			globalPtr->slewChange = false;
+		case kGetScreenBrightness:						/* get brightness level */
+			ctlPB->csParam[0] = globalPtr->userBrightness;
+			break;
+			
+		case kGetBrightnessRange:
+			ctlPB->csParam[0] = 31;
+			ctlPB->csParam[1] = 0;
+			break;
+
+		case kGetMaximum:
+			ctlPB->csParam[0] = globalPtr->maximumTable[globalPtr->powerRange];
+			break;
+
+		default:
+			error = statusErr;
 		};
-	globalPtr->lastHWSetting	= val;					/* save the new hardware setting */
 
-	pb.pmgrCmd					= SetBrightnessCmd;		/*  everyone else uses "set brightness" */
-	pb.pmgrCnt					= 1;
-	pb.pmgrXPtr 				= &val;
-	pb.pmgrRPtr 				= nil;
-	PMgr(&pb);											/* set the pwm */
-
-	return(new);										/* return the current value */
-};
-
+	return(error);
+}

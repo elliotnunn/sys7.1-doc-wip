@@ -1,0 +1,55 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Disassembled from scratch
+;
+
+			LOAD	'StandardEqu.d'
+			INCLUDE	'SysEqu.a'
+			INCLUDE	'EDiskEqu.a'
+			INCLUDE	'LinkedPatchMacros.a'
+
+
+ROMInternalRAMDiskString		RomBind		(IIci,$E7DAA)
+
+
+EDiskShutdownPtch		InstallProc		(IIci,hasTERROR)
+			lea		DrvQHdr+QHead-QLink,a2
+@dqloop		move.l	(a2),d0
+			beq.s	@return
+			move.l	d0,a2					; follow link
+			move.w	dQRefNum(a2),d0			; calculate unit table offset from refNum
+			add.w	#1,d0
+			neg.w	d0
+			asl.w	#2,d0
+			move.l	UTableBase,a1
+			move.l	(a1,d0),a1
+			move.l	(a1),a1
+			btst	#dRAMBased,DCtlFlags+1(a1)
+			bz.s	@romBased
+			move.l	(a1),a1					; ptr to rom or handle to ram
+@romBased	move.l	(a1),a1
+			lea		drvrName(a1),a1
+			lea		#'.EDisk',a0			; searching for the EDisk drvr
+			clr.l	d0
+			move.b	(a0),d0
+@cmploop	cmp.b	(a0)+,(a1)+
+			bne.s	@dqloop					; not the EDisk
+			dbra	d0,@cmploop
+
+			move.l	EDiskDriveInfo.WhereStringPtr(a2),a1
+			cmpRom	ROMInternalRAMDiskString,a1
+			beq.s	@isEphemeral
+			cmp.l	#$408E7DA0,a1			; nearby location?
+			bne.s	@return
+@isEphemeral
+
+			subq	#4,sp
+			move.w	#-16535,-(sp)			; 'Internal RAM Disk'
+			_GetString
+			move.l	(sp)+,d0
+			beq.s	@return
+			move.l	d0,a1
+			move.l	(a1),EDiskDriveInfo.WhereStringPtr(a2)
+
+@return		rts

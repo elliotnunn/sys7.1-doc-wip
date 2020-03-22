@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Reverted <SM5>
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		StandardFilePACK.a
 ;
 ;	Contains:	The Standard File package, PACK 3
@@ -4811,7 +4818,7 @@ CallActivate
 			_TEDeactivate						; deactivate the TE 
 		; mark the dialog as not having active TE field
 			move.w	#-1,editField(a3)
-			bra 	@checkFileList				;<SM5> CSS
+			bra.s 	@checkFileList				;<SM5> CSS <Sys7.1>
 @TEActivate
 		; switch to new item's text handle
 			move.l	teHandle(a3),a0
@@ -7873,8 +7880,7 @@ GetVolIcon	move.l	a0,-(sp)					; don't trash a0
 			move.w	#floppyIconResource,d0
 			cmp.l	#'Sony',(a0)					; .Sony means use floppy icon
 			beq.s	@done
-			cmp.l	#'NewA',(a0)					; .NewAge means use floppy icon <SM5> CSS 
-			beq.s	@done
+; ex<SM5> <Sys7.1> Don't treat 'NewA' same as 'Sony'
 			move.w	#genericFileServerIconResource,d0
 			cmp.l	#'AFPT',(a0)					; .AFPTranslator means use fileserver icon
 			beq.s	@done

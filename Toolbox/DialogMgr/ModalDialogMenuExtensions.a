@@ -1,4 +1,14 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Restored TheFuture conditionals that were added by <2> and removed by
+;							<6>, allowing a build without DialogMgrGlobals defined.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+;							Clean diff against SuperMario
+;
+
+;
 ;	File:		ModalDialogMenuExtensions.a
 ;
 ;	Contains:	Assembly language portions of Modal Dialog Menu Access Facility
@@ -141,6 +151,7 @@ MDJGNEFilter	Proc 	Export
 ; Called by StartBoot.a for the ROM, or by a MakeInstall macro in ModalDialogMenuPatches.a for the System.
 ;
 
+		IF		forROM OR TheFuture THEN						; ex<6> <Sys7.1>
 InitDialogMgrGlobals		Proc	Export
 
 		with	DialogMgrGlobals
@@ -167,6 +178,7 @@ InitDialogMgrGlobals		Proc	Export
 		rts
 		
 		endproc
+		ENDIF	;forROM OR TheFuture						; ex<6> <Sys7.1>
 		
 ;————————————————————————————————————————————————————————————————————————————————————————————————————
 ; SetAnalyzedWindowState (GetAnalyzedWindowState)
@@ -181,16 +193,30 @@ SetAnalyzedWindowState	proc	export
 				export	GetAnalyzedWindowState
 
 				move.l	(sp)+,a0
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.w	(sp)+,DialogMgrGlobals.AnalyzedWindowState(a1)		; set new value
+		ELSE												; ex<6> <Sys7.1>
+				lea		AnalyzedWindowState,a1				; ex<6> <Sys7.1>
+				move.w	(sp)+,(a1)							; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				jmp		(a0)
 
 GetAnalyzedWindowState
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.w	DialogMgrGlobals.AnalyzedWindowState(a1),4(sp)	; get return value
+		ELSE												; ex<6> <Sys7.1>
+				move.w	AnalyzedWindowState,4(sp)			; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				rts
+
+		IF		NOT (forROM OR TheFuture) THEN
+AnalyzedWindowState
+				dc.w	0
+		ENDIF
 
 				endproc
 
@@ -200,16 +226,30 @@ SetAnalyzedWindow		proc	export
 				export	GetAnalyzedWindow
 
 				move.l	(sp)+,a0
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.l	(sp)+,DialogMgrGlobals.AnalyzedWindow(a1)	; set new value
+		ELSE												; ex<6> <Sys7.1>
+				lea		AnalyzedWindow,a1					; ex<6> <Sys7.1>
+				move.l	(sp)+,(a1)							; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				jmp		(a0)
 
 GetAnalyzedWindow
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.l	DialogMgrGlobals.AnalyzedWindow(a1),4(sp)	; get return value
+		ELSE												; ex<6> <Sys7.1>
+				move.l	AnalyzedWindow,4(sp)				; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				rts
+
+		IF		NOT (forROM OR TheFuture) THEN
+AnalyzedWindow
+				dc.l	1
+		ENDIF
 
 				endproc
 
@@ -219,17 +259,31 @@ SetSavedMenuState		proc	export
 				export	GetSavedMenuState
 
 				move.l	(sp)+,a0
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.l	(sp)+,DialogMgrGlobals.SavedMenuState(a1)	; set new value
+		ELSE												; ex<6> <Sys7.1>
+				lea		SavedMenuState,a1					; ex<6> <Sys7.1>
+				move.l	(sp)+,(a1)							; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				jmp		(a0)
 
 GetSavedMenuState
 
+		IF		forROM OR TheFuture THEN					; ex<6> <Sys7.1>
 				move.l	ExpandMem,a1						; A1 -> Expanded Low Memory
 				move.l	ExpandMemRec.emDialogGlobals(a1),a1	; A1-> ptr to globals
 				move.l	DialogMgrGlobals.SavedMenuState(a1),4(sp)	; get return value
+		ELSE												; ex<6> <Sys7.1>
+				move.l	SavedMenuState,4(sp)				; ex<6> <Sys7.1>
+		ENDIF												; ex<6> <Sys7.1>
 				rts
+
+		IF		NOT (forROM OR TheFuture) THEN
+SavedMenuState
+				dc.l	0
+		ENDIF
 
 				endproc
 

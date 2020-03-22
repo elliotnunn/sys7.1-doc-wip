@@ -1,4 +1,12 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <8> by bringing MoveHLow back from MemoryMgrPriv.h (to be
+							included indirectly by Eppc.c).
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		EppcPrivate.h
 
 	Contains:	Data and externs private to EPPC.
@@ -106,5 +114,9 @@ void		postMsg(const MFmsgBlkPtr msgBlk);
 void		postReturnReceipt(const MFmsgBlkPtr mfMsgBlk, signed short rtnModifiers);
 void		postTranslationResult(MFmsgBlkPtr, OSErr);
 void		flushMsg(MFmsgBlkPtr aMsg, unsigned short rtnModifiers);
+
+#pragma parameter MoveHLow(__A0)		// ex<8> <Sys7.1>
+pascal void MoveHLow(Handle h)			// ex<8> <Sys7.1>
+ = 0xA09D;								// ex<8> <Sys7.1>
 
 #endif __EPPCPRIVATE__

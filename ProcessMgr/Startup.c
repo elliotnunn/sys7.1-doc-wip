@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Reverted <26> by using the non-standard "MyGestalt" glue.
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Startup.c
 
 	Contains:	Main startup for the Process Manager.
@@ -511,35 +518,35 @@ InitConfig(void)
 #endif HAS_AUX_PROCESSMGR
 
 	/* Check processor addressing mode */
-	if (Gestalt(gestaltAddressingModeAttr,&gestaltResult) == noErr)
+	if (MyGestalt(gestaltAddressingModeAttr,&gestaltResult) == noErr)						// ex<26> <Sys7.1>
 		In32BitMode = ((gestaltResult & (1 << gestalt32BitAddressing)) != 0);
 
 	/* Check QuickDraw version */
-	if (Gestalt(gestaltQuickdrawVersion,&gestaltResult) == noErr)
+	if (MyGestalt(gestaltQuickdrawVersion,&gestaltResult) == noErr)							// ex<26> <Sys7.1>
 		Colorized = ((gestaltResult & 0xFFFF) >= gestalt8BitQD);
 
 	/* Does this machine have an FPU? */
-	if (Gestalt(gestaltFPUType,&gestaltResult) == noErr)
+	if (MyGestalt(gestaltFPUType,&gestaltResult) == noErr)									// ex<26> <Sys7.1>
 		MachineHasFPU = (gestaltResult != gestaltNoFPU);
 
 	/* Does this machine have an older style keyboard (without an escape key)? */
-	if (Gestalt(gestaltKeyboardType,&gestaltResult) == noErr)
+	if (MyGestalt(gestaltKeyboardType,&gestaltResult) == noErr)								// ex<26> <Sys7.1>
 		MachineHasMacPlusKbd = (gestaltResult <= gestaltMacPlusKbd);
 
-	if (Gestalt(gestaltGraphicsVersion,&gestaltResult) == noErr)
+	if (MyGestalt(gestaltGraphicsVersion,&gestaltResult) == noErr)							// ex<26> <Sys7.1>
 		skiaExists = true;
 	else
 		skiaExists = false;
 		
 #ifdef MODSQUAD
 	/* Check whether drag manager is installed. */
-	if (Gestalt(gestaltDragMgrVersion, &gestaltResult) == noErr)
+	if (MyGestalt(gestaltDragMgrVersion, &gestaltResult) == noErr)							// ex<26> <Sys7.1>
 		gDragMgrIsAvailable = true;
 #endif
 
 #ifdef HAS_AUX_PROCESSMGR
 	/* Check whether we're running under AUX. */
-	if (Gestalt(gestaltAUXVersion, &gestaltResult) == noErr	&& AUX_EnableCoffLaunch())
+	if (MyGestalt(gestaltAUXVersion, &gestaltResult) == noErr	&& AUX_EnableCoffLaunch())	// ex<26> <Sys7.1>
 		AUXIsPresent = true;
 #endif HAS_AUX_PROCESSMGR
 	}

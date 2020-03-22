@@ -1,3 +1,10 @@
+/*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Worked around accRun double define in Devices.h and Desk.h
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
 /************************************************************
 
 	Devices.h
@@ -173,7 +180,9 @@ enum {
 	/* special csCodes */
 	goodBye			= -1,
 	killCode		= 1,
+#ifndef __DESK__			// <Sys7.1>
 	accRun			= 65
+#endif
 };
 
 
