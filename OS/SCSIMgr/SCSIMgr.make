@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		SCSIMgr.make
 #
 #	Contains:	Makefile for main code image.
@@ -18,25 +25,18 @@
 #
 
 SCSIObjects =		"{ObjDir}scsiboot.a.o"											∂
-					"{ObjDir}SCSIDiskMode.a.o"										∂
-					"{ObjDir}scsimgr96.a.o"											∂
-					"{ObjDir}scsimgrPSC.a.o"										∂
 					"{ObjDir}scsimgrhw.a.o"											∂
-					"{ObjDir}scsimgrhw96.a.o"										∂
-					"{ObjDir}scsimgrhwPSC.a.o"										∂
 					"{ObjDir}scsimgrinit.a.o"										∂
 					"{ObjDir}scsimgrinit96.a.o"										∂
+					"{ObjDir}scsimgr96.a.o"											∂
+					"{ObjDir}scsimgrhw96.a.o"										∂
 					"{ObjDir}scsimgrinitPSC.a.o"									∂
+					"{ObjDir}scsimgrPSC.a.o"										∂
+					"{ObjDir}scsimgrhwPSC.a.o"										∂
 					"{ObjDir}scsimgrinitflags.a.o"									∂
 					"{ObjDir}scsimgrnew.a.o"										∂
 					"{ObjDir}scsimgrold.a.o"										∂
-					"{ObjDir}scsiLateLoad.a.o"										∂
 					"{ObjDir}SCSILinkPatch.a.o"										∂
-					"{ObjDir}SCSIMgr96BIOS.a.o"										∂
-					"{ObjDir}SCSIMgrHW96BIOS.a.o"									∂
-					"{ObjDir}SCSIMgrInit96BIOS.a.o"									∂
-					"{ObjDir}SCSIMgrInitDB.a.o"										∂
-					"{ObjDir}SCSIMgrDB.a.o"											∂
 					
 "{LibDir}SCSI.lib"	ƒ	{SCSIObjects}
 	Lib {StdLibOpts} -o "{Targ}" {SCSIObjects}

@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		MemoryMgrPatches.a
 ;
 ;	Contains:	patches for the Memory Mgr.
@@ -9,11 +16,6 @@
 ;
 ;	Change History (most recent first):
 ;
-;	   <SM4>	 6/14/93	kc		Roll in Ludwig.
-;	   <LW2>	 5/11/93	chp		MoveHLow was depending on the CCR to indicate error conditions
-;									reported by _RecoverHandle. This weirdass trap only returns its
-;									result in MemErr, so insert an explicit test to avoid crashing
-;									in the subsequent _HGetState. Partial fix for RADAR #1081681.
 ;		<17>	  6/8/92	JSM		In TheFuture, use emResrvMemSemaphore from ExpandMem in the
 ;									ResrvMemGrowSystemHeap patch instead of defining the semaphore
 ;									in code space here.
@@ -672,7 +674,6 @@ MakeBlocksNonPurgeable
 		move.l	a3,a0							;set up pointer to block
 		_RecoverHandle							;if this fails, then this block is
 												;orphaned, and we can move it at will
-		tst.w	MemErr							;(RecoverHandle result in MemErr only!)			<LW2>
 		bmi.s	@pastFreeSpaceChecks			;
 
 	;if already locked, we don’t need to change its state

@@ -1,0 +1,39 @@
+;
+;	ForceMakePatchOrder.a
+;
+;	LinkPatch packs MakePatch directives into lpch 63 in a non-deterministic order. Our
+;	postprocessor CDG5PostLinkPatch reorders these patch declarations according to the order in this
+;	file. Only patches with shared symbols need to be listed: CDG5PostLinkPatch prints them to
+;	stdout.
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Generated using information extracted from the System file
+;
+
+	INCLUDE	'LinkedPatchMacros.a'
+	INCLUDE	'SysEqu.a'
+	INCLUDE	'Traps.a'
+
+ForceRomBindOrder PROC ENTRY
+	CASE	OBJ
+
+	MakePatch		SWAPHMMU,jSwapMMU,(II,notAUX,hasHMMU)
+	MakePatch		SWAPHMMU,_SwapMMUMode,(II,notAUX,hasHMMU)
+
+	MakePatch		SWAPPMMU,_SwapMMUMode,(II,notVM,notAUX,hasPMMU,using24BitHeaps)
+	MakePatch		SWAPPMMU,jSwapMMU,(II,notVM,notAUX,hasPMMU,using24BitHeaps)
+
+	MakePatch		CLEANUPTWOBYTES,_CouldAlert,(Plus,SE,II,Portable,IIci)
+	MakePatch		CLEANUPTWOBYTES,_FreeAlert,(Plus,SE,II,Portable,IIci)
+	MakePatch		CLEANUPTWOBYTES,_FreeDialog,(Plus,SE,II,Portable,IIci)
+	MakePatch		CLEANUPTWOBYTES,_CouldDialog,(Plus,SE,II,Portable,IIci)
+
+	MakePatch		CICLOSEPORTPATCH,$A87D,(IIci)
+	MakePatch		CICLOSEPORTPATCH,$AA02,(IIci)
+
+	MakeInstall		SETUPFORMATPATCHES1,(Plus,SE,II,notAUX,has800KDriver)
+	MakeInstall		SETUPFORMATPATCHES1,(Portable,IIci,notAUX)
+
+	MakeInstall		SETUPFORMATPATCHES2,(IIci,notAUX,hasEricksonOverpatchMistake)
+	MakeInstall		SETUPFORMATPATCHES2,(SE,II,notAUX,hasFDHDDriver)

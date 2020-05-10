@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		CommResourceMgr.a
 ;
 ;	Contains:	Entry to the CommResourceManager
@@ -9,8 +16,6 @@
 ;
 ;	Change History (most recent first):
 ;
-;	   <SM3>	 9/28/93	PN		Adding two new calls AddStdPort and RemoveStdPort to the
-;									CommResourceManager from DBLite gibbly.
 ;		 <2>	 8/12/93	kc		<mb>: I deleted all of the "TheFuture" conditionals in all of
 ;									the CommToolbox files per Mike Bell's instructions. I also
 ;									deleted the code that was compiled under the "CubeE"
@@ -122,11 +127,6 @@ CRMStart
 															;	new for 1.0.1
 	DC.W		@CRMGetToolResource 		- CRMStart		;	23
 	DC.W		@CRMReleaseToolResource 	- CRMStart		;	24
-	
-	DC.W		@CRMParseCAPSResource	 	- CRMStart		;	25
-	DC.W		@CRMGetToolNamedResource 	- CRMStart		;	26
-	DC.W		@CRMAddStdPort			 	- CRMStart		;	27
-	DC.W		@CRMRemoveStdPort 			- CRMStart		;	28
 
 @None
 					RTS
@@ -316,41 +316,5 @@ CRMStart
 					MOVE.W	6(A0), -(SP)	; 	procID
 					MOVE.L	2(A0), -(SP)	;	theHandle
 					JSR		__CRMReleaseToolResource		; call it
-					RTS
-
-@CRMParseCAPSResource		;	25
-					CLR.W	-(SP)			; 	make space for return value
-					MOVE.L	10(A0),-(SP)	;	value
-					MOVE.L	6(A0), -(SP)	; 	selector
-					MOVE.L	2(A0), -(SP)	;	theHandle
-					JSR		__CRMParseCAPSResource		; call it
-					MOVE.W	(SP)+,D0		; get the return value
-					RTS
- 
-@CRMGetToolNamedResource	;	26
-					CLR.L	-(SP)			; 	make space for return value
-					MOVE.W	10(A0),-(SP)	;	procID
-					MOVE.L	6(A0), -(SP)	; 	type
-					MOVE.L	2(A0), -(SP)	;	name
-					JSR		__CRMGetToolNamedResource		; call it
-					MOVE.L	(SP)+,D0		; get the return value
-					RTS
- 
-@CRMAddStdPort				;	27
-					CLR.L	-(SP)			; 	make space for return value
-					MOVE.W	10(A0),-(SP)	;	procID
-					MOVE.L	6(A0), -(SP)	; 	type
-					MOVE.L	2(A0), -(SP)	;	name
-					JSR		AddPort			; call it
-					MOVE.L	(SP)+,D0		; get the return value
-					RTS
- 
-@CRMRemoveStdPort			;	28
-					CLR.L	-(SP)			; 	make space for return value
-					MOVE.W	10(A0),-(SP)	;	procID
-					MOVE.L	6(A0), -(SP)	; 	type
-					MOVE.L	2(A0), -(SP)	;	name
-					JSR		RemovePort		; call it
-					MOVE.L	(SP)+,D0		; get the return value
 					RTS
 					END

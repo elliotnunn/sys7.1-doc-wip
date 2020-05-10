@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		TextServicesMgr.make
 #
 #	Contains:	Makefile for the Text Services Manager.
@@ -11,7 +18,7 @@
 #
 
 
-TextServicesMgrObjs	=				"{ObjDir}TSMExtension.a.o"					∂
+TextServicesMgrObjs	=				"{ObjDir}TSMDispatch.a.o"					∂
 									"{ObjDir}TSMFunctions.c.o"					∂
 									"{ObjDir}TSMUtility.c.o"					∂
 									"{ObjDir}TSMInternalUtils.c.o"
@@ -19,6 +26,10 @@ TextServicesMgrObjs	=				"{ObjDir}TSMExtension.a.o"					∂
 
 "{LibDir}TextServicesMgr.lib" 	ƒ	{TextServicesMgrObjs}
 	Lib {StdLibOpts} -o "{Targ}"	{TextServicesMgrObjs}
+
+
+"{ObjDir}TSMDispatch.a.o"	ƒ	"{TextServicesDir}TSMDispatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{TextServicesDir}TSMDispatch.a"
 
 
 "{ObjDir}TSMExtension.a.o"	ƒ	"{ObjDir}StandardEqu.d"							∂

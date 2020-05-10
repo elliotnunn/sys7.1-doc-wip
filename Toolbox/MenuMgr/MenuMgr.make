@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		MenuMgr.make
 #
 #	Contains:	Makefile for the Menu Manager.
@@ -13,20 +20,21 @@
 #	   <SM2>	11/30/92	SWC		Changed PackMacs.a->Packages.a.
 
 
-MenuMgrObjs			=				"{ObjDir}MenuMgr.a.o"							∂
+MenuMgrObjs			=				"{ObjDir}MenuMgr.c.o"							∂
+									"{ObjDir}MenuMgr.a.o"							∂
+									"{ObjDir}MenuMgrPatch.a.o"						∂
+									"{ObjDir}MenuMgrPatchII.a.o"					∂
 									"{ObjDir}MenuDispatch.a.o"						∂
-									"{ObjDir}MenuMgr.c.o"							∂
-									"{ObjDir}SaveRestoreBits.a.o"					∂
-									"{ObjDir}MenuMgrExtensions.a.o"					∂
+									"{ObjDir}InvalMenuBarPatch.a.o"					∂
 									"{ObjDir}SystemMenusPatch.a.o"
 			
 
-"{RsrcDir}MenuMgr.rsrc"			ƒƒ	"{ObjDir}StandardMBDF.a.o"
-	Link {StdLOpts} {StdAlign} -rt MBDF=0 -o "{Targ}" "{ObjDir}StandardMBDF.a.o" || Exit 1
+"{RsrcDir}StandardMBDF.a.rsrc"	ƒ	"{ObjDir}StandardMBDF.a.o"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}StandardMBDF.a.o" || Exit 1
 
 
-"{RsrcDir}MenuMgr.rsrc"			ƒƒ	"{ObjDir}StandardMDEF.a.o"
-	Link {StdLOpts} {StdAlign} -rt MDEF=0 -o "{Targ}" "{ObjDir}StandardMDEF.a.o" || Exit 1
+"{RsrcDir}StandardMDEF.a.rsrc"	ƒ	"{ObjDir}StandardMDEF.a.o"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}StandardMDEF.a.o" || Exit 1
 
 
 "{LibDir}MenuMgr.lib"			ƒ	{MenuMgrObjs}
@@ -82,7 +90,7 @@ MenuMgrObjs			=				"{ObjDir}MenuMgr.a.o"							∂
 									"{CIncludes}Controls.h"							∂
 									"{CIncludes}TextEdit.h"							∂
 									"{MenuMgrDir}MenuMgr.c"
-	C {StdCOpts} -o "{Targ}" "{MenuMgrDir}MenuMgr.c"
+	C {StdCOpts} -opt full -o "{Targ}" "{MenuMgrDir}MenuMgr.c"
 
 
 "{ObjDir}SaveRestoreBits.a.o"	ƒ 	"{ObjDir}StandardEqu.d"							∂
@@ -105,3 +113,18 @@ MenuMgrObjs			=				"{ObjDir}MenuMgr.a.o"							∂
 
 "{ObjDir}MenuMgrExtensions.a.o"	ƒ 	"{MenuMgrDir}MenuMgrExtensions.a"
 	Asm {StdAOpts} -o "{Targ}" "{MenuMgrDir}MenuMgrExtensions.a"
+
+"{ObjDir}MenuMgrPatchII.a.o"	ƒ	"{ObjDir}StandardEqu.d"							∂
+									"{IntAIncludes}LinkedPatchMacros.a"				∂
+									"{MenuMgrDir}MenuMgrPatchII.a"
+	Asm {StdAOpts} -o {Targ} "{MenuMgrDir}MenuMgrPatchII.a"
+
+"{ObjDir}MenuMgrPatch.a.o"		ƒ	"{ObjDir}StandardEqu.d"							∂
+									"{IntAIncludes}LinkedPatchMacros.a"				∂
+									"{IntAIncludes}ScriptPriv.a"					∂
+									"{MenuMgrDir}MenuMgr.a"							∂
+									"{MenuMgrDir}MenuMgrPatch.a"
+	Asm {StdAOpts} -o {Targ} "{MenuMgrDir}MenuMgrPatch.a"
+
+"{ObjDir}InvalMenuBarPatch.a.o"	ƒ	"{MenuMgrDir}InvalMenuBarPatch.a"
+	Asm {StdAOpts} -o {Targ} "{MenuMgrDir}InvalMenuBarPatch.a"

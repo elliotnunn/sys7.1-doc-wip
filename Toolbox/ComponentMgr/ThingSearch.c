@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		ThingSearch.c
 
 	Copyright:	© 1991, 1993 by Apple Computer, Inc., all rights reserved.
@@ -66,12 +73,12 @@
 
 static void searchFolder(register CInfoPBRec *fInfo, FSSpec *fileSpec,
 			long dirID, Boolean recurse);
+pascal long		__RegisterComponentResourceFile(short resRefNum, short global);
 
-long TestFile (FSSpecPtr fileSpec)
+void TestFile (FSSpecPtr fileSpec)
 {
 	short fRef;
 	Boolean oldResLoad;
-	short result = 0;
 
 	oldResLoad = *(Boolean *)ResLoad;
 	SetResLoad(false);
@@ -79,14 +86,13 @@ long TestFile (FSSpecPtr fileSpec)
 	fRef = FSpOpenResFile(fileSpec, fsRdPerm);
 	if (ResError() == noErr)
 		{
-		result = RegisterComponentResourceFile(fRef, registerComponentGlobal);
+		__RegisterComponentResourceFile(fRef, registerComponentGlobal);
 		CloseResFile(fRef);
 		}
 	SetResLoad(oldResLoad);
-	return (result > 0);
 }
 
-void doComponentSearch ()
+pascal void __ComponentSearch ()
 {
 	short		systemVRef;
 	long		blessedFolder;
@@ -174,7 +180,8 @@ static void searchFolder(register CInfoPBRec *fInfo, FSSpec *fileSpec,
 			long dirID, Boolean recurse)
 {
 	short ix = 0;
-	Boolean isFolder, wasAliased;
+	Boolean isFolder;
+	AliasHandle aliasHdl;
 
 	while (true)
 	{
@@ -185,13 +192,13 @@ static void searchFolder(register CInfoPBRec *fInfo, FSSpec *fileSpec,
 
 		if (!(fInfo->hFileInfo.ioFlAttrib & ioDirMask)) {
 			if (fInfo->hFileInfo.ioFlFndrInfo.fdType == targetType) {
-				fileSpec->vRefNum = fInfo->hFileInfo.ioVRefNum;
-				fileSpec->parID = dirID;
-				BlockMove(fInfo->hFileInfo.ioNamePtr, fileSpec->name, fInfo->hFileInfo.ioNamePtr[0]+1);
+				if(FSMakeFSSpec(fInfo->hFileInfo.ioVRefNum, dirID, fInfo->hFileInfo.ioNamePtr, fileSpec) == noErr) {
+				OSErr err;
 				isFolder = false;
-				ResolveAliasFile(fileSpec, true, &isFolder, &wasAliased);
-				if (!isFolder)
+				err = MatchAliasFile(fileSpec, &fInfo->hFileInfo.ioFlFndrInfo, &aliasHdl, &isFolder);
+				if ((!err) && !isFolder)
 					TestFile(fileSpec);
+				} /*FSMakeFSSpec above*/
 			}
 		} else if (recurse)
 			searchFolder(fInfo, fileSpec, fInfo->dirInfo.ioDrDirID, true);

@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Sys.r
 
 	Contains:	resources for the System file
@@ -9,10 +16,6 @@
 
 	Change History (most recent first):
 
-	   <SM3>	 8/25/93	BH		Added dialogs for use by manual-eject drive software. This may
-									not be the most appropriate place for them, but they need a home
-									for now.
-	   <SM2>	 3/24/93	dwc		Changed to include AppleTalk resource AT58 instead of AT57.
 	   <290>	 1/23/92	hsK		Deleted 'dtab' resource which is no more used by the Dictionary
 									manager.
 	   <289>	 1/18/92	DTY		Lock the print driver so that it will get loaded low in the
@@ -822,18 +825,22 @@
 
 	#define VersionString \
 		"Macintosh System version " SysVersion "\n\n\n" \
-		"© Apple Computer, Inc. 1983-1991\n" \
+		"© Apple Computer, Inc. 1983-1992\n" \
 		"All rights reserved."
 
 	resource 'STR ' (0) { VersionString };
 
 	resource 'vers' (1) {
-		LIntVers, LangInt, SysVersion, SysVersion", © Apple Computer, Inc. 1983-1991"
+		LIntVers, LangInt, SysVersion, SysVersion", © Apple Computer, Inc. 1983-1992"
+	};
+
+	resource 'vers' (2, purgeable) {
+		LIntVers, LangInt, SysVersion, "System Software "SysVersion
 	};
 
 	resource 'BNDL' (0) {
 		'MACS', 0, {
-			'FREF', { 0, 0; 1, 1; 2, 2; 3, 3; 4, 4; 5, 5; 6, 6 };
+			'FREF', { 0, 0; 1, 1; 2, 2; 3, 3; 4, 4; 5, 5; 6, 6; 7, 7 };
 			'ICN#', { 3, 3; -16415, -16415; 5, -5696; -16494, -16494; -16509, -16509 };
 		}
 	};
@@ -842,6 +849,7 @@
 	resource 'MACS' (0, purgeable) { VersionString };
 
 	resource 'FREF' (6) { 'zsys', -16494, "" };	// System File for 7.0
+	resource 'FREF' (7) { 'gbly', 3, "" };		// System Enabler for 7.0
 	resource 'FREF' (0) { 'ZSYS', 3, "" };		// System File for 6.0.x & other systemish files
 	resource 'FREF' (1) { 'FNDR', 3, "" };		// Finder
 	resource 'FREF' (2) { 'INIT', -16415, "" };	// standard INIT
@@ -885,7 +893,34 @@
 		"PowerBook 100",		// 24 Asahi
 		"PowerBook 140",		// 25 TimLC
 		"Macintosh Quadra 950",	// 26 Zydeco		<13> Leave 4 trailing spaces for the Installer
-		"Macintosh",			// 27 DBLite
+		"",						// 27 not used
+		"",						// 28 not used
+		"",						// 29 not used
+		"",						// 30 not used
+		"",						// 31 not used
+		"",						// 32 not used
+		"",						// 33 not used
+		"",						// 34 not used
+		"",						// 35 not used
+		"",						// 36 not used
+		"Macintosh LC II",		// 37
+		"",						// 38 not used
+		"",						// 39 not used
+		"",						// 40 not used
+		"",						// 41 not used
+		"",						// 42 not used
+		"",						// 43 not used
+		"",						// 44 not used
+		"",						// 45 not used
+		"",						// 46 not used
+		"",						// 47 not used
+		"",						// 48 not used
+		"",						// 49 not used
+		"",						// 50 not used
+		"",						// 51 not used
+		"",						// 52 not used
+		"",						// 53 not used
+		"PowerBook 145",		// 54
 	} };
 
 	type 'dbex' { integer=0; };		// nothing
@@ -920,14 +955,14 @@
 
 	resource 'gbly' (-16385, sysHeap) {
 		GibblyVersion1,
-		BuildTime,							// Time stamp
+		$A6C2441B,							// Time stamp, 1992-08-27 08:34:35
 		{									// Supported BoxFlags
 			$00FE, $00FF, $0000, $0001,
 			$0002, $0003, $0004, $0005,
 			$0006, $0007, $0008, $0009,
 			$000A, $000B, $000C, $000D,
 			$000E, $000F, $0010, $0011,
-			$0012, $0013, $0014, $0015
+			$0012, $0013, $0014
 		};
 	};
 
@@ -953,7 +988,7 @@
 	// Picasso Macintosh icon (loaded by System Error Handler)
 
 	resource 'cicn' (-16396, purgeable) {
-		{0, 0, 32, 32}, 4,			// bounds, bits per pixel
+		16, {0, 0, 32, 32}, 4,			// bounds, bits per pixel
 	// mask
 		$"0007FF80 00080000 00087E20 00080120"
 		$"00080120 04080120 0C080120 08080120"
@@ -1078,16 +1113,7 @@
 
 		'clut',	127;	// 8 standard QuickDraw colors; green is fixed
 
-		'atlk', 1;		// AppleTalk
-		'atlk', 3;		// AppleTalk
 		'atlk', 10;		// EtherTalk driver (LC ROM only)
-		'ltlk', 0;		// AppleTalk
-		'ltlk', 1;		// AppleTalk
-		'ltlk', 2;		// AppleTalk
-		'ltlk', 3;		// AppleTalk
-    	'DRVR', 10;		// AppleTalk
-    	'DRVR', 40;		// AppleTalk
-    	'DRVR', 9;		// AppleTalk
     	'INIT', 18;		// AppleTalk
     	'lmgr', 0;		// AppleTalk
 
@@ -1128,8 +1154,6 @@
 // INITs
 
 	IncSys "ParityINIT.a.rsrc" codeAs 'INIT' (10, sysHeap, locked);
-
-	IncSys "EDiskShutdownPtch.a.rsrc" codeAs 'INIT' (12, sysHeap, locked);
 	
 	
 	resource 'mcky' (0, sysHeap, purgeable) { { 255, 255, 255, 255, 255, 255, 255, 255 } };
@@ -1168,8 +1192,8 @@
 //__________________________________________________________________________________________________
 // AppleTalk
 
-	// AppleTalk 58 resources
- 	include $$Shell("Misc")"APTK58.rsrc" not 'ckid';
+	// AppleTalk 57 resources
+ 	include $$Shell("Misc")"APTK57.rsrc" not 'ckid';
 	
 	// ^^ incorporates the following:
 	// IncSys "AppleTalk.rsrc" not 'vers';
@@ -1180,16 +1204,16 @@
 		"Your system has been placed in AppleTalk zone “",
 
 		"”.  "
-		"To select a different zone, please click the Network icon in the Control Panel, "
+		"To select a different zone, please open the Network icon in the Control Panels Folder, "
 		"then click the selected AppleTalk connection icon.",
 
 		"Access to your AppleTalk internet has now become available.  To use "
-		"the internet, please click the Network icon in the Control Panel, "
+		"the internet, please open the Network icon in the Control Panels Folder, "
 		"then click the selected AppleTalk connection icon.",
 
 		"An unexpected change in your AppleTalk internet has interrupted network access.  "
-		"To resume network use, please click the "
-		"Network icon in the Control Panel, "
+		"To resume network use, please open the "
+		"Network icon in the Control Panels Folder, "
 		"then click the selected AppleTalk connection icon.",
 	} };
 
@@ -1241,6 +1265,10 @@
 		"The Router could not run.  "
 		"The Router file is damaged.  "
 		"Please reinstall the Router.",
+
+		"The Router could not run. "
+		"The Router is not compatible with Virtual Memory. "
+		"The built-in LocalTalk port will be used for your AppleTalk connection.",
 	} };
 
 //__________________________________________________________________________________________________
@@ -1881,6 +1909,11 @@ resource 'PICT' (-16387) {
 	IncSys "EditionMgr.rsrc";
 
 //__________________________________________________________________________________________________
+// EDisk
+
+	resource 'STR ' (-16535, sysheap, locked) { "Internal RAM Disk" }; // for EDiskLocalNamePatch.a
+
+//__________________________________________________________________________________________________
 // Font Mgr
 
 // name of TrueType Font Cache file
@@ -1905,9 +1938,9 @@ resource 'STR ' (-16391, purgeable) { "Font Cache" };
 	resource 'FOND' (3, "Geneva", purgeable) {
 		FakeFONDFlags, 3, FakeFONDFields, 1, { 9, plain, 393; 12, plain, 396; }, FakeFONDTables
 	};
-	data 'FONT' (384, "Geneva", purgeable) {};
 	IncSys "SystemFonts.rsrc" 'FONT' (393) as 'FONT' (393, purgeable);
 	IncSys "SystemFonts.rsrc" 'FONT' (396) as 'FONT' (396, purgeable);
+	IncSys "SystemFonts.rsrc" 'FONT' (521) as 'FONT' (521, purgeable);
 
 	resource 'FOND' (4, "Monaco", purgeable) {
 		FakeFONDFlags, 4, FakeFONDFields, 1, { 9, plain, 521; }, FakeFONDTables
@@ -2121,16 +2154,24 @@ resource 'pslt' (gestaltEclipse33, purgeable) {
 
 	IncSys "International.rsrc" 'kcs#' (0) as 'kcs#' (0, sysHeap, purgeable);
 	IncSys "International.rsrc" 'kcs4' (0) as 'kcs4' (0, sysHeap, purgeable);
-	IncSys "International.rsrc" 'kcs8' (0) as 'kcs8' (0, sysHeap, purgeable);
+	IncSys "International.rsrc" 'kcs#' (16383) as 'kcs#' (16383, sysHeap, purgeable);
+	IncSys "International.rsrc" 'kcs4' (16383) as 'kcs4' (16383, sysHeap, purgeable);
 	IncSys "International.rsrc" 'kcs#' (-16491) as 'kcs#' (-16491, sysHeap, purgeable);
 	IncSys "International.rsrc" 'kcs4' (-16491) as 'kcs4' (-16491, sysHeap, purgeable);
-	IncSys "International.rsrc" 'kcs8' (-16491) as 'kcs8' (-16491, sysHeap, purgeable);
+	IncSys "International.rsrc" 'kcs#' (-16492) as 'kcs#' (-16492, sysHeap, purgeable);
+	IncSys "International.rsrc" 'kcs4' (-16492) as 'kcs4' (-16492, sysHeap, purgeable);
 	IncSys "International.rsrc" 'STR#' (-16491) as 'STR#' (-16491, sysHeap, purgeable);
+	IncSys "International.rsrc" 'STR#' (-16492) as 'STR#' (-16492, sysHeap, purgeable);
+	IncSys "International.rsrc" 'STR#' (-16493) as 'STR#' (-16493, sysHeap, purgeable);
+	IncSys "International.rsrc" 'STR#' (-16494) as 'STR#' (-16494, sysHeap, purgeable);
+	IncSys "International.rsrc" 'STR#' (-16495) as 'STR#' (-16495, sysHeap, purgeable);
 	IncSys "International.rsrc" 'hmnu' (-16491) as 'hmnu' (-16491, sysHeap, purgeable);	// Keyboard menu help strings	<185>
-	IncSys "International.rsrc" 'DLOG' (-16491) as 'DLOG' (-16491, sysHeap, purgeable);	// About Keyboards…				<208>
-	IncSys "International.rsrc" 'DITL' (-16491) as 'DITL' (-16491, sysHeap, purgeable);	// About Keyboards…				<208>
 	IncSys "International.rsrc" 'DLOG' (-16492) as 'DLOG' (-16492, sysHeap, purgeable);	// About Keyboards…				<208>
 	IncSys "International.rsrc" 'DITL' (-16492) as 'DITL' (-16492, sysHeap, purgeable);	// About Keyboards…				<208>
+	IncSys "International.rsrc" 'DLOG' (-16493) as 'DLOG' (-16493, sysHeap, purgeable);	// About Keyboards…
+	IncSys "International.rsrc" 'DITL' (-16493) as 'DITL' (-16493, sysHeap, purgeable);	// About Keyboards…
+	IncSys "International.rsrc" 'DLOG' (-16494) as 'DLOG' (-16494, sysHeap, purgeable);	// About Keyboards…
+	IncSys "International.rsrc" 'DITL' (-16494) as 'DITL' (-16494, sysHeap, purgeable);	// About Keyboards…
 
 //__________________________________________________________________________________________________
 // List Mgr
@@ -2539,13 +2580,6 @@ resource 'ppci' (-16409)
 
 	IncSys "Scheduler.rsrc";
 	IncSys "DAHandler.rsrc";
-
-//__________________________________________________________________________________________________
-// SANE
-
-	IncSys "FPHW.rsrc" 'RSRC' (0) as 'PACK' (4, sysHeap, locked);
-	IncSys "ElemsHW.rsrc" 'RSRC' (0) as 'PACK' (5, sysHeap, locked);
-
 
 //__________________________________________________________________________________________________
 // QuickDraw
@@ -3102,14 +3136,20 @@ resource 'ppci' (-16409)
 
 //__________________________________________________________________________________________________
 // EDisk
-	resource 'STR#' (-4097, sysHeap, Locked) {
-		{
-			"The contents of the RAM Disk volume “^1” will be lost by shutting down.  "
-			"Do you wish to continue?",
-			"OK",
-			"Cancel",
-		}
+	resource 'DITL' (-16535, purgeable) { {
+		{84, 287, 104, 357}, Button { enabled, "OK" };
+		{84, 204, 104, 274}, Button { enabled, "Cancel" };
+		{10, 20, 42, 52}, Icon { disabled, 2 };
+		{7,  74, 72, 354}, StaticText { disabled,
+			"The contents of the RAM Disk volume “^0” will be lost by shutting down.  "
+			"Do you wish to continue?"
+		};
+	} };
+
+	resource 'DLOG' (-16535, purgeable) {
+		{0, 0, 114, 367}, dBoxProc, visible, noGoAway, 0, -16535, "", alertPositionMainScreen
 	};
+
 //__________________________________________________________________________________________________
 // Virtual Memory
 
@@ -3165,7 +3205,7 @@ data 'ppat' (18, sysheap, purgeable) {
 // color desktop pattern = dithered gray
 	resource 'ppat' (16, sysHeap, purgeable) {
 		$"AA55AA55AA55AA55",			// black & white pattern
-		{0, 0, 8, 8}, 4,				// bounds, bits per pixel
+		4, {0, 0, 8, 8}, 4,				// bounds, bits per pixel
 	// 4-bit color image
 		$"10101010"
 		$"01010101"
@@ -3543,75 +3583,84 @@ data 'ppat' (18, sysheap, purgeable) {
 #endif
 
 //__________________________________________________________________________________________________
-// Manual-eject drive stuff
-// This dialog and alert are used by the manual-eject drive software to communicate with the user
-// when a dirty disk has been manually-ejected.  This may not be the best place for them, but they
-// need to go somewhere for now.
+// Resources that cannot be found in the SuperMario source. Move out of here if possible.
 
-#if hasManEject
-resource 'DLOG' (-16413, sysheap, purgeable) {
-	{73, 114, 159, 411},
-	dBoxProc,
-	visible,
-	noGoAway,
-	0x0,
-	-16413,
-	""
-};
-
-resource 'DITL' (-16414, sysheap) {
-	{	/* array DITLarray: 2 elements */
-		/* [1] */
-		{60, 229, 80, 287},
-		Button {
-			enabled,
-			"OK"
-		},
-		/* [2] */
-		{9, 72, 54, 287},
-		StaticText {
-			disabled,
-			"Failing to update your disk may result i"
-			"n data loss."
+resource 'DITL' (-16601, sysheap) { {
+		{132, 75, 152, 136}, Button { enabled, "Cancel" },
+		{132, 156, 152, 247}, Button { enabled, "Print Later" },
+		{132, 267, 152, 351}, Button { enabled, "Print Now" },
+		{10, 20, 42, 52}, Icon { disabled, 2 },
+		{7, 74, 119, 355}, StaticText { disabled,
+			"Your document will be printed in the background when more memory is available.\n\n"
+			"You can try printing now instead, but you will not be able to continue working until printing is finished."
 		}
-	}
+} };
+
+
+data 'RECT' (-16601, sysheap) {
+	$"002C 001C 00CE 0189"                                /* .,...... */
 };
 
-resource 'DITL' (-16413, sysheap, purgeable) {
-	{	/* array DITLarray: 3 elements */
-		/* [1] */
-		{60, 229, 80, 287},
-		Button {
-			enabled,
-			"OK"
-		},
-		/* [2] */
-		{9, 72, 54, 287},
-		StaticText {
-			disabled,
-			"You may now safely remove the disk."
-		},
-		/* [3] */
-		{9, 10, 41, 42},
-		Icon {
-			disabled,
-			1
-		}
-	}
+resource 'STR ' (-16601, sysheap) { "PrintMonitor" };
+
+resource 'STR ' (-16392, sysheap, locked) {
+	"There are more than 128 font files in the Fonts folder.  "
+	"Some fonts may not be available for use."
 };
 
-resource 'ALRT' (-16414, sysheap, purgeable) {
-	{73, 114, 159, 411},
-	-16414,
-	{	/* array: 4 elements */
-		/* [1] */
-		OK, visible, sound1,
-		/* [2] */
-		OK, visible, sound1,
-		/* [3] */
-		OK, visible, sound1,
-		/* [4] */
-		OK, visible, sound1
-	}
+data 'inpm' (-8192, "TSM Resource", sysheap, purgeable) {
+	$"74736D72"							// defRsrcSignature					tsmr
+	$"00"								// defUseFloatWindow
+	$"00"								// defReserved
+	$"0004"								// defIMCount
+
+										// IMInfoRecord defSChineseIM:
+		$"00"								// imValidP
+		$"00"								// imUseOldInputMethodP
+		$"0000"								// imOldInputMethodFEPID
+		$"0000"								// imLanguage
+											// ComponentDescription imCDRec:
+			$"00000000"							// componentType
+			$"00000000"							// componentSubType
+			$"00000000"							// componentManufacturer
+			$"00000000"							// componentFlags
+			$"00000000"							// componentFlagsMask
+
+										// IMInfoRecord defJapaneseIM:
+		$"01"								// imValidP
+		$"00"								// imUseOldInputMethodP
+		$"0000"								// imOldInputMethodFEPID
+		$"000B"								// imLanguage
+											// ComponentDescription imCDRec:
+			$"74737663"							// componentType			tsvc
+			$"696E706D"							// componentSubType			inpm
+			$"6170706C"							// componentManufacturer	appl
+			$"0000810B"							// componentFlags
+			$"00010000"							// componentFlagsMask
+
+										// IMInfoRecord defTChineseIM:
+		$"00"								// imValidP
+		$"00"								// imUseOldInputMethodP
+		$"0000"								// imOldInputMethodFEPID
+		$"0000"								// imLanguage
+											// ComponentDescription imCDRec:
+			$"00000000"							// componentType
+			$"00000000"							// componentSubType
+			$"00000000"							// componentManufacturer
+			$"00000000"							// componentFlags
+			$"00000000"							// componentFlagsMask
+
+										// IMInfoRecord defKoreanIM:
+		$"00"								// imValidP
+		$"00"								// imUseOldInputMethodP
+		$"0000"								// imOldInputMethodFEPID
+		$"0000"								// imLanguage
+											// ComponentDescription imCDRec:
+			$"00000000"							// componentType
+			$"00000000"							// componentSubType
+			$"00000000"							// componentManufacturer
+			$"00000000"							// componentFlags
+			$"00000000"							// componentFlagsMask
+
 };
-#endif
+

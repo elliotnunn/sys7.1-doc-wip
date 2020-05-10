@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FileTransferMgr.a
 ;
 ;	Written by:	Carol Lee  June 1988
@@ -105,8 +112,6 @@ FTList
 	DC.W		@FTPChoose						- FTList;21
 	DC.W		@FTSetupXCleanup				- FTList;22
 	DC.W		@FTGetErrorString				- FTList;23
-	DC.W		@FTSend							- FTList;24
-	DC.W		@FTReceive						- FTList;25
 	
 @FTSetRefCon		; 258
 			_ExternalCore	#$40A
@@ -213,23 +218,5 @@ FTList
 @FTGetFTVersion
 				LEA		Version, A0
 				MOVE.W	(A0), D0		; put version number
-				RTS
-
-@FTSend		
-				CLR.W	-(SP)
-				MOVE.L	12(a0),-(SP)	; hFT
-				MOVE.W	10(A0),-(SP)	; numFiles
-				MOVE.L	6(A0),-(SP)		; pFSpec
-				MOVE.L	2(A0), -(SP)	; notifyProc
-				JSR		__FTSend
-				MOVE.W	(SP)+,D0
-				RTS
-@FTReceive
-				CLR.W	-(SP)
-				MOVE.L	10(a0),-(SP)	; hFT
-				MOVE.L	6(A0),-(SP)		; pFSpec
-				MOVE.L	2(A0), -(SP)	; notifyProc
-				JSR		__FTReceive
-				MOVE.W	(SP)+,D0
 				RTS
 				END

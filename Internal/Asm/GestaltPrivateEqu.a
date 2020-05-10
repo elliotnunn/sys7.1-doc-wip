@@ -1,3 +1,10 @@
+;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
 ;-----------------------------------------------------------------------------
 ;
 ;	File:		GestaltPrivateEqu.a
@@ -146,7 +153,7 @@
 __INCLUDINGGESTALTPRIVATEEQU__	SET	1
 
 
-gestaltVers					EQU		4			; gestalt version (is this an oxymoron, or what? )
+gestaltVers					EQU		1			; gestalt version (is this an oxymoron, or what? )
 
 ;kInitialEntryCount			EQU		80			; initial number of slots at boot time
 gestaltFlagIsValueMask		EQU		1			; bit in flags that means value is not ProcPtr
@@ -165,8 +172,9 @@ size			equ		*
 				ENDR
 
 GestaltGlobals	RECORD	0
+longH
 tableH			ds.l	1						; handle to table of longs
-slotsUsed		ds.l	1						; number of entries in table
+slotsUsed
 maxSlots		ds.l	1						; number of entries in table
 memSize			ds.l	1						; amount of memory in this machine
 realTop			ds.l	1						; adjusted memory size
@@ -175,10 +183,6 @@ fpu				ds.b	1						; fpu type
 mmu				ds.b	1						; mmu type
 parityStatus	ds.l	1						; parity status
 myScratch		ds.l	1						; scratch area
-emu68k			ds.b	1						; 68k emulator installed flag
-nativeCPU		ds.b	1						; native cpu type
-nativePageSize	ds.l	1						; native page size
-ediskSize		ds.l	1						; edisk size <SM18> CSS
 GestaltRecSize	equ		*
 				ENDR
 

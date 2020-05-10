@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		CheckDevicesINIT.a
 ;
 ;	Contains:	7 patches for Color QuickDraw (mostly video driver related)
@@ -10,8 +17,6 @@
 ;	Change History (most recent first):
 ;
 ;	  <SM10>	09-23-93	jmp		Quit doing <SM8> below when the Display Manager is around.
-;	   <SM9>	 9/1/93		SKH		Fixed a bug with fixed CLUT devices (ie: DBLite).  SetEntries can not be called for
-;									direct or fixed devices
 ;	   <SM8>	04-07-93	jmp		Cleaned up the invalid 'scrn' resource code so that it actually
 ;									removes the invalid 'scrn' resource.  This makes family modes
 ;									work better.  However, this is really only a stop-gap measure
@@ -19,13 +24,11 @@
 ;	   <SM7>	11-05-92	jmp		Changed the TPD, FPD, and HR video driver patch mechanism so
 ;									that it now runs correctly from ROM (it was originally written
 ;									to work in RAM).
-;	   <SM6>	10/28/92	SWC		Changed SlotEqu.a->Slots.a and VideoEqu.a->Video.a.
 ;	   <SM5>	10/28/92	PN		# 1045532 Call QDSecondaryInit from the BootCode3.a to set up
 ;									the color and gdevice environment also fix up the code to run
 ;									from ROM and check for SuperMario ROM ID. Mike Puckett will come
 ;									back to this file and clean it up (he promised !) Also, take out
 ;									the system INIT stuff and the 950 patch.
-;		<SM4>	10/27/92	CSS		Changed a short branch to a word branch.
 ;		<SM3>	7/16/92		CSS		Update from Reality:
 ;									<27> 7/13/92 DTY	#1035553 <csd>: The Quadra950VideoPatch assumes that the driver
 ;														is RAM based, thus it treats the dCtlDriver field as a handle.
@@ -252,8 +255,8 @@ SetDevEntries
 			Move.l	A2,-(Sp)				; Storage for remembering gDevice.
 			
 			Move.l	(A0),A2					; gDevice Handle to gDevice Ptr.
-			Cmp.w	#clutType,gdType(A2)	; If the gDevice is direct or fixed (SKH), <SM9>
-			Bne.s	@sdeExit				;	then do nothing.
+			Cmp.w	#directType,gdType(A2)	; If the gDevice is direct or fixed
+			Beq.s	@sdeExit				;	then do nothing.
 			
 			Cmp.l	#-1,A1					; If A1 == -1, then use the
 			Beq.s	@usePMap				; 	gDevice’s PixMap.
@@ -339,53 +342,16 @@ CheckDevices								; <19>: Moved label from within if-endif to embed utility
 ;	the comments on the NoScrn code below).
 ;
 GetScrn
+			TST.B	scrnInval
+			BEQ.S	NoScrn
+
 			CLR.L	-(SP)					; make room for function result
 			MOVE.L	#'scrn',-(SP)			; push desired resource type
 			CLR		-(SP)					; resource ID = 0
 			_GetResource					; get the resource
 			MOVE.L	(SP)+,D0				; get the resource handle
-			Beq.s	NoScrn					; if nil, do the no 'scrn' code
+			BNE.S	GotScrn					; if nil, do the no 'scrn' code
 			
-; ••• 2nd INIT •••
-;
-; Test the scrnInval low-mem to make sure the screen resource is valid. (Note:  scrnInval
-;	will generally be cleared by the video card’s primaryInit IF the information in
-;	pRAM doesn’t match the current set up).  This is ALSO a case where we need to
-;	make a SetEntries call so the screen colors don’t change on the the first SetEntries
-;	and/or SetGamma call.
-;
-ChkScrn		
-			Tst.b	scrnInval				; If the 'scrn' resource is not invalid,
-			Bne.s	GotScrn					;	then just go on.
-						
-			Move.l	D0,A4					; Save the 'scrn' resource handle.
-			
-			Move.l	#gestaltDisplayMgrAttr,D0 ; We need to know if the Display Manager is around.
-			_Gestalt						; Ask, and ye shall receive.
-			Bne.s	@NoDM					; Oops, got an error.
-			Move.l	A0,D0					; Get the result into D0.
-			Btst	#gestaltDisplayMgrPresent,D0 ; If the Display Manager is around, then
-			Bne.s	NoScrn					; don’t dispose of the 'scrn' resource so
-@NoDM										; so that the Display Manager can deal with it.
-			
-			Clr.w	-(Sp)					; Make room for resFile refNum.
-			Move.l	A4,-(Sp)				; Push 'scrn' resource handle for resFile.
-			_HomeResFile					; Get refNum.
-			
-			Move.l	A4,-(Sp)				; Push 'scrn' resource handle for remove.
-			_RmveResource					; Try to remove it.
-			Tst.w	ResErr					; If everything is okay, then
-			Beq.s	@DisposeIt				;	just go on.
-			
-			Tst.w	(Sp)+					; Clean up the stack.
-			Move.l	A4,D0					; Get 'scrn' resource handle back into D0.
-			Bra.s	GotScrn					; And we’re screwed.
-			
-@DisposeIt	Movea.l	A4,A0					; Get 'scrn' resource handle into A0.
-			_DisposHandle					; Dispose it.
-			
-			_UpdateResFile					; Update the 'scrn's resFile lest we die later.
-
 ; If a 'scrn' resource is NOT around we’ll get here.  The only thing we want to do at this
 ;	point is to call SetDevEntries on the boot device so that the screen will not change colors
 ;	after a SetEntries/SetGamma call is made later.
@@ -724,8 +690,8 @@ ChkTbl
 			MOVE.L	(A0),A0					; get pixmap ptr
 			MOVE.W	pmPixelSize(A0),D0		; get depth
 
-			CMP		#clutType,gdType(A1)	; is it a direct/fixed (SKH) device? <SM9>
-			BNE  	SetGRect				; if so, then do nothing <19>:s <SM4> CSS
+			CMP		#directType,gdType(A1)	; is it a direct/fixed device?
+			BEQ.S 	SetGRect				; if so, then do nothing <19>:s
 
 			BTST	#gdDevType,gdFlags+1(A1)	; is it color or monochrome mode?
 			BNE.S	@ClrMode				; if set, then this is color
@@ -1017,7 +983,7 @@ GoHome
 ;		4) Mac II Portrait Video Card        (.DrPVC) [ROM Version PVC1.1, P/N 341-0732]
 ;
 
-			BRA		DoDrvrPatches			; Stupid extra branch because I calculate the size of the
+			BRA.S	DoDrvrPatches			; Stupid extra branch because I calculate the size of the
 											;   resident interrupt handler from labels, and they can't
 											;	be forward references. <15>: Changed name from Start to
 											;	DoDrvrPatches for <17>.
@@ -1049,88 +1015,6 @@ PtchStart
 			RTS											; return to caller
 PtchEnd
 ;----------------------------------------------------
-
-;
-; This compares the object code at (A1,D0.W) with the target string in D6 and D7, then, if it
-;	matches, replaces this object with a JSR absolute.  It saves a little code in the patch
-;	since this is a very common sequence.
-;
-CmpReplTarget1
-				CMP.W		(A1,D0.W),D6				; is this the target string
-				BNE.S		ExitBad						; no, so quit
-				CMP.L		2(A1,D0.W),D7				; check the other half
-				BNE.S		ExitBad						; no, so quit
-
-; Replace the faulty code
-;
-				MOVE.W		(A6),(A1,D0.W)				; copy the JSR instruction
-			If ForROM Then
-				Lea			PtchStart,A5				; Get a pointer to the start of the replacement code.
-				Move.l		A5,2(A1,D0.W)				; And copy it down.
-			Else	
-				MOVE.L		2(A6),2(A1,D0.W)			; copy the patch address
-			Endif
-ExitGood		RTS										; return
-
-ExitBad			ADDA		#4,SP						; kill return address
-				BRA			NxtSlot						; and go to next card
-
-;
-; This compares the HRVC's odd case object code at (A1,D0.W) with TargetObj2, then, if it
-;	matches, replaces this object with a JSR absolute.
-;
-CmpReplTarget2
-
-				MOVE.L		A0,-(SP)					; save some regs
-				LEA			TargetObj2,A0				; point to the target object
-				MOVE.L		(A0)+,D1					; get the first long
-				CMP.L		$9BA(A1),D1					; is this the target string
-				BNE.S		ExitBad2					; no, so quit
-				MOVE.L		(A0)+,D1					; get the second long
-				CMP.L		$9BA+4(A1),D1				; check the other half
-				BNE.S		ExitBad2					; no, so quit
-				MOVE.W		(A0)+,D1					; get the final word
-				CMP.W		$9BA+8(A1),D1				; check the other half
-				BNE.S		ExitBad2					; no, so quit
-
-; Replace the faulty code
-;
-				MOVE.W		(A6),$9BA(A1)				; copy the extended patch over
-			If ForROM Then
-				Lea			PtchStart,A5				; Get a pointer to the start of the replacement code.
-				Move.l		A5,$9BA+2(A1)				; And copy it down.
-			Else
-				MOVE.L		2(A6),$9BA+2(A1)			; copy the patch address
-			Endif
-				MOVE.L		6(A6),$9BA+6(A1)			; copy some NOPs for fill out the gap
-
-				MOVE.L		(SP)+,A0					; restore A0
-ExitGood2		RTS										; return
-
-ExitBad2
-				MOVE.L		(SP)+,A0					; restore A0
-				ADDA		#4,SP						; kill return address
-				BRA			NxtSlot						; and go to next card
-
-; Here is the faulty code section.  We will replace it with a JSR to the improved code.  Since
-;	the first line is a stack-based operation, the patch code needs to swap things around a
-;	bit.
-;
-TargetObj1		MOVE.W	SR,-(SP)						; word to test
-				OR.W	#$0700,SR						; longword to test
-
-TargetObj2		MOVE.W	SR,D0							; longword to test
-				MOVE.W	D0,-(SP)
-				OR.W	#$0700,D0						; longword to test
-				MOVE.W	D0,SR							; word to test
-
-;
-; Here is the image of the code to replace the faulty sections.
-;
-ReplObj
-				JSR			$7FFFFFFF					; the destination will be patched
-				NOP										; target2 needs some additional NOPs
-				NOP										;
 
 				WITH spBlock,vpBlock
 
@@ -1209,11 +1093,6 @@ NxtSlotLoop
 				MOVE.B		dCtlSlotID(A1),spID(A0)		; get ID
 				MOVE.B		dCtlExtDev(A1),spExtDev(A0)	; external device ID
 				_sRsrcInfo								; there should never be a miss here
-			If Not ForROM Then
-				Bne			Out1						; But if there is, exit gracefully.
-			Else
-				Bne			Out							; Ditto.
-			Endif
 
 ;
 ; Now that we have the right sRsrcList in spsPointer, get the sRsrcFlags word
@@ -1310,12 +1189,8 @@ NxtSlotLoop
 @IncFlag		ADDQ		#1,D5						; increment patching flag
 NxtSlot
 				MOVE.L		gdNextGD(A3),D0				; get handle to next gDevice
-				Beq.s		@EndSlotLoop				; If nil, we’re done.
-				Move.l		D0,A3						; Otherwise, copy the handle.
-				Move.l		(A3),A3						; Turn it into a pointer.
-				Bra.s		NxtSlotLoop					; Loop until done.
-
-@EndSlotLoop
+				MOVE.L		(ZA0,D0.L),A3
+				BNE			NxtSlotLoop
 
 ;
 ; See if the any drivers were patched.  If not, then release the patcher block in sysheap.
@@ -1335,7 +1210,7 @@ Out1			LEA			ReplObj,A6					; point to the substitution object
 ; Release the slot manager block.
 ;
 
-Out				LEA			spBlockSize(SP),SP			; clean up the stack						<SM6>
+Out				ADD.L		#spBlockSize,SP				; clean up the stack
 
 				Endwith
 
@@ -1343,24 +1218,6 @@ Out				LEA			spBlockSize(SP),SP			; clean up the stack						<SM6>
 ; Lets restore more registers than have ever been restored before. (Hey, you can never be too careful.)
 ;
 				MOVEM.L	(SP)+,A0-A6/D0-D7				; so we don’t screw up the boot process
-
-; ••• 6th INIT •••
-;
-			if asINIT then
-;
-; Early in the boot process an _InitGraf was performed (for the Welcome to Mac box).
-;	It's not correct if the main screen moved away from the boot screen, so let's call
-;	InitGraf on these early globals to correct the problem.  This will fix a problem
-;	with the LMgr "init" which didn't do an InitGraf while setting up the environment
-;	for an alert dialog.
-;
-; Note that for the new boot process this is no longer necessary.
-;
-
-				PEA			-4(A5)
-				_InitGraf
-			
-			endif
 
 ; ••• 7th INIT •••
 ;
@@ -1538,5 +1395,89 @@ Quadra950SaveRegs	Reg		D4-D6					; Define work registers.
 				Rts
 			
 			Endif
+
+
+;
+; This compares the object code at (A1,D0.W) with the target string in D6 and D7, then, if it
+;	matches, replaces this object with a JSR absolute.  It saves a little code in the patch
+;	since this is a very common sequence.
+;
+CmpReplTarget1
+				CMP.W		(A1,D0.W),D6				; is this the target string
+				BNE.S		ExitBad						; no, so quit
+				CMP.L		2(A1,D0.W),D7				; check the other half
+				BNE.S		ExitBad						; no, so quit
+
+; Replace the faulty code
+;
+				MOVE.W		(A6),(A1,D0.W)				; copy the JSR instruction
+			If ForROM Then
+				Lea			PtchStart,A5				; Get a pointer to the start of the replacement code.
+				Move.l		A5,2(A1,D0.W)				; And copy it down.
+			Else	
+				MOVE.L		2(A6),2(A1,D0.W)			; copy the patch address
+			Endif
+ExitGood		RTS										; return
+
+ExitBad			ADDA		#4,SP						; kill return address
+				BRA			NxtSlot						; and go to next card
+
+;
+; This compares the HRVC's odd case object code at (A1,D0.W) with TargetObj2, then, if it
+;	matches, replaces this object with a JSR absolute.
+;
+CmpReplTarget2
+
+				MOVE.L		A0,-(SP)					; save some regs
+				LEA			TargetObj2,A0				; point to the target object
+				MOVE.L		(A0)+,D1					; get the first long
+				CMP.L		$9BA(A1),D1					; is this the target string
+				BNE.S		ExitBad2					; no, so quit
+				MOVE.L		(A0)+,D1					; get the second long
+				CMP.L		$9BA+4(A1),D1				; check the other half
+				BNE.S		ExitBad2					; no, so quit
+				MOVE.W		(A0)+,D1					; get the final word
+				CMP.W		$9BA+8(A1),D1				; check the other half
+				BNE.S		ExitBad2					; no, so quit
+
+; Replace the faulty code
+;
+				MOVE.W		(A6),$9BA(A1)				; copy the extended patch over
+			If ForROM Then
+				Lea			PtchStart,A5				; Get a pointer to the start of the replacement code.
+				Move.l		A5,$9BA+2(A1)				; And copy it down.
+			Else
+				MOVE.L		2(A6),$9BA+2(A1)			; copy the patch address
+			Endif
+				MOVE.L		6(A6),$9BA+6(A1)			; copy some NOPs for fill out the gap
+
+				MOVE.L		(SP)+,A0					; restore A0
+ExitGood2		RTS										; return
+
+ExitBad2
+				MOVE.L		(SP)+,A0					; restore A0
+				ADDA		#4,SP						; kill return address
+				BRA			NxtSlot						; and go to next card
+
+; Here is the faulty code section.  We will replace it with a JSR to the improved code.  Since
+;	the first line is a stack-based operation, the patch code needs to swap things around a
+;	bit.
+;
+TargetObj1		MOVE.W	SR,-(SP)						; word to test
+				OR.W	#$0700,SR						; longword to test
+
+TargetObj2		MOVE.W	SR,D0							; longword to test
+				MOVE.W	D0,-(SP)
+				OR.W	#$0700,D0						; longword to test
+				MOVE.W	D0,SR							; word to test
+
+;
+; Here is the image of the code to replace the faulty sections.
+;
+ReplObj
+				JSR			$7FFFFFFF					; the destination will be patched
+				NOP										; target2 needs some additional NOPs
+				NOP										;
+
 
 			END

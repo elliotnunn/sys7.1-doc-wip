@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		CommToolboxPatches.c
 
 	Contains:	Linked Patches for CommToolbox
@@ -95,7 +102,7 @@ pascal void CleanUpCommToolbox()
 //		is closed.
 //
 
-		while (CRMReleaseRF(oldRefNum) == noErr)
+		if (CRMReleaseRF(oldRefNum) == noErr)
 			;
 	}
 

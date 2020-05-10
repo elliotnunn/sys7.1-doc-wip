@@ -259,6 +259,7 @@ Conds = ∂
 					hasRISCV0ResMgrPatches=FALSE			∂
 					hasSlotMgr=TRUE							∂
 					hasSplineFonts=TRUE						∂
+					hasPratt=FALSE							∂
 					IopADB=FALSE							∂
 					NewBuildSystem=TRUE						∂
 					nonSerializedIO=TRUE					∂
@@ -356,13 +357,19 @@ Clean ƒ
 	C {COpts} -o {ObjDir}SysDF.c.o {ToolDir}SysDF.c
 	Link -o {Targ} -t 'MPST' -c 'MPS ' {ObjDir}SysDF.c.o {IfObjDir}Interface.o {CLibraries}StdCLib.o {Libraries}Runtime.o
 
+# A postprocessor to the stars!
+{RsrcDir}CDG5StripResourceNames ƒ {MakeDir}CDG5StripResourceNames.c
+	C -o {ObjDir}CDG5StripResourceNames.c.o {MakeDir}CDG5StripResourceNames.c
+	Link -t MPST -c 'MPS ' -o {Targ} {ObjDir}CDG5StripResourceNames.c.o ∂
+		{CLibraries}StdCLib.o {Libraries}Runtime.o {IfObjDir}Interface.o
+
 
 ########################################################################
 # The System file 
 ########################################################################
 
 # Hacks adapt Sys.r to the changed build system
-{BuildDir}System ƒ {ResourceDir}Sys.r {SystemResourceFiles} {PatchDir}LoadPatches.a {RsrcDir}SysDF
+{BuildDir}System ƒ {ResourceDir}Sys.r {SystemResourceFiles} {RsrcDir}LoadPatches.a.rsrc {RsrcDir}SysDF {RsrcDir}CDG5StripResourceNames
 	Set Misc {MiscDir}; Export Misc
 	Set ColorPicker {ColorPickerDir}; Export ColorPicker
 	Set DataAccessMgr {DataAccessDir}; Export DataAccessMgr
@@ -370,14 +377,8 @@ Clean ƒ
 	Set RealObjDir {ObjDir}; Set ObjDir {RsrcDir}
 	Rez	{StdROpts} -t zsys -c MACS -d VidExtVers=∂"{VidExtVers}∂" {ResourceDir}Sys.r -o {Targ}
 	Set ObjDir {RealObjDir}
-	# Get rid of all the "Main" segment names
-	#DeRez {Targ} ∂
-	#	| StreamEdit -d -e '/•data ([¬ ]+)®1 ∂(([¬,]+)®2,≈∂"Main∂"/ Print "Change "®1" ("®2") to $$Type ($$Id, $$Attributes);"' ∂
-	#	| Rez -a -o {Targ}
-	# Compatibility code (and credits) in the data fork
-	Asm {StdAOpts} -o {ObjDir}LoadPatches.a.o {PatchDir}LoadPatches.a
-	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o {RsrcDir}LoadPatches.a.rsrc {ObjDir}LoadPatches.a.o
 	{RsrcDir}SysDF {Targ} {RsrcDir}LoadPatches.a.rsrc
+	{RsrcDir}CDG5StripResourceNames {Targ}
 
 
 ########################################################################
@@ -426,9 +427,19 @@ PatchOpts = -d SonyNonPortable -i {PatchDir} -i {GestaltDir} -i {QDPatchesDir} -
 # The LinkedPatch mechanism
 ########################################################################
 
-# Link LinkPatch, the LinkedPatch linker (object only, no source code!)
+# LinkPatch, the LinkedPatch linker (object only, no source code!)
 {RsrcDir}LinkPatch ƒ {LinkPatchDir}LinkPatchLib.o {ObjDir}LinkPatch.a.o
 	Link -t MPST -c 'MPS ' -o {Targ} {LinkPatchDir}LinkPatchLib.o {ObjDir}LinkPatch.a.o
+
+# Our lpch postprocessor, which imposes order on non-deterministic lpch output
+{RsrcDir}CDG5PostLinkPatch ƒ {MakeDir}CDG5PostLinkPatch.c {ObjDir}LinkPatch.a.o
+	C -o {ObjDir}CDG5PostLinkPatch.c.o {MakeDir}CDG5PostLinkPatch.c
+	Link -t MPST -c 'MPS ' -o {Targ} {ObjDir}CDG5PostLinkPatch.c.o {ObjDir}LinkPatch.a.o ∂
+		{CLibraries}StdCLib.o {Libraries}Runtime.o {IfObjDir}Interface.o
+
+# Arbitrary order for CDG5PostLinkPatch to impose
+{ObjDir}ForceMakePatchOrder.a.o ƒ {Sources}Make:ForceMakePatchOrder.a
+	Asm {StdAOpts} -o {Targ} {Sources}Make:ForceMakePatchOrder.a
 
 # LinkPatch needs to know some constants in LinkedPatchMacros.a
 {ObjDir}LinkPatch.a.o ƒ {LinkPatchDir}LinkPatch.a
@@ -439,9 +450,11 @@ PatchOpts = -d SonyNonPortable -i {PatchDir} -i {GestaltDir} -i {QDPatchesDir} -
 	Lib {StdLibOpts} -o {Targ} {LinkedPatchObjs}
 
 # ...and link them into several 'lpch' resource
-{RsrcDir}LinkedPatches.rsrc ƒ {RsrcDir}LinkPatch {LibDir}LinkedPatches.lib
+{RsrcDir}LinkedPatches.rsrc ƒ {RsrcDir}LinkPatch {LibDir}LinkedPatches.lib {RsrcDir}CDG5PostLinkPatch {ObjDir}ForceMakePatchOrder.a.o
 	# -l for some table, -v for counts, -p for patches, -w for ?warnings-off
 	{RsrcDir}LinkPatch -l -w -o {Targ} {LibDir}LinkedPatches.lib > {TextDir}LinkPatchJumpTbl
+	# Fix subtle ordering differences to make it perfectly match released System
+	{RsrcDir}CDG5PostLinkPatch {Targ} {TextDir}LinkPatchJumpTbl {ObjDir}ForceMakePatchOrder.a.o > {TextDir}LinkPatchProblemSyms
 
 # Assemble the runtime linked patch loader...
 {ObjDir}LinkedPatchLoader.a.o ƒ {LinkPatchDir}LinkedPatchLoader.a
@@ -522,6 +535,11 @@ PatchOpts = -d SonyNonPortable -i {PatchDir} -i {GestaltDir} -i {QDPatchesDir} -
 {RsrcDir}GreggyBitsDefProc.a.rsrc ƒ {PatchDir}GreggyBitsDefProc.a
 	Asm {StdAOpts} -o {ObjDir}GreggyBitsDefProc.a.o {PatchDir}GreggyBitsDefProc.a
 	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o {Targ} {ObjDir}GreggyBitsDefProc.a.o
+
+# Data fork of the System file
+{RsrcDir}LoadPatches.a.rsrc ƒ {PatchDir}LoadPatches.a
+	Asm {StdAOpts} -o {ObjDir}LoadPatches.a.o {PatchDir}LoadPatches.a
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o {Targ} {ObjDir}LoadPatches.a.o
 
 # Code to put up a dialog if we have a parity troubles
 {RsrcDir}ParityINIT.a.rsrc ƒ {TidbitsDir}ParityINIT.a

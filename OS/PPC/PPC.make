@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		PPC.make
 #
 #	Contains:	Makefile to build the PPC manager.
@@ -24,15 +31,16 @@ PPCObjects		=	"{ObjDir}PPCInstall.a.o"										∂
 					"{ObjDir}PPCSession.c.o"										∂
 					"{ObjDir}PPCLocal.c.o"											∂
 					"{ObjDir}PPCNetwork.c.o"										∂
-					"{ObjDir}PPCAuth.c.o"											∂
-					"{ObjDir}PPCDsp.c.o"											∂
 					"{ObjDir}PPCNBP.c.o"											∂
+					"{ObjDir}PPCDsp.c.o"											∂
+					"{ObjDir}PPCAuth.c.o"											∂
 					"{ObjDir}BTreeCGlue.a.o"										∂
 					"{ObjDir}BTIntf.a.o"											∂
 					"{ObjDir}PPCBrowserPackEntry.a.o"								∂
 					"{ObjDir}PromptForUser.a.o"										∂
 					"{ObjDir}PromptForUser.c.o"										∂
-					"{PPCDir}maindes.o"
+					"{PPCDir}maindes.o"												∂
+					"{ObjDir}PPCPatch.a.o"
 
 PPCBrowserObjs =	"{ObjDir}PPCBrowser.a.o"										∂
 					"{ObjDir}PPCBrowser.c.o"										∂
@@ -44,11 +52,11 @@ PPCBrowserObjs =	"{ObjDir}PPCBrowser.a.o"										∂
 	Lib {StdLibOpts} -o "{Targ}" {PPCObjects}
 
 
-"{RsrcDir}PPC.rsrc"	ƒƒ	{PPCBrowserObjs}
+"{RsrcDir}PPCBrowser.a.rsrc"	ƒƒ	{PPCBrowserObjs}
 	Link {StdLOpts} {StdAlign} -o "{Targ}" {PPCBrowserObjs} -m BrowsePackEntry -rt PACK=9 || Exit 1
 
 
-"{RsrcDir}PPC.rsrc"	ƒƒ	"{RIncludes}Types.r"										∂
+"{RsrcDir}PPCBrowser.a.rsrc"	ƒƒ	"{RIncludes}Types.r"							∂
 						"{RIncludes}SysTypes.r"										∂
 						"{RIncludes}BalloonTypes.r"									∂
 						"{PPCDir}PPCBrowser.r"
@@ -331,3 +339,7 @@ PPCBrowserObjs =	"{ObjDir}PPCBrowser.a.o"										∂
 
 "{ObjDir}PromptForUser.c.o"		ƒ 	"{PPCDir}PromptForUser.c"
 	C {StdCOpts} -o "{Targ}" "{PPCDir}PromptForUser.c"
+
+
+"{ObjDir}PPCPatch.a.o"			ƒ 	"{PPCDir}PPCPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{PPCDir}PPCPatch.a"

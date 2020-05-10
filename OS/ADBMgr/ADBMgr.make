@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ADBMgr.make
 #
 #	Contains:	Makefile for ADB.
@@ -19,3 +26,7 @@
 									"{IntAIncludes}UniversalEqu.a"					∂
 									"{ADBDir}ADBMgr.a"
 	Asm {StdAOpts} -o "{Targ}" "{ADBDir}ADBMgr.a"
+
+
+"{ObjDir}ADBMgrPatch.a.o"		ƒ	"{ADBDir}ADBMgrPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{ADBDir}ADBMgrPatch.a"

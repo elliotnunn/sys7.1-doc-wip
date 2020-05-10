@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		CommToolboxPatches.a
 ;
 ;	Contains:	CommToolbox linked patches
@@ -14,9 +21,6 @@
 ;									the CommToolbox files per Mike Bell's instructions. I also had
 ;									to delete some old code that was compiled under the "CubeE"
 ;									conditional.
-;	   <SM3>	  7/6/92	PN		Take out emCommToolboxGlobals and put it in the existing
-;									CTBBlock.
-;	   <SM2>	 6/30/92	PN		Add init routines to allocate space for the dispatch table
 ;		<18>	 10/4/91	JSM		Change PsychoticFarmerOrLater conditionals to TheFuture.
 ;		<17>	 10/2/91	DTY		Conditionalise <14> through <16> out of CubeE.
 ;		<16>	  7/3/91	BH		omitted setting gestaltTermMgrErrorString bit
@@ -66,12 +70,12 @@
 ;====================================================================================================
 ;====================================================================================================
 
-;•••ROMs Plus,SE,II,Portable,IIci <SM2>
+					ROMs Plus,SE,II,Portable,IIci
 
 ;====================================================================================================
 ;	this installs the CommToolbox dispatch mechanism…
 
-;•••	MakePatch COMMTOOLBOXDISPATCHER,_CommToolboxDispatch <SM2>
+					MakePatch COMMTOOLBOXDISPATCHER,_CommToolboxDispatch
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;WARNING WARNING WARNING WARNING WARNING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -106,7 +110,7 @@
 
 ;====================================================================================================
 ;	this sets up the CommToolbox global variable
-SetupGlobals		installproc
+SetupGlobals		installproc		(Plus,SE,II,Portable,IIci)
 
 		; allocate CommToolbox low memory and CommToolBoxTable
 					WITH CTBBlock						; allocate CTB low memory block
@@ -115,10 +119,6 @@ SetupGlobals		installproc
 					MOVE.L		A0,A1					; save it
 
 					MOVE.L		A1,CommToolboxGlobals	; stuff into low mem pointer
-
-					MOVEQ		#(19*4),D0					; •19 long entries <SM3>
-					_NewPtr 	,Sys,Clear					; <SM3>
-					MOVE.L		A0,CommToolBoxTable(A1) 	; stuff pointer in our global <SM3>			
 
 		; setup version
 					MOVE.W		#CTBBlockVersion, version(A1)
@@ -134,15 +134,12 @@ SetupGlobals		installproc
 					_InitCTBUtilities
 					ADDQ		#4,SP					; pop both return values
 
-		;Call RegisterBuiltInPorts
-					Import	RegisterBuiltInPorts    ;<SM2>
-					JSR		RegisterBuiltInPorts	;<SM2>
 					rts
 					endproc
 
 ;====================================================================================================
 ;	this sets up the gestalt selectors
-SetupGestalt		installproc
+SetupGestalt		installproc		(Plus,SE,II,Portable,IIci)
 					import		getCTBVersion
 					import		getCMAttr
 					import		getFTAttr
@@ -206,7 +203,7 @@ SetupGestalt		installproc
 ;====================================================================================================
 ;	this sets up the builtin serial port registration
 
-;••• MakeInstall RegisterBuiltInPorts <SM2>
+					MakeInstall RegisterBuiltInPorts
 
 
 ;====================================================================================================
@@ -253,7 +250,6 @@ getCMAttr											; features as bits
 getFTAttr											; features as bits
 					CLR.L	D0								; clear our gestalt value
 					BSET	#gestaltFXfrMgrPresent,D0
-					BSET	#gestaltFXfrMgrMultiFile,D0
 					BSET	#gestaltFXfrMgrErrorString,D0
 					bra.s	stdOK
 ;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -266,8 +262,6 @@ getTMAttr											; features as bits
 getCRMAttr											; features as bits
 					CLR.L	D0								; clear our gestalt value
 					BSET	#gestaltCRMPresent,D0
-;					BSET	#gestaltCRMToolRsrcCalls,D0
-;					BSET	#gestaltCRMPersistentFix,D0
 					bra.s	stdOK
 ;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 getDITLAttr											; features as bits

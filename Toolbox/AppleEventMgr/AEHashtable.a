@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		AEHashtable.a
 ;
 ;	Contains:	xxx put contents here xxx
@@ -13,17 +20,6 @@
 ;
 ;	Change History (most recent first):
 ;
-;	   <SM2>	 6/12/92	RB		This file had a few DC.L which do not work from ROM.  The code
-;									was supposed to store offsets to routines used to allocate,
-;									deallocate and execute memory blocks.  Also, there was an option
-;									to store user supplied routine pointers in this code itself
-;									which was not actually used.  To make this code work from ROM it
-;									all came down to deleting a bunch of useless code, deleting
-;									macros and making the code that returns the default memory
-;									procedures return the standard ones.  Someone is going to have
-;									to take a good look at the functionality they originally wanted
-;									out of this code.  Anyway, the 50% of apps that were breaking on
-;									SuperMario will now run.
 ;		 <4>	 1/11/91	Lai		Fix new hash table size bug when number of entries is an exact
 ;									power of 2, and bug in GetIndexedEntry
 ;		 <3>	12/18/90	Lai		Chagne size of minimum hash table to avoid using excessive
@@ -1138,7 +1134,8 @@ BKeyWrongContinue
 		Deref	&Src,&Dest
 			SubQ	#4,SP
 			Move.L	&Src,-(SP)
-			bsr	DeRefMemory
+			Move.L	0(A3),D0
+			Bsr		CallMessage
 			Move.L	(SP)+,&Dest
 		ENDM
 		
@@ -1149,7 +1146,8 @@ BKeyWrongContinue
 			SubQ	#2,SP			; for result
 			Move.L	&Src,-(SP)
 			Move.L	&Size,-(SP)
-			bsr	SetMemorySize
+			Move.L	8(A3),D0
+			Bsr		CallMessage
 			Move.W	(SP)+,D0
 		ENDM
 		
@@ -1159,7 +1157,8 @@ BKeyWrongContinue
 		KillMem	&Src
 			SubQ	#2,SP			; for result
 			Move.L	&Src,-(SP)
-			bsr	DisposeMemory
+			Move.L	12(A3),D0
+			Bsr		CallMessage
 			Move.W	(SP)+,D0
 		ENDM
 		
@@ -1173,7 +1172,8 @@ BKeyWrongContinue
 			Move.L	&Size,-(SP)
 			Move.W	&SysHeap,-(SP)		; pass the sysHeap boolean
 			Move.L	A0,-(SP)		; point to Var
-			bsr	NewMemory
+			Move.L	4(A3),D0
+			Bsr		CallMessage
 			Move.W	(SP)+,D0
 			Move.L	(SP)+,A0		; return the block in A0.
 		ENDM
@@ -1568,22 +1568,65 @@ DeRefMemory	Head	,NoLink
 		Move.L	(A0),thePtr(SP)
 		Tail	FirstParam
 
+; GetDefaultMemProcs - returns the default memory procs
+; into a buffer of four 4-byte offsets (pass ptr in A3)
+GetDefaultMemProcs
+		Move.L	A3,A1					; get place to stuff the procs.
+		Move.L	#$FFFFFFFF,D0			; all of these are negative offsets
+		Move.W	#BaseAddress-DeRefMemory,D0
+		Move.L	D0,(A1)+				; stuff all the procs.
+		Move.W	#BaseAddress-NewMemory,D0
+		Move.L	D0,(A1)+
+		Move.W	#BaseAddress-SetMemorySize,D0
+		Move.L	D0,(A1)+
+		Move.W	#BaseAddress-DisposeMemory,D0
+		Move.L	D0,(A1)
+		Rts
+
 ;
 ; SetUpMemProcs - Install the default memory procs, if not already done
 ;
-;	This macro has been killed.
-;
+SetUpMemProcs
+		Move.L	D0,-(SP)				; save MemHooks pointer, is it zero?
+		Lea		MemProcsFlag,A3
+		ST		(A3)
+		Lea		MemProcs,A3
+		BSR.S	GetDefaultMemProcs
+
+		Move.L	(SP)+,D0				; custom table
+		Beq.S	@NoCustomTable
+		Move.L	D0,A0
+		Lea		CustomMemProcs,A3
+		BSR.S	GetDefaultMemProcs
+		MoveQ	#3,D1					; fill blanks with default method
+		Move.L	A3,A1
+@Loop	Move.L	(A0)+,D0
+		Beq.S	@Dflt
+		BSet	#0,D0
+		Move.L	D0,(A1)
+@Dflt	AddQ	#4,A1
+		DBRA	D1,@Loop
+
+@NoCustomTable
+		Rts
+
+MemProcsFlag	DC.L	0
+MemProcs		DC.L	0,0,0,0
+CustomMemProcs	DC.L	0,0,0,0
 
 ;
-; SetUpMemProcs		;;; Move.L	MemProcs(SP),D0	; should be done already.
+; SetUpMemProcs
 ; _______________
 		MACRO
 		SetUpMemProcs
+		Bne.S	@SurelyDoIt
+		Lea		MemProcs,A3
+		Move.L	MemProcsFlag,D0
+		Bne.S	@DontDoIt
+		@SurelyDoIt:
+		BSR		SetUpMemProcs
+		@DontDoIt:
 		ENDM
-
-
-
-; <SM2> rb, space for variables moved to global record so this code works from ROM.
 
 ;
 ; SetUpHashCustom - set up the HashCustom field of the table, if it's nil.
@@ -3041,41 +3084,6 @@ SetGrowThreshhold	Head	A2-A3,LocalSize
 		Move.W	Percent(A6),HashFullPercent(A2)	; stuff the percentage.
 		ENDIF					; NotLobotimised
 		Tail	SetTHand			; restore regs and return.
-		
-		EndWith
-		
-; GetDefaultMemProcs - returns the default memory procs. 
-		
-;	Function	GetDefaultMemProcs: MemProcs;
-
-GetDMPFrame	Record	{A6Link},Decr
-MemProcs	DS.L	1
-ReturnAddr	DS.L	1
-A6Link		DS.L	1
-LocalSize	EQU	*
-		EndR
-		With	GetDMPFrame
-		
-GetDefaultMemProcs	Head	A2-A3,LocalSize
-		IF	NotLobotimised	THEN
-
-		Break	'GetDefaultMemProcs'
-; set up the mem procs.
-
-		Clr.L	D0				; nil ensures the hooks will be set up.
-		SetUpMemProcs				; puts hooks, or defualt into A3.
-
-		Move.L	MemProcs(A6),A1			; get place to stuff the procs.
-		lea	DeRefMemory,a0			;					<SM2> rb
-		Move.L	A0,(A1)+			; stuff all the procs.			<SM2> rb
-		lea	NewMemory,a0			;					<SM2> rb
-		Move.L	a0,(A1)+			;					<SM2> rb
-		lea	SetMemorySize,a0		;					<SM2> rb
-		Move.L	a0,(A1)+			;					<SM2> rb
-		lea	DisposeMemory,a0		;					<SM2> rb
-		Move.L	a0,(A1)				;					<SM2> rb
-		ENDIF					; NotLobotimised
-		Tail	ReturnAddr			; restore regs, strip stack and return.
 		
 		EndWith
 		

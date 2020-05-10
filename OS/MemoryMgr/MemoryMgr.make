@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		MemoryMgr.make
 #
 #	Contains:	Makefile for the Memory Manager.
@@ -17,13 +24,13 @@
 
 FigmentDir = {MemoryMgrDir}FigmentSources:
 
-#include {FigmentDir}Figment.Make
-
-
 MemoryMgrObjs 					=	"{ObjDir}MemoryMgr.a.o"							∂
 									"{ObjDir}MemoryMgrExtensions.a.o"				∂
 									"{ObjDir}MemoryMgrInternal.a.o"					∂
 									"{ObjDir}BlockMove.a.o"
+
+
+#include {FigmentDir}Figment.Make
 
 
 "{LibDir}MemoryMgr.lib"			ƒ	"{LibDir}Figment.lib" {MemoryMgrObjs}
@@ -64,5 +71,9 @@ MemoryMgrObjs 					=	"{ObjDir}MemoryMgr.a.o"							∂
 									"{MemoryMgrDir}MemoryMgrPriv.a"					∂
 									"{MemoryMgrDir}MemoryMgrInternal.a"
 	Asm {StdAOpts} -o "{Targ}" "{MemoryMgrDir}MemoryMgrInternal.a"
+
+
+"{ObjDir}MemoryMgrPatches.a.o"	ƒ	"{MemoryMgrDir}MemoryMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{MemoryMgrDir}MemoryMgrPatches.a"
 
 

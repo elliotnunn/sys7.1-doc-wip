@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		DataAccessMgr.make
 #
 #	Contains:	Makefile for the Data Access Manager.
@@ -29,15 +36,15 @@ DataAccessCompObjs				=	"{ObjDir}DataAccessCompletion.a.o"
 	Lib	{StdLibOpts} -o "{Targ}" "{ObjDir}DataAccessPackEntry.a.o"
 
 
-"{RsrcDir}DataAccessMgr.rsrc"	ƒƒ	{DataAccessMgrPackObjs}
+"{RsrcDir}SnarfMan.a.rsrc"		ƒƒ	{DataAccessMgrPackObjs}
 	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt PACK=13 -ra =resSysHeap -m DataAccessPackEntry {DataAccessMgrPackObjs} || Exit 1
 
 
-"{RsrcDir}DataAccessMgr.rsrc"	ƒƒ	{DataAccessRTTObjs}
+"{RsrcDir}SnarfMan.a.rsrc"		ƒƒ	{DataAccessRTTObjs}
 	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt proc=-5728 -ra =resSysHeap -m DataAccessHandler {DataAccessRTTObjs} || Exit 1
 
 
-"{RsrcDir}DataAccessMgr.rsrc"	ƒƒ	{DataAccessCompObjs}
+"{RsrcDir}SnarfMan.a.rsrc"		ƒƒ	{DataAccessCompObjs}
 	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt proc=-5727 -ra =resSysHeap -m DataAccessCR {DataAccessCompObjs} || Exit 1
 
 

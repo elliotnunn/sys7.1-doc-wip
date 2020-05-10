@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		LinkedPatchLoader.a
 ;
 ;	Contains:	code to load linked patch resources
@@ -304,9 +311,6 @@
 		include 'Traps.a'
 		include 'LinkedPatchMacros.a'
 		print pop
-
-_GetTrapWordAddress						opword	$A546				; *** move into Traps.a
-_SetTrapWordAddress						opword	$A447				; *** move into Traps.a
 
 dsLinkedPatchReferenceTooFar			equ		97					; *** move into SysErr.a
 

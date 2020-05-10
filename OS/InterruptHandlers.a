@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		InterruptHandlers.a
 ;
 ;	Contains:	This module contains the receivers for all 68000-family auto-vectored
@@ -464,6 +471,11 @@
 
 
 ;	interrupt setup primitives record
+
+IntRegs		reg		a0-a3/d0-d3			; registers saved by all interrupt handlers
+IntRegsSize	equ		8*4					; size of IntRegs in bytes - must change if IntRegs changes!
+										; if this changes, then you must update HALc96Routines.a to handle
+										; both old and new cases.
 
 InterruptPrims	RECORD	{intInitPostProc},INCREMENT
 flags			DS.W	1							; miscellaneous flags

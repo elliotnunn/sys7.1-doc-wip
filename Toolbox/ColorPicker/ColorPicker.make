@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ColorPicker.make
 #
 #	Contains:	Makefile for the Color Picker Package.
@@ -21,14 +28,8 @@ ColorPickerObjs					=	"{ObjDir}ColorPicker.a.o"						∂
 									"{PLibraries}PasLib.o"
 
 
-"{RsrcDir}ColorPicker.rsrc"		ƒƒ	"{RIncludes}Types.r"							∂
-									"{ColorPickerDir}ColorPicker.r"					∂
-									"{ColorPickerDir}ColorPickerWedge.r"
-	Rez -a {StdROpts} -o "{Targ}" "{ColorPickerDir}ColorPicker.r" "{ColorPickerDir}ColorPickerWedge.r" || Exit 1
-
-
-"{RsrcDir}ColorPicker.rsrc"		ƒƒ	{ColorPickerObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" {ColorPickerObjs} -rt PACK=12 || Exit 1
+"{RsrcDir}ColorPicker.p.rsrc"	ƒ	{ColorPickerObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" {ColorPickerObjs} -rt RSRC=0 || Exit 1
 
 
 # Since these guys use the obsolete MemTypes, QuickDraw, OSIntf, ToolIntf, PackIntf

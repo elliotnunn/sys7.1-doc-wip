@@ -1,4 +1,11 @@
 {
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+}
+
+{
 	File:		Choose.p
 
 	Contains:	Puts up the standard "Settings" dialog for Communication Tools
@@ -409,12 +416,6 @@ BEGIN
 	IF theHandle = NIL THEN
 		cRec.msg := BOR(cRec.msg, ctbChooseNoChangeHandle);		{ app needs to allocate records}
 
-	IF (BAND(cRec.msg, ctbChooseNoDialog) = ctbChooseNoDialog) THEN			{ check for special case }
-	BEGIN
-		ChooseEntry := DoBackDoor(msg, theHandle, cRec);
-		Exit(ChooseEntry);
-	END;
-
 	savedRes := CurResFile;								{ avoid application resources <AMR 25> }
 	UseResFile(0);										{ <AMR 25> }
 														{ preflight values }
@@ -445,7 +446,6 @@ BEGIN
 	{ we need to tell the StdFilterProc to handle the default and cancel buttons }
 	IF SetDialogDefaultItem(theDialog, ChooseItemOK) <> noErr THEN;
 	IF SetDialogCancelItem(theDialog, ChooseItemCancel) <> noErr THEN;
-	IF SetDialogTracksCursor(theDialog, true) <> noErr THEN;
 
 	WITH infoP^ DO BEGIN
 		SetCursor(myWatch);
@@ -924,14 +924,6 @@ BEGIN
 	theErr := noErr;
 
 	WITH infoP^ DO BEGIN
-{begin addition <21>}
-{	this makes sure that the menu is empty so that after a crash we don't get the trailing X's }
-		maxTools := CountMItems(hMenu);
-		for theItem := 1 TO maxTools do
-			DelMenuItem(hMenu, theItem);
-		maxTools := 0;
-		theItem := 1;
-{end addition <21>}
 
 		WHILE theErr = noErr DO BEGIN
 			theErr := CRMGetIndFile(tempTool,theType, vRefNum, dirID, theItem);
@@ -942,9 +934,6 @@ BEGIN
 
 					{ Call the App's filter proc	}
 					includeIt := TRUE;							{ include it }
-
-					IF cRec.filterProc <> NIL THEN
-						includeIt:= DoAppFilter(@tempTool,msg,theHandle,cRec.filterProc);
 
 					IF includeIt THEN BEGIN
 						{ Is this the current tool? }

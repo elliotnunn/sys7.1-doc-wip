@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File		SlotMgr.make
 #
 #	Contains:	Makefile for SlotMgr.
@@ -12,7 +19,8 @@
 #	   <SM2>	  9/7/93	pdw		Fixed dependencies.
 
 
-SlotMgrObjs						=	"{ObjDir}SlotInterrupts.a.o"					∂
+SlotMgrObjs						=	"{ObjDir}SlotMgrPatch.a.o"						∂
+									"{ObjDir}SlotInterrupts.a.o"					∂
 									"{ObjDir}SlotMgrInit.a.o"						∂
 									"{ObjDir}SlotMgr.a.o"
 
@@ -51,4 +59,8 @@ SlotMgrObjs						=	"{ObjDir}SlotInterrupts.a.o"					∂
 									"{IntAIncludes}ComVideoEqu.a"					∂
 									"{SlotMgrDir}SlotMgr.a"
 	Asm {StdAOpts} -o "{Targ}" "{SlotMgrDir}SlotMgr.a"
+
+
+"{ObjDir}SlotMgrPatch.a.o"		ƒ	"{SlotMgrDir}SlotMgrPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{SlotMgrDir}SlotMgrPatch.a"
 

@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		Thing Dispatch.a
 ;
 ;	Contains:	Dispatcher and Entry point table for Thing Manager
@@ -286,8 +293,7 @@ lastSelector		EQU	43
 		;cmp.w	#-1,d0
 		bmi.s	ChainThingFunction
 		cmp.w	#delegateSelector,d0
-		beq		DelegateComponentCall
-		cmp.w	#lastSelector,d0
+		beq.s	DelegateComponentCall
 		bhi.s	ComponentBummer
 		lea		ComponentDispTableHead,a0
 		lsl.w		#2,d0				; don't assume 020

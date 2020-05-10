@@ -1,4 +1,12 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Removed <3> QuickTime patch code, and what looks like a total rewrite of
+;							__MicroSeconds.
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		TimeMgr.a
 ;
 ;	Contains:	The Macintosh OS Time Manager
@@ -487,6 +495,7 @@ __PrimeTime	move.l	d3,-(sp)				; save d3 also
 ; attempts to keep backlog from becoming very large
 ;
 
+	IF 0 THEN										; ex<3> <Sys7.1> Removed QuickTime patch
 			btst.b	#ExtendedTmTaskBit, qType(a0)
 			beq.s	@notExtended
 			lea		3+tmReserved(a0), a1
@@ -502,6 +511,7 @@ __PrimeTime	move.l	d3,-(sp)				; save d3 also
 			bpl.s	@notExtended
 			bclr.b	#ExtendedTmTaskBit, qType(a0)
 @notExtended:
+	ENDIF											; ex<3> <Sys7.1> End of removed code
 
 ;
 ; end of code from Quicktime patch
@@ -749,144 +759,23 @@ ThawTime	move.l	#$0000FFFF>>TickScale,d2; max range (internal form) of VIA timer
 ;_______________________________________________________________________
 
 __MicroSeconds: proc	export					; a0-a2/d1-d2 saved by dispatcher
+			import	FreezeTime
+			import	ThawTime
 
 			with	TimeMgrPrivate
 			
-			movem.l	d3-d5,-(sp)				; save some others as well
-			movea.l	VIA,a1					; get base address of VIA1
-			movea.l	TimeVars,a0				; point to TimeMgrPrivate
-			moveq.l	#0,d1					; d1 := 0
+			move.l	d3,-(sp)
 
-			move.w	sr,-(sp)
-			ori.w	#$0700,sr				; disable interrupts
+			jsr		FreezeTime
 
-			;	First we'll read the VIA timer.  This is complicated by three
-			;	bits of trivia.  First, if an interrupt is pending then reading
-			;	lower eight bits would clear that interrupt so we'll avoid that by
-			;	not reading the actual value in the low eight bits but just using
-			;	zero instead.  In fact, because the interrupt may become pending
-			;	between reading the upper and lower bytes we won't read the
-			;	lower byte if the upper byte is a zero even if no interrupt is yet
-			;	pending.  The second problem is that between reading the upper
-			;	byte and the lower byte, the lower byte could decrement from 00
-			;	to FF which would mean the upper byte value is wrong.  So we'll
-			;	re-read the upper byte after reading the lower byte and if they're
-			;	not equal we'll retry the entire read operation.  Finally, in
-			;	the case where the interrupt is pending we must adjust the value
-			;	to take into account the implied latency.
-			;
-			;	When we're done we'll have a 32-bit signed value in d1 which can
-			;	be combined with CurrentTime to yield the actual time.  Also,
-			;	we'll have the low eight bits from the VIA in d0.
+			move.b	TimerLowSave(a2),d1		; low byte of VIA timer
+			neg.b	d1
+			ror.l	#4,d1
+			move.w	CurrentTime+2(a2),d1	; get low word of current time
+			lea		CurTimeThresh(a2),a1	; point to CurTimeThresh
 
-		eieioSTP
-			move.b	vT2CH(a1),d1			; d1 := MSBs of timer
-		eieioSTP
-			btst.b	#T2IntBit,vIFR(a1)		; is the interrupt pending?
-		eieioSTP
-			beq.s	no_overflow
-
-overflow:	moveq.l	#-1,d1					; force upper bits to ones
-			move.b	d1,d0					; generate fake LSBs
-		eieioSTP
-			move.b	vT2CH(a1),d1			; re-read timer in case of roll-over
-		eieioSTP
-			rol.w	#8,d1					; position MSBs; LSBs become 1's
-			bra.s	done_reading_via
-
-no_overflow:tst.b	d1
-retry:		beq.s	dont_read_lsbs			; don't clear the interrupt
-		eieioSTP
-			move.b	vT2C(a1),d0				; d0 := LSBs of timer
-		eieioSTP
-			move.b	vT2CH(a1),d2			; d2 := MSBs of timer
-		eieioSTP
-			cmp.b	d2,d1					; did the MSBs roll?
-			beq.s	have_both_halves
-			move.b	d2,d1
-			bra.s	retry
-
-dont_read_lsbs:
-			moveq.l	#0,d0					; pretend they're zeros
-
-have_both_halves:
-			lsl.w	#8,d1					; slide the MSBs into position
-			move.b	d0,d1					; insert LSBs
-
-done_reading_via:
-
-			;	So now we have a 32-bit signed value in d1 which indicates
-			;	where time really is with respect to the value in CurrentTime.
-			;	In d0 we have the LSBits of the via timer.  Now we convert
-			;	these values into  microseconds.  This is pretty contorted
-			;	because the unit of VIA ticks is not a rational number.
-
-			moveq.l	#(1<<TickScale)-1,d2	; d2 := virtual tick rounding factor
-			add.l	d2,d1					; round to virtual ticks
-			asr.l	#TickScale,d1			; convert to virtual ticks by discading LSBs
-			move.l	CurrentTime(a0),d2		; d2 := time of next interrupt
-			sub.l	d1,d2					; correct with value in VIA
-
-			lea		HighUSecs(a0),a1		; form pointer for speed
-			move.l	(a1)+,d3				; d3.l := High 32 bits of uSeconds
-			move.w	(a1)+,d4				; d4.w := Next 16 bits of uSeconds
-			move.l	(a1)+,d5				; d5.l := 16 LSBs of uSec and 16 bit fraction
-			swap	d0						; put VIA LSBs in d0.hi
-			move.w	(a1)+,d0				; d0.w := threshold
-
-			move.w	(sp)+,sr				; now we can enable interrupts
-
-			;	Recall that MicroSeconds are maintained internally as an 80 bit
-			;	number with 64 bits of mantissa and 16 bits of fraction.
-			;
-			;	The first part of the conversion is to do a huge division by
-			;	repeated subtraction.  We look at the CurrentTime and the
-			;	Threshold and increment the Threshold by a value X until it
-			;	is greater than the CurrentTime.  Each time we add X to the
-			;	Threshold we add Y to the 80 bit microsecond counter.  X and Y
-			;	have been carefully chosen so that X is as close to 2^12 as
-			;	possible and is such that X * Via_Tick_Units is exactly
-			;	representable in a 32.16 fixed point value.
-			
-check_threshold:
-			cmp.w	d0,d2					; compare CurrentTime to Threshold
-			bmi.s	threshold_ok
-			addi.w	#ThreshInc,d0			; update threshold
-			addi.l	#USecsInc,d5			; update Microseconds
-			bcc.s	check_threshold
-			addq.w	#1,d4					; propagate carry
-			bcc.s	check_threshold
-			addq.l	#1,d3					; propagate carry
-			bra.s	check_threshold
-
-threshold_ok:
-			swap	d4
-			swap	d5
-			move.w	d5,d4					; d3:d4 := 64 bit microseconds count, nearly
-			swap	d5						; d5    := 16 bit fractional part
-
-			;	At this point:
-			;	D0.Hi	=> lower 8 bits of the upper word are the low VIA byte
-			;	D0.Lo	=> Updated Threshold
-			;	D2		=> Updated CurrentTime
-			;	D3.L 	=> 32 high order bits of microseconds counter
-			;	D4.L 	=> 32 low order bits of microseconds counter
-			;	D5.W 	=> 16 bits of microseconds fraction
-
-
-adjust_for_residual:
-
-			;	Now we need to use the remaining part of Threshold and the four
-			;	LSBs of the VIA timer to provide further accuracy.
-
-			move.l	d0,d1					; d1.hi := VIA LSBs
-			swap	d1						; d1.lo := VIA LSBs
-			neg.b	d1						; convert it to be additional time
-			ror.l	#TickScale,d1			; move it into high byte for insertion
-
-			sub.w	d0,d2					; CurrentTime := CurrentTime - CurTimeThresh
-			addi.w	#ThreshInc,d2			; compute additional time
-			move.w	d2,d1					; combine with VIA MSBs
+			sub.w	(a1),d1					; CurrentTime := CurrentTime - CurTimeThresh
+			addi.w	#ThreshInc,d1			; compute additional time
 			rol.l	#TickScale,d1			; convert to un-scaled VIA time
 			mulu.w	#InternalToUs>>16,d1	; convert to microseconds
 		if 32-IntToUsFractBits-TickScale <> 1 then
@@ -894,17 +783,19 @@ adjust_for_residual:
 		else
 			add.l	d1,d1					; align to form 16.16 fixed point result
 		endif
-			add.w	d5,d1					; add in FractUSecs, set ccr.x to carry out
+			add.w	-(a1),d1				; add in FractUSecs, set ccr.x to carry out
+			move.l	-(a1),d0				; LowUSecs
+			move.l	-(a1),a0				; HighUSecs
 			clr.w	d1						; clear out fraction bits
 			swap	d1						; get additional µsecs
-			addx.l	d1,d4					; add additional time to LowUSecs
+			addx.l	d1,d0					; add additional time to LowUSecs
 			subx.l	d1,d1					; -1 if ccr.x = 1, 0 if ccr.x = 0
-			sub.l	d1,d3					; propagate carry into HighUSecs
+			sub.l	d1,a0					; propagate carry into HighUSecs
 
-			movea.l	d3,a0					; put result in result registers
-			move.l	d4,d0
-			movem.l	(sp)+,d3-d5				; restore saved registers
-			rts								; all done											<4>
+			jsr		ThawTime
+
+			move.l	(sp)+,d3
+			rts
 
 			endproc
 

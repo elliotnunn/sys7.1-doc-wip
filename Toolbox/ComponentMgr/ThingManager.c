@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Thing Manager.c
 
 	Copyright:	© 1990-1993 by Apple Computer, Inc., all rights reserved.
@@ -218,14 +225,10 @@ extern pascal short ThingyGestalt(OSType selector, long* responsePtr);
 pascal OSErr CoolReplaceGestalt(OSType selector,SelectorFunctionProcPtr selectorFunction)
     = {0xA5AD};
 
-#pragma parameter __A0 rHandToHand(__A0)
-Handle rHandToHand(Handle theHndl)
-	= {0xA9E1,0x31c0,0x0220};
-
-pascal void		__InitComponentManager(Ptr *cutBackAddress);
+pascal void		__InitComponentManager(void);
 pascal long		__ComponentManagerVersion(void);
-pascal OSErr	__GrowRegisteredComponentInstanceTable( short growCount );
-pascal OSErr	__GrowRegisteredComponentTable( short growCount );
+OSErr		__GrowRegisteredComponentInstanceTable( short growCount );
+OSErr	__GrowRegisteredComponentTable( short growCount );
 pascal long		__GetComponentListModSeed(void);
 long			RegisteredComponentPointerToComponentID(RegisteredComponent *rt);
 RegisteredComponent	*ComponentIDtoRegisteredComponentPointer(long t);
@@ -239,8 +242,8 @@ pascal Component	__RegisterComponent(ComponentDescription *td,
 					Handle ComponentInfo, Handle ComponentIcon);
 pascal Component	__RegisterComponentResource(ComponentResource **htr, short global);
 pascal long		__RegisterComponentResourceFile(short resRefNum, short global);
-pascal RegisteredComponentInstancePtr __ValidComponentInstance(ComponentInstance aComponentInstance);
-pascal RegisteredComponentPtr	__ValidComponent(Component aComponent);
+RegisteredComponentInstancePtr __ValidComponentInstance(ComponentInstance aComponentInstance);
+RegisteredComponentPtr	__ValidComponent(Component aComponent);
 int				RemoveRTFromList(RegisteredComponent *rt, RegisteredComponent **pRTList);
 pascal OSErr	__UnregisterComponent(Component aComponent);
 pascal OSErr	__SetDefaultComponent(Component aComponent, short flags);
@@ -263,7 +266,7 @@ void			KillHeapComponents(Ptr heapStart, Ptr heapEnd);
 pascal void		__CleanUpApplicationComponents(void);
 pascal Component	__FindNextComponent(long previousComponent, ComponentDescription *td);
 void			HandToXHand(Handle srcHandle, Handle dstHandle);
-pascal OSErr	__GetComponentInfoPrivate( Component aComponent,
+OSErr	__GetComponentInfoPrivate( Component aComponent,
 					Handle  nameHand, Handle infoHand, Handle iconHand );
 pascal OSErr	__GetComponentInfo(Component aComponent, ComponentDescription *td,
 					Handle nameHand, Handle infoHand, Handle iconHand);
@@ -279,7 +282,6 @@ pascal ComponentInstance	__OpenComponent(long componentID);
 pascal OSErr	__CloseComponent(ComponentInstance componentInstanceID);
 pascal ComponentInstance	__OpenDefaultComponent(OSType componentType, OSType componentSubType);
 pascal ComponentResult	__CallComponent(void);
-pascal void		__ComponentSearch(void);
 RegisteredComponentInstance *FindNextComponentInstance( register RegisteredComponentInstance *rti,  register RegisteredComponent *rt );
 
 static pascal void ThingMemoryTrashed(Ptr startAddr, Ptr stopAddr);
@@ -290,85 +292,21 @@ pascal long goComponentRegister(long theComponent ) = ComponentCallNow( kCompone
 pascal long goComponentUnregister(long theComponent ) = ComponentCallNow( kComponentUnregisterSelect,0);
 
 
-// Gestalt proc for returning the version of the installed Component Mgr
-pascal OSErr GestaltComponentMgrVersion(OSType selector, long* responsePtr)
-{
-#pragma unused (selector)
+pascal void __InitComponentManager(void)	// Called only once at install time
+	{
+	long saveCodecManagerGlobals = -1;
 
-	*responsePtr = ComponentManagerVersion();
-	return (noErr);
-}
-
-//#ifdef tLINKED
-
-void KillHeapComponents(Ptr heapStart, Ptr heapEnd);
+	ComponentManagerGlobals = (ComponentManagerGlobalsRecord *)NewPtrSysClear( sizeof(ComponentManagerGlobalsRecord) );
+	ComponentManagerGlobals->rtReservedForCodecManager = saveCodecManagerGlobals;
+	__GrowRegisteredComponentTable( 32 );
+	}
 
 pascal long __ComponentManagerVersion(void)
 	{
-	return 3;
+	return 1;
 	}
 
-Handle fixHandle(register Handle h)
-{
-	if (h == 1) h = 0;
-	return h;
-}
-
-#ifdef SupportNativeComponents
-
-pascal void * ResolveCodeFragment(RegisteredComponentPtr rt)
-{
-	Str255			errStr;
-	Ptr				mainAddr;
-	THz				oldZone;
-	OSErr			err;
-
-#ifdef WARHOL_DEBUG
-	Handle			nameHand;
-
-	nameHand = NewHandle(0);
-	if (nameHand == nil)
-		return (0);
-
-	err = GetComponentInfo(RegisteredComponentPointerToComponentID(rt), nil, nameHand, nil, nil);
-	if (err != noErr) {
-		DebugStr("\pno info");
-		DisposeHandle(nameHand);
-		goto bail;
-	}
-	HLock(nameHand);
-#endif
-
-	oldZone = GetZone();
-	SetZone(SystemZone());
-
-#ifdef WARHOL_DEBUG
-	err = GetMemFragment(*rt->rtRoutineHandle,0,*nameHand,kLoadNewCopy,&rt->rtConnectionID,&mainAddr,errStr);
-#else
-	err = GetMemFragment(*rt->rtRoutineHandle,0,"\pComponent",kLoadNewCopy,&rt->rtConnectionID,&mainAddr,errStr);
-#endif
-
-	SetZone(oldZone);
-
-#ifdef WARHOL_DEBUG
-	DisposeHandle(nameHand);
-#endif
-
-	if (err != noErr) {
-#ifdef WARHOL_DEBUG
-		DebugStr(errStr);
-#endif
-		return (nil);
-	}
-
-bail:
-	return (mainAddr);
-}
-
-#endif
-
-
-pascal OSErr __GrowRegisteredComponentTable( short growCount )
+OSErr __GrowRegisteredComponentTable( short growCount )
 /*
  * Grow the table of registered components.  String the new entries onto the free list.
  * Since the table moved, all absolute references to entries in the registered
@@ -442,14 +380,14 @@ pascal OSErr __GrowRegisteredComponentTable( short growCount )
 		DisposPtr((Ptr)oldTable);							/* dump the old one */
 
 	if (ComponentManagerGlobals->rtTableEntryCount > ComponentManagerGlobals->rtInstanceTableTotalCount)
-		GrowRegisteredComponentInstanceTable( ComponentManagerGlobals->rtTableEntryCount -  ComponentManagerGlobals->rtInstanceTableTotalCount);
+		__GrowRegisteredComponentInstanceTable( ComponentManagerGlobals->rtTableEntryCount -  ComponentManagerGlobals->rtInstanceTableTotalCount);
 
 	return 0;
 	}
 
 
 
-pascal OSErr __GrowRegisteredComponentInstanceTable( short growCount )
+OSErr __GrowRegisteredComponentInstanceTable( short growCount )
 /*
  * Grow the table of registered component instances.
  * Interrupts need not be disabled as long as the old table is kept intact and used until
@@ -508,7 +446,7 @@ long RegisteredComponentPointerToComponentID(register RegisteredComponent *rt)		
 	}
 
 
-#if 1
+#if 0
 	#define ComponentIDtoRegisteredComponentPointer(t) ((RegisteredComponent *)( ComponentManagerGlobals->rtTable + (short)(t & 0xffff)))
 #else
 	RegisteredComponent *ComponentIDtoRegisteredComponentPointer( register long t )			/* should be a macro */
@@ -617,19 +555,7 @@ RegisteredComponent *FindPreviousMatchingComponent( register ComponentDescriptio
 	}
 
 
-static Handle cmHandToHand(register Handle h)
-{
-	if ((long)(h == 0) || ((long)h == 1))
-		return h;
-	else {
-#ifdef WARHOL_DEBUG
-	if (!*h) DebugStr("\pyou suck.");
-#endif
-		return rHandToHand(h);
-	}
-}
-
-pascal short __ResolveComponentPlatform(ComponentResource **htr, ComponentDescription *cd, ResourceSpec *rs)
+short __ResolveComponentPlatform(ComponentResource **htr, ComponentDescription *cd, ResourceSpec *rs)
 {
 	ComponentResourceExtension *cre;
 	long response = gestalt68k;
@@ -697,16 +623,15 @@ pascal Component __RegisterComponent(ComponentDescription *td, ComponentRoutine 
 	{
 	THz	saveZone;
 	register RegisteredComponent *new, *previous;
-	ComponentDescription atd = *td;									// duplicate so that if it moves (or gets trashed...) we still have it
 
 	if (!ComponentManagerGlobals->rtFreeChain) {					/* no free entries available */
-		if (GrowRegisteredComponentTable( kComponentAllocationSize))	/* expand (and MOVE…) the table */
+		if (__GrowRegisteredComponentTable( kComponentAllocationSize))	/* expand (and MOVE…) the table */
 			return 0;												/* out of memory */
 	}
 
 	new = ComponentManagerGlobals->rtFreeChain;
 	ComponentManagerGlobals->rtFreeChain = new->rtNext;
-	new->rtDesc = atd;
+	new->rtDesc = *td;
 	new->rtRoutine = (ComponentRoutine *)StripAddress((Ptr)ComponentEntryPoint);
 	new->rtLocalA5 = (long)((global & registerComponentGlobal) ? 0 : *(long *)CurrentA5 );
 
@@ -714,15 +639,15 @@ pascal Component __RegisterComponent(ComponentDescription *td, ComponentRoutine 
 
 	if (global & registerComponentGlobal)
 		SetZone(*(THz *)SysZone);
-	new->rtNameHand = cmHandToHand( ComponentName );
-	new->rtInfoHand = cmHandToHand( ComponentInfo );
-	new->rtIconHand = cmHandToHand( ComponentIcon );
+	new->rtNameHand = ComponentName; if (ComponentName) HandToHand(&new->rtNameHand);
+	new->rtInfoHand = ComponentInfo; if (ComponentInfo) HandToHand(&new->rtInfoHand);
+	new->rtIconHand = ComponentIcon; if (ComponentIcon) HandToHand(&new->rtIconHand);
 
 	SetZone((THz)saveZone);
 	if (global & registerComponentAfterExisting)			/* register after other similar ones */
-		atd.componentType++;
+		td->componentType++;
 														/* find the entry ordered before this one */
-	if  ( previous = FindPreviousMatchingComponent( &atd, ComponentManagerGlobals->rtUsedChain ) )
+	if  ( previous = FindPreviousMatchingComponent( td, ComponentManagerGlobals->rtUsedChain ) )
 		{
 		new->rtNext = previous->rtNext;						/* add this one to the ordered chain */
 		previous->rtNext = new;
@@ -734,7 +659,7 @@ pascal Component __RegisterComponent(ComponentDescription *td, ComponentRoutine 
 		}
 
 	if (global & registerComponentAfterExisting)			/* restore component type */
-		atd.componentType--;
+		td->componentType--;
 
 	BumpModificationSeed( &ComponentManagerGlobals->rtModSeed );
 	if (!new->rtEntryUseCount)
@@ -743,13 +668,8 @@ pascal Component __RegisterComponent(ComponentDescription *td, ComponentRoutine 
 	new->rtParent = 0;
 	new->rtRoutineHandle = 0;
 	new->rtFlags = 0;
-
-	// the upper byte is the platform type, but 0 means unknown and assumed to be 68k
-	if (((unsigned short)global >> 8) > gestalt68k)
-		new->rtFlags |= rtfCodeFragment;
 	new->rtDesc.componentFlagsMask = 0;						/* re-use this field: rt->rtRefcon */
 	new->rtFileNumber = -1;									/* flag as not a resource */
-	new->rtResourceType = 0;							/* flag as not a resource even more */
 	return RegisteredComponentPointerToComponentID( new );	/* return  index with useCount in highword */
 	}
 
@@ -766,28 +686,15 @@ pascal Component __RegisterComponentResource(ComponentResource **htr, short glob
 	char		saveState;
 	register 	ComponentResource *tr;
 	Handle		componentRoutine;
-	short	resID;
-	OSType	resType;
-	Str255	wastedName;
-	long	version = 0;
-	short	platformType;
-
-	GetResInfo((Handle)htr, &resID, &resType, wastedName);			// don't need the name under system 7
-	if (result = ResError()) return 0;
 
 	saveState = HGetState((Handle)htr);
 	HLock((Handle)htr);
 	tr = *htr;
 
-	platformType = ResolveComponentPlatform(htr, &tr->cd, nil);
-	if (platformType == 0)
-		{
-		HSetState((Handle)htr, saveState);
-		return componentDontRegister;
-		}
-
-	result = RegisterComponent(&tr->cd,  (ComponentRoutine )0L,  (global & 0x00FF) | (platformType << 8),
-						nil, nil, nil);
+	result = __RegisterComponent(&tr->cd,  (ComponentRoutine )0L,  global,
+						GetResource(tr->componentName.resType, tr->componentName.resID),
+						GetResource(tr->componentInfo.resType, tr->componentInfo.resID),
+						GetResource(tr->componentIcon.resType, tr->componentIcon.resID));
 
 	HSetState((Handle)htr, saveState);
 
@@ -795,45 +702,20 @@ pascal Component __RegisterComponentResource(ComponentResource **htr, short glob
 		{
 		register RegisteredComponent *new = ComponentIDtoRegisteredComponentPointer(result);
 
-		new->rtNameHand = (Handle)(tr->componentName.resType != 0);
-		new->rtInfoHand = (Handle)(tr->componentInfo.resType != 0);
-		new->rtIconHand = (Handle)(tr->componentIcon.resType != 0);
-
-		// deal with the compoent resource extension, if present
-		//	note: this is done before any calls that might move memory and therefore purge the resource
-		if (GetHandleSize((Handle)htr) >= (sizeof(ComponentResource) + sizeof(ComponentResourceExtension)))
-			{
-			ComponentResourceExtension *cre = (long *)((long)*htr + sizeof(ComponentResource));
-
-			version = cre->componentVersion;
-
-			if (cre->componentRegisterFlags & componentDoAutoVersion) {
-				new->rtFlags |= rtfAutoVersion;
-				if (cre->componentRegisterFlags & componentAutoVersionIncludeFlags)
-					new->rtFlags |= rtfAutoVersionUseFlags;
-			}
-
-			if (cre->componentRegisterFlags & componentWantsUnregister)
-				new->rtFlags |= rtfWantsUnregister;
-
-			if (cre->componentIconFamily)
-				new->rtFlags |= rtfHasIconSuite;
-			}
-
 		new->rtFileNumber = AddComponentResFile( (Handle)htr );
 		if ( new->rtFileNumber < 0)
 			{
 #ifdef	WARHOL_DEBUG
 			Debugger();						/* should never fail (can fail if no memory and couldn't get a file id)*/
 #endif
-			UnregisterComponent(result);
+			__UnregisterComponent(result);
 			return 0;
 			}
 		componentRoutine = NewHandleSys(0);
 		EmptyHandle(componentRoutine);
 
-		new->rtResourceID = resID;
-		new->rtResourceType = resType;
+		new->rtResourceID = (*htr)->component.resID;
+		new->rtResourceType = (*htr)->component.resType;
 		new->rtRoutineHandle = componentRoutine;
 		new->rtRoutine = 0L;
 
@@ -841,7 +723,7 @@ pascal Component __RegisterComponentResource(ComponentResource **htr, short glob
 
 		if ( (global & registerComponentNoDuplicates) && (CountSame(new)>1) )
 			{
-			UnregisterComponent(result);
+			__UnregisterComponent(result);
 			return 0;
 			}
 
@@ -850,20 +732,9 @@ pascal Component __RegisterComponentResource(ComponentResource **htr, short glob
 		if (( new->rtDesc.componentFlags & kComponentNeedsRegisterKiss ) )
 			if (goComponentRegister((ComponentInstance)result))
 				{
-				UnregisterComponent(result);
+				__UnregisterComponent(result);
 				return 0;
 				}
-
-		// scan the Component table for possible duplicates and kill the older one(s) (if auto versioning on)
-		// (can't do this before the register message since we might call GetComponentVersion on the component,
-		//	which it might not be able to deal with before the register)
-
-		if (DestroyOlder(new, version) == nil)
-			{
-			// we are too old. don't register.
-			UnregisterComponent(result);
-			return 0;
-			}
 		}
 
 	return	result;
@@ -897,7 +768,7 @@ pascal long __RegisterComponentResourceFile(short resRefNum, short global)
 				hdl = Get1IndResource(kComponentResourceType, i);
 				if (hdl)
 					{
-					if (RegisterComponentResource((ComponentResource **)hdl, global))
+					if (__RegisterComponentResource((ComponentResource **)hdl, global))
 						err++;						/* we registered something */
 					}
 			}
@@ -914,7 +785,7 @@ pascal long __RegisterComponentResourceFile(short resRefNum, short global)
 
 
 
-pascal RegisteredComponentInstancePtr __ValidComponentInstance(register ComponentInstance aComponentInstance)
+RegisteredComponentInstancePtr __ValidComponentInstance(register ComponentInstance aComponentInstance)
 	{
 	register long signature;
 	register RegisteredComponentInstance *result;
@@ -935,7 +806,7 @@ pascal RegisteredComponentInstancePtr __ValidComponentInstance(register Componen
 
 
 
-pascal RegisteredComponentPtr __ValidComponent(register Component aComponent)
+RegisteredComponentPtr __ValidComponent(register Component aComponent)
 	{
 	register long signature;
 	register RegisteredComponent *result;
@@ -953,7 +824,7 @@ pascal RegisteredComponentPtr __ValidComponent(register Component aComponent)
 		return result;
 	else
 		{
-		if (vti = ValidComponentInstance(aComponent + (signature<<16)))
+		if (vti = __ValidComponentInstance(aComponent + (signature<<16)))
 			return vti->rtiEntry;
 		}
 	return 0;
@@ -995,14 +866,11 @@ pascal OSErr __UnregisterComponent(Component aComponent)
 	{
 	register RegisteredComponent *rt;
 
-	if( ! (rt = ValidComponent(aComponent)) )
+	if( ! (rt = __ValidComponent(aComponent)) )
 		return invalidComponentID;						/* error : not a valid component ID */
 
 	if ( rt->rtReferenceCount )							/* error: valid instances exist */
 		return validInstancesExist;
-
-	if ( (rt->rtFlags & rtfWantsUnregister) && (rt->rtFlags & rtfHasBeenOpened) )
-		goComponentUnregister(aComponent);
 
 	if ( RemoveRTFromList( rt, &ComponentManagerGlobals->rtUsedChain ) )
 		return invalidComponentID;						/* error: not found in list */
@@ -1010,15 +878,16 @@ pascal OSErr __UnregisterComponent(Component aComponent)
 	rt->rtNext = ComponentManagerGlobals->rtFreeChain;	/* add this entry to the free list */
 	ComponentManagerGlobals->rtFreeChain = rt;
 
-	if (rt->rtNameHand != 1) DisposHandle(rt->rtNameHand);
-	if (rt->rtInfoHand != 1) DisposHandle(rt->rtInfoHand);
-	if (rt->rtIconHand != 1) DisposHandle(rt->rtIconHand);
+	DisposHandle(rt->rtNameHand);
+	DisposHandle(rt->rtInfoHand);
+	DisposHandle(rt->rtIconHand);
 
+	if (rt->rtRoutineHandle)
 		DisposHandle(rt->rtRoutineHandle);
 
 	RemoveComponentResFile( rt->rtFileNumber );			/* decrement the use count */
 
-	if (rt->rtParent)									/* if child, unchain from parent */
+	if (rt->rtFlags & rtfChild)							/* if child, unchain from parent */
 														/* note: this also unchains a parent from a child. this can happen, if
 															the component is loaded into the application heap for the
 															register message, and the component doesn't want to be
@@ -1051,10 +920,10 @@ pascal OSErr __SetDefaultComponent( Component aComponent, register short flags )
 	register RegisteredComponent *previous;
 	ComponentDescription td;
 
-	if( ! (rt = ValidComponent(aComponent)) )
+	if( ! (rt = __ValidComponent(aComponent)) )
 		return invalidComponentID;							/* error : not a valid component ID */
 
-	GetComponentInfo( aComponent, &td, 0L, 0L, 0L );
+	__GetComponentInfo( aComponent, &td, 0L, 0L, 0L );
 
 	if (flags & defaultComponentAnySubType)
 		td.componentSubType = 0;
@@ -1091,10 +960,10 @@ pascal Component __CaptureComponent( Component slave, Component master )
 	{
 	register RegisteredComponent *s, *m;
 
-	if( ! (s = ValidComponent(slave)) )
+	if( ! (s = __ValidComponent(slave)) )
 		return invalidComponentID;							/* error : not a valid component ID */
 
-	if( ! (m = ValidComponent(master)) )
+	if( ! (m = __ValidComponent(master)) )
 		return invalidComponentID;							/* error : not a valid component ID */
 
 	if (s->rtFlags & rtfCaptured)
@@ -1115,10 +984,10 @@ pascal OSErr __UncaptureComponent( Component aComponent )
 	{
 	register RegisteredComponent *rt;
 
-	if( ! (rt = ValidComponent(aComponent)) )
+	if( ! (rt = __ValidComponent(aComponent)) )
 		return invalidComponentID;							/* error : not a valid component ID */
 
-	if (!(rt->rtFlags & rtfCaptured)) 					/* not captured !!! */
+	if (!rt->rtFlags & rtfCaptured) 					/* not captured !!! */
 		return componentNotCaptured;
 
 	rt->rtFlags &= ~rtfCaptured;
@@ -1133,37 +1002,17 @@ pascal short __OpenComponentResFile( Component aComponent )
 	register short fn;
 	short	 saveResLoad;
 	short	 result;
-	rtFile	*rtFileList;
-	FSSpec	theFile;
 
-	if( ! (rt = ValidComponent(aComponent)) )
-		return -1;									/* error : not a valid component ID */
+	if( ! (rt = __ValidComponent(aComponent)) )
+		return 0;									/* error : not a valid component ID */
 
 	fn = rt->rtFileNumber;
 	if ((fn < 0) || (fn >= ComponentManagerGlobals->rtFileTotalCount))
-		return -1;									/* no file here */
-
-	// figure out where the file is
-	rtFileList = ComponentManagerGlobals->rtFileTable + fn;
-	if (rtFileList->vRefNum == 0)
-		theFile = **(FSSpec **)rtFileList->fileID;
-	else
-		{
-		HParamBlockRec pb;
-
-		theFile.name[0] = 0;
-		pb.fidParam.ioNamePtr = theFile.name;
-		pb.fidParam.ioVRefNum = rtFileList->vRefNum;
-		pb.fidParam.ioFileID = rtFileList->fileID;
-		if (PBResolveFileIDRefSync(&pb) != noErr)
-			return -1;
-		theFile.vRefNum = rtFileList->vRefNum;
-		theFile.parID = pb.fidParam.ioSrcDirID;
-		}
+		return 0;									/* no file here */
 
 	saveResLoad = *(Boolean *)ResLoad;
 	SetResLoad(false);
-	result  = FSpOpenResFile( &theFile, fsRdPerm );
+	result  = FSpOpenResFile( (FSSpec *)&(ComponentManagerGlobals->rtFileTable + fn)->vRefNum, fsRdPerm );
 	SetResLoad(saveResLoad);
 	return result;
 
@@ -1174,7 +1023,7 @@ pascal OSErr __CloseComponentResFile( short refnum )
 	{
 	if (refnum>0) {
 		CloseResFile( refnum );
-		return ResError();
+		return *((short *) ResErr);
 		}
 	return 0;
 
@@ -1231,7 +1080,7 @@ pascal long __CountComponentInstances(Component aComponent)
 	{
 	register RegisteredComponent *rt;
 
-	if( ! (rt = ValidComponent(aComponent)) )
+	if( ! (rt = __ValidComponent(aComponent)) )
 		return 0;									/* error : not a valid component ID */
 
 	return (rt->rtReferenceCount);
@@ -1248,15 +1097,12 @@ pascal RegisteredComponent* CloneComponent( long componentID, short global )
 	Handle componentRoutine;
 	long saveSeed;
 
-	if( ! (rt = ValidComponent(componentID)) )
+	if( ! (rt = __ValidComponent(componentID)) )
 		return 0;									/* error : not a valid component ID */
 
 	saveSeed = ComponentManagerGlobals->rtModSeed;
 
-	if (rt->rtFileNumber >= 0)
-		newComponent = RegisterComponent(&rt->rtDesc, rt->rtRoutine, global, (Handle)(rt->rtNameHand != 0), (Handle)(rt->rtInfoHand != 0), (Handle)(rt->rtIconHand != 0));
-	else
-		newComponent = RegisterComponent(&rt->rtDesc, rt->rtRoutine, global, rt->rtNameHand, rt->rtInfoHand, rt->rtIconHand);
+	newComponent = __RegisterComponent(&rt->rtDesc, rt->rtRoutine, global, rt->rtNameHand, rt->rtInfoHand, rt->rtIconHand);
 
 	if (newComponent)
 		{
@@ -1276,7 +1122,6 @@ pascal RegisteredComponent* CloneComponent( long componentID, short global )
 		if (!global)
 			{
 			nt->rtFlags |= rtfChild;						/* mark as child -- hide from findnext */
-			nt->rtFlags |= (rt->rtFlags & (rtfAutoVersion|rtfHasIconSuite|rtfWantsUnregister|rtfAutoVersionUseFlags|rtfCodeFragment));	// transfer obscure flags
 			nt->rtLocalA5 = *(long *)CurrentA5;				/* mark for this app only */
 			ComponentManagerGlobals->rtModSeed = saveSeed;	/* seed must not change */
 			if (rt->rtParent)
@@ -1304,11 +1149,11 @@ pascal long __LoadComponent( long componentID )
  */
 	{
 	register RegisteredComponent *rt, *child = 0;
-	Handle	 entryPoint = nil;
+	Handle	 entryPoint;
 	THz		saveZone;
 	short	refnum;
 
-	if( ! (rt = ValidComponent(componentID)) )
+	if( ! (rt = __ValidComponent(componentID)) )
 		return 0;									/* error : not a valid component ID */
 
 	if (rt->rtParent)								/* check for children in this app */
@@ -1327,30 +1172,16 @@ pascal long __LoadComponent( long componentID )
 		{											/* resource file exists */
 		if (!rt->rtReferenceCount)					/* don't bump count until success */
 			{
-			if (!rt->rtRoutineHandle || !*rt->rtRoutineHandle)		/* code is purged, so go get it */
+			if (!*rt->rtRoutineHandle)		/* code is purged, so go get it */
 				{
-				short saveCurRes = CurResFile();
-				ResourceSpec resSpec;
-				ComponentResource **htr;
-
-				refnum = OpenComponentResFile( componentID );
-				if (refnum == -1)
+				refnum = __OpenComponentResFile( componentID );
+				if (refnum == 0)
 					return 0;						/* could not open the file */
-
-				// load the thing resource so that we can figure out where the code resource lives
-				htr = (ComponentResource **)Get1Resource(rt->rtResourceType, rt->rtResourceID);
-				if (!htr) goto closeDownFile;
-				LoadResource((Handle)htr);
-				if (!*htr) goto closeDownFile;
-
-				// we ignore the result, since it has already be determined to be correct
-				ResolveComponentPlatform(htr, nil, &resSpec);
-				ReleaseResource((Handle)htr);
 
 				saveZone = (THz)GetZone();
 				if (!rt->rtLocalA5)
 					SetZone(*(THz *)SysZone);
-				if (entryPoint = Get1Resource(resSpec.resType, resSpec.resID))
+				if (entryPoint = Get1Resource(rt->rtResourceType, rt->rtResourceID))
 					{
 					LoadResource(entryPoint);
 					DetachResource(entryPoint);
@@ -1360,10 +1191,8 @@ pascal long __LoadComponent( long componentID )
 						//	globals in the system heap cleanly. this is somewhat misguided and mostly
 						//	intended to keep ill-behaved components from dying miserably.
 
-						if (GetExpandMemProcessMgrExists()) {
-							if (!EnoughSystemHeapSlop())
-								EmptyHandle(entryPoint);					/* not enough space, so dump our handle */
-							}
+						if (entryPoint)
+								HSetState(entryPoint, 0);					/* not enough space, so dump our handle */
 						}
 					}
 				SetZone(saveZone);
@@ -1375,7 +1204,7 @@ pascal long __LoadComponent( long componentID )
 
 				if ((!entryPoint || !*entryPoint) && (!rt->rtLocalA5))
 					{
-					entryPoint = Get1Resource(resSpec.resType, resSpec.resID);
+					entryPoint = Get1Resource(rt->rtResourceType, rt->rtResourceID);
 					LoadResource(entryPoint);
 					DetachResource(entryPoint);
 					if (entryPoint && *entryPoint)						/* we got it */
@@ -1385,20 +1214,10 @@ pascal long __LoadComponent( long componentID )
 							rt = child;									/* refill the existing private copy */
 						else
 							rt = CloneComponent(componentID, false); 	/* make a private copy */
-
-						if (!rt)
-							{
-#ifdef	WARHOL_DEBUG
-						if (!rt)  DebugStr("\pClone component failed.");
-#endif
-							DisposHandle(entryPoint);
-							entryPoint = nil;						/* dump it, we'll exit soon */
-						}
 					}
 					}
 closeDownFile:
-				CloseComponentResFile(refnum);
-				UseResFile(saveCurRes);
+				__CloseComponentResFile(refnum);
 
 				if (!entryPoint || !*entryPoint)
 					return 0;											/* not enough memory */
@@ -1409,11 +1228,6 @@ closeDownFile:
 				}
 			if (rt->rtLocalA5)
 				MoveHHi( rt->rtRoutineHandle );					/* if it's in the app heap then force it high */
-			else
-				{
-				if (ComponentManagerGlobals->hasMoveHLo)
-					MoveHLow(rt->rtRoutineHandle);				// if it's in the system heap, force it low if possible
-				}
 			HLock( rt->rtRoutineHandle );							/* lock it down */
 #ifdef SupportNativeComponents
 			if(rt->rtFlags & rtfCodeFragment)
@@ -1441,13 +1255,8 @@ pascal OSErr __UnloadComponent( long componentID )
  */
 	{
 	register RegisteredComponent *rt;
-#ifdef SupportNativeComponents
-	THz oldZone;
-#endif
-	OSErr result;
 
-	result = noErr;
-	if( ! (rt = ValidComponent(componentID)) )
+	if( ! (rt = __ValidComponent(componentID)) )
 		return invalidComponentID;				/* error : not a valid component ID */
 
 	rt->rtReferenceCount--;						/* one fewer client */
@@ -1455,25 +1264,12 @@ pascal OSErr __UnloadComponent( long componentID )
 		{										/* resource file exists */
 		if (!rt->rtReferenceCount)
 			{									/* recover handle and make it purgeable */
-			rt->rtRoutine = 0L;					/* no longer valid */
-
-#ifdef SupportNativeComponents
-			if (rt->rtFlags & rtfCodeFragment)
-				{
-				oldZone = GetZone();
-				SetZone(SystemZone());
-				result = CloseConnection(&rt->rtConnectionID);
-				SetZone(oldZone);
-#ifdef WARHOL_DEBUG
-				if (result != noErr) DebugStr("\pCloseConnection failed");
-#endif
-				}
-#endif
 			HUnlock(rt->rtRoutineHandle);
 			HPurge(rt->rtRoutineHandle);
+			rt->rtRoutine = 0L;					/* no longer valid */
 			}
 		}
-	return	result;
+	return	noErr;
 	}
 
 
@@ -1487,12 +1283,12 @@ pascal ComponentInstance FindNextCommonComponentInstance(ComponentInstance aComp
 	register RegisteredComponentInstance *rti = 0;
 	register RegisteredComponent *rt;
 
-	if (!(rt = ValidComponent(aComponent)) || (rt->rtRoutine != (void *)StripAddress((Ptr)entryPoint)) )
+	if (!(rt = __ValidComponent(aComponent)) || (rt->rtRoutine != (void *)StripAddress((Ptr)entryPoint)) )
 		return 0;
 
 	if (aComponentInstance)
 		{
-		if ( !(rti = ValidComponentInstance(aComponentInstance)) || ( rti->rtiEntry->rtRoutine != (void *)StripAddress((Ptr)entryPoint) ))
+		if ( !(rti = __ValidComponentInstance(aComponentInstance)) || ( rti->rtiEntry->rtRoutine != (void *)StripAddress((Ptr)entryPoint) ))
 			return 0;						/* error : not a valid component ID or entry point doesn't match */
 		}
 
@@ -1511,7 +1307,7 @@ pascal OSErr __DestroyComponent(Component aComponent)
 	register RegisteredComponent *rt;
 	register RegisteredComponentInstance *rti;
 
-	if( ! (rt = ValidComponent(aComponent)) )
+	if( ! (rt = __ValidComponent(aComponent)) )
 		return invalidComponentID;					/* error : not a valid component ID */
 
 
@@ -1525,109 +1321,10 @@ pascal OSErr __DestroyComponent(Component aComponent)
 			rt->rtReferenceCount = 0;				/* force all instances to be gone.... */
 			break;
 			}
-		CloseComponent( ComponentInstancePointerToComponentInstanceID(rti) );
+		__CloseComponent( ComponentInstancePointerToComponentInstanceID(rti) );
 		}
 
-	return UnregisterComponent(aComponent);
-	}
-
-
-long getComponentVersion(register RegisteredComponent *rt)
-	{
-	long version = 0;
-	short fref;
-	Component t = RegisteredComponentPointerToComponentID(rt);
-
-	fref = OpenComponentResFile(t);
-	if (fref != -1)
-		{
-		ComponentResource **htr;
-
-		// load the component resource to see if the version number is available
-		htr = (ComponentResource **)Get1Resource(rt->rtResourceType, rt->rtResourceID);
-		if (htr)
-			{
-			LoadResource((Handle)htr);
-			if (*htr)
-				{
-				if ( GetHandleSize((Handle)htr) >= (sizeof(ComponentResource) + sizeof(ComponentResourceExtension)) )
-					{
-					ComponentResourceExtension *cre = (long *)((long)*htr + sizeof(ComponentResource));
-					version = cre->componentVersion;
-					}
-				}
-			}
-		CloseComponentResFile(fref);
-		if (version)
-			return version;
-		}
-
-	// that failed, so just ask the Component
-	version = GetComponentVersion(t);
-	if (version < 0)
-		version = 0;
-
-	return version;
-	}
-
-
-pascal RegisteredComponent *DestroyOlder( register RegisteredComponent *new, long version )
-/*
-  */
-	{
-	register RegisteredComponent *rtList = ComponentManagerGlobals->rtUsedChain;
-
-	while (rtList)
-		{
-		if (
-			(rtList->rtDesc.componentType			== new->rtDesc.componentType) &&
-			(rtList->rtDesc.componentSubType		== new->rtDesc.componentSubType) &&
-			(rtList->rtDesc.componentManufacturer	== new->rtDesc.componentManufacturer) &&
-			(rtList->rtLocalA5						== new->rtLocalA5) &&
-			((rtList->rtFlags & rtfAutoVersion) || (new->rtFlags & rtfAutoVersion)) &&
-			(rtList != new)
-		   )
-		   {
-		   long thisVersion;
-		   Component c;
-
-			if (
-				((rtList->rtFlags & rtfAutoVersionUseFlags) || (new->rtFlags & rtfAutoVersionUseFlags)) &&
-				(rtList->rtDesc.componentFlags	!= new->rtDesc.componentFlags)
-			   )
-				goto next;
-
-			// found one that's the same
-			thisVersion = getComponentVersion(rtList);
-			c = RegisteredComponentPointerToComponentID(rtList);
-
-			rtList = rtList->rtNext;				// get the next one (assumes UnregisterComponent never kills more than one Component)
-
-			if (!version)
-				version = getComponentVersion(new);
-
-#ifdef WARHOL_DEBUG
-			DebugStr("\pDeath to the old.");
-#endif
-			if (thisVersion <= version)
-				{
-				// kill the other one, let us live
-				DestroyComponent(c);
-				}
-			else
-				{
-				// we are older than this one, so kill us
-				return nil;
-				}
-		   }
-		   else
-		   	{
-next:
-			rtList = rtList->rtNext;
-			}
-		}
-
-	return new;
+	return __UnregisterComponent(aComponent);
 	}
 
 
@@ -1641,8 +1338,8 @@ void KillHeapComponentInstances(register Ptr heapStart, register Ptr heapEnd)
 
 	for(--i; i >= 0; --i)
 		{
-		if ( (rti->rtiEntry) && ((Ptr)rti->rtiStorage >= heapStart) && ((Ptr)rti->rtiStorage <= heapEnd) )
-			CloseComponent( ComponentInstancePointerToComponentInstanceID(rti) );
+		if ( (rti->rtiEntry) && ((Ptr)rti->rtiStorage > heapStart) && ((Ptr)rti->rtiStorage < heapEnd) )
+			__CloseComponent( ComponentInstancePointerToComponentInstanceID(rti) );
 		rti++;
 		}
 	}
@@ -1658,10 +1355,9 @@ void KillHeapComponents(register Ptr heapStart, register Ptr heapEnd)
 		{
 		rt2 = rt;
 		rt=rt->rtNext;
-		if ((((Ptr)rt2->rtRoutine >= heapStart) && ((Ptr)rt2->rtRoutine <= heapEnd)) ||
-			((Ptr)rt2->rtRoutineHandle >= heapStart) && ((Ptr)rt2->rtRoutineHandle <= heapEnd) ||
-			(((Ptr)rt2->rtLocalA5 >= heapStart) && ((Ptr)rt2->rtLocalA5 <= heapEnd)))
-			DestroyComponent( RegisteredComponentPointerToComponentID(rt2) );
+		if ((((Ptr)rt2->rtRoutine > heapStart) && ((Ptr)rt2->rtRoutine < heapEnd)) ||
+			(rt2->rtLocalA5 == *(long *)CurrentA5))
+			__DestroyComponent( RegisteredComponentPointerToComponentID(rt2) );
 		}
 	}
 
@@ -1674,14 +1370,25 @@ pascal void ThingMemoryTrashed(Ptr startAddr, Ptr stopAddr)
 
 pascal void __CleanUpApplicationComponents(void)
 	{
-#if 0
-	// if we use the strange MemoryTrashed zone notification stuff, then this is not necessary
 	Ptr zoneBegin, zoneEnd;
+	unsigned long flags;
 
-	GetApplZoneBounds(&zoneBegin, &zoneEnd);
-	KillHeapComponentInstances(zoneBegin, zoneEnd);
-	KillHeapComponents(zoneBegin, zoneEnd);
-#endif
+	zoneBegin = *(Ptr *)ApplZone;
+
+	if (zoneBegin != *(Ptr *)SysZone) {
+		if (!GetExpandMemProcessMgrExists()) {
+			zoneEnd = *(Ptr *)BufPtr;
+		} else if ((flags = *(unsigned long *)(zoneBegin - 8)) >> 24 == 0x80) {
+			zoneEnd = zoneBegin + (flags & 0xFFFFFF);
+		} else if (*(unsigned long *)(zoneBegin - 12) >> 16 == 0x8080) {
+			zoneEnd = zoneBegin + flags;
+		} else {
+			zoneEnd = *(Ptr *)zoneBegin;
+		}
+
+		KillHeapComponentInstances(zoneBegin, zoneEnd);
+		KillHeapComponents(zoneBegin, zoneEnd);
+		}
 	}
 
 
@@ -1696,7 +1403,7 @@ pascal Component __FindNextComponent( long previousComponent, ComponentDescripti
 	register RegisteredComponent *rt;
 
 
-	if( previousComponent && (rt = ValidComponent(previousComponent)) )
+	if( previousComponent && (rt = __ValidComponent(previousComponent)) )
 		rt = rt->rtNext;								/* valid component ID, so start with successor */
 	else
 		rt = ComponentManagerGlobals->rtUsedChain;		/* start from beginning */
@@ -1713,13 +1420,10 @@ void HandToXHand(register Handle srcHandle, register Handle dstHandle)
 
 	if (dstHandle)
 		{
-		srcHandle = fixHandle(srcHandle);
 		if (srcHandle && *srcHandle)
 			{
 			size = GetHandleSize(srcHandle);
 			SetHandleSize( dstHandle, size );
-			if (MemError() == -109)
-				ReallocHandle(dstHandle, size);			// we return empty handles, so let the pass them to us
 			if (! MemError())
 				{
 				BlockMove( *srcHandle, *dstHandle, size );
@@ -1732,140 +1436,28 @@ void HandToXHand(register Handle srcHandle, register Handle dstHandle)
 
 
 
-pascal OSErr __GetComponentInfoPrivate( Component aComponent, Handle  nameHand, Handle infoHand, Handle iconHand )
-	{
-	register RegisteredComponent *rt = ValidComponent(aComponent);
-
-	if ( rt->rtResourceType) {
-		Boolean force = false;
-
-		if (nameHand && (rt->rtNameHand == 1))	{rt->rtNameHand = 0; force = true;}
-		if (infoHand && (rt->rtInfoHand == 1))	{rt->rtInfoHand = 0; force = true;}
-		if (iconHand && (rt->rtIconHand == 1))	{rt->rtIconHand = 0; force = true;}
-
-		 if  ( force ||
-			(nameHand && rt->rtNameHand && !*rt->rtNameHand) ||
-			  (infoHand && rt->rtInfoHand && !*rt->rtInfoHand) ||
-			   (iconHand && rt->rtIconHand && !*rt->rtIconHand) ) {
-				// reload the whole lot
-			THz saveZone = (THz)GetZone();
-			short saveRes = CurResFile();
-			short resRef;
-
-			SetZone(*(THz *)SysZone);
-
-			resRef = OpenComponentResFile(aComponent);
-			if (resRef != -1) {
-				Boolean saveResLoad = *(Boolean *)ResLoad;
-				register RegisteredComponent *thisRT = ComponentManagerGlobals->rtUsedChain;
-
-				SetResLoad(true);
-
-				for (thisRT = ComponentManagerGlobals->rtUsedChain; thisRT && (thisRT->rtDesc.componentType <= rt->rtDesc.componentType); thisRT = thisRT->rtNext) {
-					Handle h;
-
-					if ((thisRT->rtFileNumber != rt->rtFileNumber) ||
-						(thisRT->rtDesc.componentType != rt->rtDesc.componentType))
-						continue;
-
-					h = Get1Resource(thisRT->rtResourceType, thisRT->rtResourceID);
-					if (h) {
-						ComponentResource cr = **(ComponentResource **)h;
-
-						ReleaseResource(h);
-
-						if (nameHand && cr.componentName.resType) {
-							DisposHandle(fixHandle(thisRT->rtNameHand));
-							if (thisRT->rtNameHand = Get1Resource(cr.componentName.resType, cr.componentName.resID)) {
-								HNoPurge(thisRT->rtNameHand);
-								DetachResource(thisRT->rtNameHand);
-							}
-						}
-						if (infoHand && cr.componentInfo.resType) {
-							DisposHandle(fixHandle(thisRT->rtInfoHand));
-							if (thisRT->rtInfoHand = Get1Resource(cr.componentInfo.resType, cr.componentInfo.resID)) {
-								HNoPurge(thisRT->rtInfoHand);
-								DetachResource(thisRT->rtInfoHand);
-							}
-						}
-						if (iconHand && cr.componentIcon.resType) {
-							DisposHandle(fixHandle(thisRT->rtIconHand));
-							if (thisRT->rtIconHand = Get1Resource(cr.componentIcon.resType, cr.componentIcon.resID)) {
-								HNoPurge(thisRT->rtIconHand);
-								DetachResource(thisRT->rtIconHand);
-							}
-						}
-
-						if (thisRT != rt) {
-							HPurge(fixHandle(thisRT->rtNameHand));
-							HPurge(fixHandle(thisRT->rtInfoHand));
-							HPurge(fixHandle(thisRT->rtIconHand));
-						}
-					}
-				}
-
-				SetResLoad(saveResLoad);
-				CloseComponentResFile(resRef);
-			}
-
-			SetZone(saveZone);
-			UseResFile(saveRes);
-		}
-	}
-
-	HandToXHand(rt->rtNameHand, nameHand);
-	HandToXHand(rt->rtInfoHand, infoHand);
-	HandToXHand(rt->rtIconHand, iconHand);
-
-	if (rt->rtResourceType) {
-		HPurge(fixHandle(rt->rtNameHand));
-		HPurge(fixHandle(rt->rtInfoHand));
-		HPurge(fixHandle(rt->rtIconHand));
-	}
-
-	return noErr;
-}
-
-pascal void ClearD0(void)
-	= 0x7000;
-
 pascal OSErr __GetComponentInfo( Component aComponent, register ComponentDescription *td, Handle  nameHand, Handle infoHand, Handle iconHand )
 /*
   */
 	{
 	register RegisteredComponent *rt;
-	OSErr err;
 
-	if ( rt = ValidComponent(aComponent))
+	if ( rt = __ValidComponent(aComponent))
 		{
 		if (td)
 			{
-			register RegisteredComponent *rtTemp = rt;
-
 			*td = rt->rtDesc;					/* copy type, subtype, manufacturer, flags */
-			while (rtTemp->rtFlags & rtfChild)
-				{
-				rtTemp = rtTemp->rtParent;
-#ifdef WARHOL_DEBUG
-				if (!rtTemp)
-					DebugStr("\pClonedComponentHell");
-#endif
-				}
-
-			td->componentFlagsMask = RegisteredComponentPointerToComponentID(rtTemp);
+			td->componentFlagsMask = RegisteredComponentPointerToComponentID(rt);
 			}								/* return component ID for uniqueness */
 
+		HandToXHand(rt->rtNameHand, nameHand);
+		HandToXHand(rt->rtInfoHand, infoHand);
+		HandToXHand(rt->rtIconHand, iconHand);
 
-		if (nameHand || infoHand || iconHand)
-			err = GetComponentInfoPrivate(aComponent, nameHand, infoHand, iconHand);
-		else
-			err = noErr;
+		return noErr;
 		}
 	else
-		err = invalidComponentID;								/* error : not a valid component ID */
-
-	ClearD0();						//•• this makes the 7.1 Keyboard menu code not crash (fun, huh?)
-	return err;
+		return invalidComponentID;								/* error : not a valid component ID */
 	}
 
 
@@ -1876,7 +1468,7 @@ pascal long __GetComponentRefcon( long aComponent )
 	{
 	register RegisteredComponent *rt;
 
-	if (rt = ValidComponent(aComponent))
+	if (rt = __ValidComponent(aComponent))
 		{
 		return rt->rtDesc.componentFlagsMask;	/* re-use this field: rt->rtRefcon */
 		}
@@ -1892,7 +1484,7 @@ pascal void __SetComponentRefcon( long aComponent, long theRefcon )
 	{
 	register RegisteredComponent *rt;
 
-	if( rt = ValidComponent(aComponent) )
+	if( rt = __ValidComponent(aComponent) )
 		rt->rtDesc.componentFlagsMask = theRefcon;		/* re-use this field: rt->rtRefcon */
 	}
 
@@ -1905,7 +1497,7 @@ pascal OSErr __GetComponentInstanceError( long aComponentInstance )
 	register RegisteredComponentInstance *rti;
 	short err;
 
-	if( ! (rti = ValidComponentInstance(aComponentInstance)) )
+	if( ! (rti = __ValidComponentInstance(aComponentInstance)) )
 		return invalidComponentID;				/* error : not a valid component ID */
 
 	err = rti->rtiError;
@@ -1920,7 +1512,7 @@ pascal void __SetComponentInstanceError( long aComponentInstance, OSErr theError
 	{
 	register RegisteredComponentInstance *rti;
 
-	if( rti = ValidComponentInstance(aComponentInstance) )
+	if( rti = __ValidComponentInstance(aComponentInstance) )
 		rti->rtiError = theError;
 	}
 
@@ -1931,7 +1523,7 @@ pascal Handle __GetComponentInstanceStorage( long aComponentInstance )
 	{
 	register RegisteredComponentInstance *rti;
 
-	if( ! (rti = ValidComponentInstance(aComponentInstance)) )
+	if( ! (rti = __ValidComponentInstance(aComponentInstance)) )
 		return 0;								/* error : not a valid component ID */
 
 	return rti->rtiStorage;
@@ -1944,7 +1536,7 @@ pascal void __SetComponentInstanceStorage( long aComponentInstance, Handle theSt
 	{
 	register RegisteredComponentInstance *rti;
 
-	if( rti = ValidComponentInstance(aComponentInstance) )
+	if( rti = __ValidComponentInstance(aComponentInstance) )
 		rti->rtiStorage = theStorage;
 	}
 
@@ -1955,7 +1547,7 @@ pascal long __GetComponentInstanceA5( long aComponentInstance )
 	{
 	register RegisteredComponentInstance *rti;
 
-	if( ! (rti = ValidComponentInstance(aComponentInstance)) )
+	if( ! (rti = __ValidComponentInstance(aComponentInstance)) )
 		return 0;								/* error : not a valid component ID */
 
 	return rti->rtiSwitchedA5;
@@ -1968,7 +1560,7 @@ pascal void __SetComponentInstanceA5( long aComponentInstance, long theA5 )
 	{
 	register RegisteredComponentInstance *rti;
 
-	if( rti = ValidComponentInstance(aComponentInstance) )
+	if( rti = __ValidComponentInstance(aComponentInstance) )
 		rti->rtiSwitchedA5 = theA5;
 	}
 
@@ -1982,7 +1574,7 @@ pascal ComponentInstance __OpenComponent( long componentID )
 	ComponentInstance ti;
 	long	result;
 
-	if( ! (rt = (RegisteredComponent*)LoadComponent(componentID) ) )
+	if( ! (rt = (RegisteredComponent*)__LoadComponent(componentID) ) )
 		{
 #ifdef	WARHOL_DEBUG
 		DebugStr("\pFailed to load component.  Not enough memory.;g");
@@ -1991,7 +1583,7 @@ pascal ComponentInstance __OpenComponent( long componentID )
 		}
 
 	if (( ComponentManagerGlobals->rtInstanceTableUsedCount >= ComponentManagerGlobals->rtInstanceTableTotalCount )
-	     && (GrowRegisteredComponentInstanceTable( kComponentInstanceAllocationSize )))
+	     && (__GrowRegisteredComponentInstanceTable( kComponentInstanceAllocationSize )))
 		return 0;									/* error: could not allocate an instance record */
 
 	if (! (rti = FindNextComponentInstance( 0L, 0L)))/* start at beginning and look for a nil component ptr */
@@ -1999,11 +1591,9 @@ pascal ComponentInstance __OpenComponent( long componentID )
 
 	ComponentManagerGlobals->rtInstanceTableUsedCount++;
 
-	rt->rtFlags |= rtfHasBeenOpened;			// remember that this one has been used
-
 	rti->rtiEntry = rt;								/* store pointer to the parent registered component */
 	rti->rtiStorage = 0;							/* set high bit of flags with component flags  bit 30  */
-	rti->rtiFlags = (((~rt->rtDesc.componentFlags) >> 23) & 0x80);
+	rti->rtiFlags = (((rt->rtDesc.componentFlags) >> 23) ^ 0x80);
 	rti->rtiError = 0;
 	rti->rtiSwitchedA5 = rt->rtLocalA5;
 	if (!rti->rtiEntryUseCount)
@@ -2019,7 +1609,7 @@ pascal ComponentInstance __OpenComponent( long componentID )
 #ifdef	WARHOL_DEBUG
 		DebugStr("\pOpen component failed.");
 #endif
-		CloseComponent(ti);
+		__CloseComponent(ti);
 		return 0;
 		}
 	return ti;
@@ -2036,14 +1626,14 @@ pascal OSErr __CloseComponent( ComponentInstance componentInstanceID )
 	ComponentInstance ti;
 	long	result;
 
-	if( ! (rti = ValidComponentInstance(componentInstanceID)) )
+	if( ! (rti = __ValidComponentInstance(componentInstanceID)) )
 		return invalidComponentID;						/* error : not a valid component ID */
 
 	/***** Call the Component with the CLOSE message Here *******/
 	ti = ComponentInstancePointerToComponentInstanceID(rti);
 	result = goComponentClose( ti , ti);				/* 4 bytes of params, selector close = -2 */
 
-	UnloadComponent( componentInstanceID );				/* Drops reference count */
+	__UnloadComponent( componentInstanceID );				/* Drops reference count */
 	rt = rti->rtiEntry;
 	ComponentManagerGlobals->rtInstanceTableUsedCount--;
 
@@ -2073,21 +1663,13 @@ pascal ComponentInstance __OpenDefaultComponent( OSType componentType, OSType co
 	look.componentFlagsMask = 0;
 
 	while (!result) {
-		if (!(cmp = FindNextComponent(cmp, &look)))
+		if (!(cmp = __FindNextComponent(cmp, &look)))
 			return 0;
-		result = OpenComponent(cmp);
+		result = __OpenComponent(cmp);
 		}
 	return result;
 	}
 
-
-
-// this is only here because of CubeE which links it in…
-pascal void __ComponentSearch (void)
-{
-	doComponentSearch();
-}
-//#endif
 
 /********************************
 
@@ -2095,34 +1677,6 @@ pascal void __ComponentSearch (void)
 	by after InitComponentManager is called.
 
 ********************************/
-
-pascal void __InitComponentManager(Ptr *cutBackAddress)	// Called only once at install time
-	{
-#pragma unused (cutBackAddress)
-
-	long saveCodecManagerGlobals = -1;
-
-#if 0
-	*cutBackAddress = (Ptr)&_InitComponentManager;		// for QuickTime use only
-#endif
-
-	RegisterHandleTrashNotification(ThingMemoryTrashed, kComponentManagerPriority, 0);
-
-	if ( (long)ComponentManagerGlobals != -1) {			// don't install if already there (but always return cutback address)
-		// 7.1 calls GetComponentManagerVersion via JSR, not a trap
-		CoolReplaceGestalt(gestaltComponentMgr,GestaltComponentMgrVersion);
-		goto bail;
-	}
-
-	NewGestalt(gestaltComponentMgr, GestaltComponentMgrVersion);
-
-	ComponentManagerGlobals = (ComponentManagerGlobalsRecord *)NewPtrSysClear( sizeof(ComponentManagerGlobalsRecord) );
-	ComponentManagerGlobals->rtReservedForCodecManager = saveCodecManagerGlobals;
-	GrowRegisteredComponentTable( 32 );
-bail:
-	ComponentManagerGlobals->hasMoveHLo = (GetOSTrapAddress(_MoveHLow) != GetToolboxTrapAddress(_Unimplemented));
-	}
-
 
 pascal ComponentResult __CallComponent(void) 		/* referenced by dispatch table--but never called */
 	{
@@ -2173,7 +1727,7 @@ pascal Component RegisterComponentRomResource(ComponentResource **htr, short glo
 	H2 = GetSystemThenROMRes(tr->componentInfo.resType, tr->componentInfo.resID);
 	H3 = GetSystemThenROMRes(tr->componentIcon.resType, tr->componentIcon.resID);
 	H4 = GetSystemThenROMRes(tr->component.resType, tr->component.resID);
-	result = RegisterComponent(&tr->cd,  (ComponentRoutine )*H4,  global, H1, H2, H3);
+	result = __RegisterComponent(&tr->cd,  (ComponentRoutine )*H4,  global, H1, H2, H3);
 	HSetState((Handle)htr, saveState);
 	ReleaseResource(H1);
 	ReleaseResource(H2);

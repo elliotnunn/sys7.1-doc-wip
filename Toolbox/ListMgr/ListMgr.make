@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ListMgr.make
 #
 #	Contains:	Makefile for List Manager.
@@ -15,16 +22,16 @@
 #
 
 
-"{RsrcDir}ListMgr.rsrc"			ƒƒ  "{ObjDir}IconLDEF.a.o"			
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt LDEF=19 "{ObjDir}IconLDEF.a.o" || Exit 1
+"{RsrcDir}IconLDEF.a.rsrc"		ƒ	"{ObjDir}IconLDEF.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}IconLDEF.a.o" || Exit 1
 
 
-"{RsrcDir}ListMgr.rsrc"			ƒƒ  "{ObjDir}ListMgrPACK.a.o"		
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt PACK=0 "{ObjDir}ListMgrPACK.a.o" || Exit 1
+"{RsrcDir}ListMgrPACK.a.rsrc"	ƒ	"{ObjDir}ListMgrPACK.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}ListMgrPACK.a.o" || Exit 1
 
 
-"{RsrcDir}ListMgr.rsrc"			ƒƒ  "{ObjDir}TextLDEF.a.o"
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt LDEF=0 "{ObjDir}TextLDEF.a.o" || Exit 1
+"{RsrcDir}TextLDEF.a.rsrc"		ƒ	"{ObjDir}TextLDEF.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}TextLDEF.a.o" || Exit 1
 
 
 "{ObjDir}IconLDEF.a.o"			ƒ 	"{ListMgrDir}IconLDEF.a"						∂

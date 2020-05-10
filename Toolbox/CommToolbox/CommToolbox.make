@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		CommToolbox.make
 #
 #	Contains:	Makefile for the CommToolbox.
@@ -32,8 +39,8 @@ ConnectionMgrObjs		=	"{ObjDir}ConnectionMgr.a.o"							∂
 
 TerminalMgrObjs			=	"{ObjDir}TerminalMgr.a.o"							∂
 							"{ObjDir}TerminalMgr.c.o"							∂
+							"{IfObjDir}interface.o"								∂
 							"{ObjDir}CommToolboxUtilityRoutines.c.o"			∂
-							"{IfObjDir}interface.o"								
 
 
 FileTransferMgrObjs		=	"{ObjDir}FileTransferMgr.a.o"						∂
@@ -45,8 +52,8 @@ FileTransferMgrObjs		=	"{ObjDir}FileTransferMgr.a.o"						∂
 CommToolboxUtilitiesObjs =	"{ObjDir}CommToolboxUtilities.a.o"					∂
 							"{ObjDir}CommToolboxUtilities.c.o"					∂
 							"{ObjDir}CommToolboxCore.c.o"						∂
+							"{IfObjDir}interface.o"								∂
 							"{ObjDir}CommToolboxUtilityRoutines.c.o"			∂
-							"{IfObjDir}interface.o"								
 
 
 CommResourceMgrObjs		=	"{ObjDir}CommResourceMgr.a.o"						∂
@@ -69,8 +76,8 @@ CommToolboxLDEFObjs		=	"{ObjDir}CommToolboxLDEF.a.o"						∂
 ChooseObjs				=	"{ObjDir}Choose.a.o"								∂
 							"{ObjDir}Choose.p.o"								∂
 							"{ObjDir}ChooseUtilities.a.o"						∂
+							"{IfObjDir}interface.o"								∂
 							"{ObjDir}CommToolboxUtilityRoutines.c.o"			∂
-							"{IfObjDir}interface.o"								
 
 
 StandardNBPObjs			=	"{ObjDir}StandardNBP.a.o"							∂
@@ -80,7 +87,8 @@ StandardNBPObjs			=	"{ObjDir}StandardNBP.a.o"							∂
 							"{ObjDir}ZIPUtilities.p.o"							∂
 							"{ObjDir}NBPUtilities.p.o"							∂
 							"{ObjDir}CommToolboxUtilityRoutines.c.o"			∂
-							"{IfObjDir}interface.o"								
+							"{IfObjDir}interface.o"								∂
+							"{PLibraries}PasLib.o"
 
 
 StandardNBPLDEFObjs		=	"{ObjDir}StandardNBPLDEF.a.o"						∂
@@ -100,66 +108,78 @@ CommToolboxPatchObjs	=	"{ObjDir}CommToolboxDispatcher.a.o"					∂
 	Lib {StdLibOpts} -o "{Targ}" {CommToolboxPatchObjs} 
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{ConnectionMgrObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt cmtb=-32512 {ConnectionMgrObjs} || Exit 1
+"{RsrcDir}ConnectionMgr.c.rsrc"	ƒ	{ConnectionMgrObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {ConnectionMgrObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{TerminalMgrObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt cmtb=-32510 {TerminalMgrObjs} || Exit 1
+"{RsrcDir}TerminalMgr.c.rsrc"	ƒ	{TerminalMgrObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {TerminalMgrObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{FileTransferMgrObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt cmtb=-32511 {FileTransferMgrObjs} || Exit 1
+"{RsrcDir}FileTransferMgr.c.rsrc"	ƒ	{FileTransferMgrObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {FileTransferMgrObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{CommToolboxUtilitiesObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt cmtb=-32509 {CommToolboxUtilitiesObjs} || Exit 1
+"{RsrcDir}CommToolboxUtilities.c.rsrc"	ƒ	{CommToolboxUtilitiesObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {CommToolboxUtilitiesObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{CommResourceMgrObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt cmtb=-32508 {CommResourceMgrObjs} || Exit 1
+"{RsrcDir}CommResourceMgr.c.rsrc"	ƒ	{CommResourceMgrObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {CommResourceMgrObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{DITLObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt proc=-32511 {DITLObjs} || Exit 1
+"{RsrcDir}DITL.p.rsrc"			ƒ	{DITLObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {DITLObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{CommToolboxLDEFObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt LDEF=-32512 {CommToolboxLDEFObjs} || Exit 1
+"{RsrcDir}CommToolboxLDEF.p.rsrc"	ƒ	{CommToolboxLDEFObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {CommToolboxLDEFObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{ChooseObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt proc=-32512 {ChooseObjs} || Exit 1
+"{RsrcDir}Choose.p.rsrc"		ƒ	{ChooseObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {ChooseObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{StandardNBPObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt proc=-32510 -m MAIN {StandardNBPObjs} || Exit 1
+"{RsrcDir}StandardNBP.p.rsrc"	ƒ	{StandardNBPObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 -m MAIN {StandardNBPObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	{StandardNBPLDEFObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt LDEF=-32510 {StandardNBPLDEFObjs} || Exit 1
+"{RsrcDir}StandardNBPLDEF.p.rsrc"	ƒ	{StandardNBPLDEFObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {StandardNBPLDEFObjs} || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	"{CommTerminalDir}TerminalClick.r"				∂
+"{RsrcDir}TerminalClick.r.rsrc"	ƒ	"{CommTerminalDir}TerminalClick.r"				∂
 									"{RIncludes}SysTypes.r"						∂
 									"{IntRIncludes}CommToolboxPriv.r"
-	Rez -a {StdROpts} -o "{Targ}" "{CommTerminalDir}TerminalClick.r"  || Exit 1
+	Rez {StdROpts} -o "{Targ}" "{CommTerminalDir}TerminalClick.r"  || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	"{CommChooseDir}Choose.r"				∂
+"{RsrcDir}Choose.r.rsrc"		ƒ	"{CommChooseDir}Choose.r"				∂
 									"{RIncludes}SysTypes.r"						∂
 									"{RIncludes}Types.r"						∂
 									"{RIncludes}CTBTypes.r"						∂
 									"{IntRIncludes}CommToolboxPriv.r"
-	Rez -a {StdROpts} -o "{Targ}" "{CommChooseDir}Choose.r" || Exit 1
+	Rez {StdROpts} -o "{Targ}" "{CommChooseDir}Choose.r" || Exit 1
 
 
-"{RsrcDir}CommToolbox.rsrc"		ƒƒ	"{CommNBPDir}StandardNBP.r"				∂
+"{RsrcDir}StandardNBP.r.rsrc"	ƒ	"{CommNBPDir}StandardNBP.r"				∂
 									"{RIncludes}Types.r"						∂
 									"{RIncludes}CTBTypes.r"						∂
 									"{RIncludes}PICT.r"							∂
 									"{IntRIncludes}CommToolboxPriv.r"
-	Rez -a {StdROpts} -o "{Targ}" "{CommNBPDir}StandardNBP.r" || Exit 1
+	Rez {StdROpts} -o "{Targ}" "{CommNBPDir}StandardNBP.r" || Exit 1
+
+
+"{RsrcDir}ChooseHelp.r.rsrc"		ƒ	"{CommChooseDir}ChooseHelp.r"
+	Rez {StdROpts} -o "{Targ}" "{CommChooseDir}ChooseHelp.r"
+
+
+"{RsrcDir}StandardNBPHelp.r.rsrc"	ƒ	"{CommNBPDir}StandardNBPHelp.r"
+	Rez {StdROpts} -o "{Targ}" "{CommNBPDir}StandardNBPHelp.r"
+
+
+"{RsrcDir}CommToolboxINIT.r.rsrc"	ƒ	"{CommStartupDir}CommToolboxINIT.r"
+	Rez {StdROpts} -o "{Targ}" "{CommStartupDir}CommToolboxINIT.r"
 
 
 "{ObjDir}CommToolboxUtilityRoutines.c.o"	ƒ	"{CIncludes}Menus.h"								∂

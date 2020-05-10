@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		WindowMgr.make
 #
 #	Contains:	Makefile for the Window Manager
@@ -15,8 +22,8 @@
 #	   <SM2>	 12/2/92	kc		Added " || Exit 1" to commands with a double dependency.
 
 
-WindowMgrObjs		=				"{ObjDir}WindowMgr.a.o"							∂
-									"{ObjDir}WindowMgrExtensions.a.o"				∂
+WindowMgrObjs		=				"{ObjDir}WindowMgrPatches.a.o"					∂
+									"{ObjDir}WindowMgr.a.o"							∂
 									"{ObjDir}LayerMgr.c.o"			
 
 
@@ -24,12 +31,12 @@ WindowMgrObjs		=				"{ObjDir}WindowMgr.a.o"							∂
 	Rez {StdROpts} -a -o "{Targ}" "{WindowMgrDir}WindowMgr.r" || Exit 1
 
 									
-"{RsrcDir}WindowMgr.rsrc"			ƒƒ	"{ObjDir}StandardWDEF.a.o"
-	Link {StdLOpts} {StdAlign} -rt WDEF=0 -o "{Targ}" "{ObjDir}StandardWDEF.a.o" || Exit 1
+"{RsrcDir}StandardWDEF.a.rsrc"		ƒ	"{ObjDir}StandardWDEF.a.o"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}StandardWDEF.a.o" || Exit 1
 
 
-"{RsrcDir}WindowMgr.rsrc"			ƒƒ	"{ObjDir}RoundedWDEF.a.o"
-	Link {StdLOpts} {StdAlign} -rt WDEF=1 -o "{Targ}" "{ObjDir}RoundedWDEF.a.o" || Exit 1
+"{RsrcDir}RoundedWDEF.a.rsrc"		ƒ	"{ObjDir}RoundedWDEF.a.o"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}RoundedWDEF.a.o" || Exit 1
 
 
 "{LibDir}WindowMgr.lib"				ƒ 	{WindowMgrObjs}
@@ -38,6 +45,22 @@ WindowMgrObjs		=				"{ObjDir}WindowMgr.a.o"							∂
 
 "{ObjDir}LayerMgr.c.o"				ƒ	"{WindowMgrDir}LayerMgr.c"
 	C {StdCOpts} -o "{Targ}" "{WindowMgrDir}LayerMgr.c"
+
+
+LayerWDEFObjs		=				"{ObjDir}LayerWDEF.a.o"							∂
+									"{ObjDir}LayerWDEF.c.o"
+
+
+"{RsrcDir}LayerWDEF.c.rsrc"			ƒ	{LayerWDEFObjs}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 {LayerWDEFObjs}
+
+
+"{ObjDir}LayerWDEF.c.o"				ƒ	"{WindowMgrDir}LayerWDEF.c"
+	C {StdCOpts} -o "{Targ}" "{WindowMgrDir}LayerWDEF.c"
+
+
+"{ObjDir}LayerWDEF.a.o"				ƒ	"{WindowMgrDir}LayerWDEF.a"
+	Asm {StdAOpts} -o "{Targ}" "{WindowMgrDir}LayerWDEF.a"
 
 
 "{ObjDir}RoundedWDEF.a.o"			ƒ	"{ObjDir}StandardEqu.d"						∂
@@ -73,3 +96,11 @@ WindowMgrObjs		=				"{ObjDir}WindowMgr.a.o"							∂
 										"{IntAIncludes}ColorEqu.a"					∂
 										"{WindowMgrDir}StandardWDEF.a"
 	Asm {StdAOpts} -o "{Targ}" "{WindowMgrDir}StandardWDEF.a"
+
+
+"{ObjDir}WindowMgrPatches.a.o"		ƒ	"{WindowMgrDir}WindowMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{WindowMgrDir}WindowMgrPatches.a"
+
+
+"{ObjDir}WindowList.a.o"			ƒ	"{WindowMgrDir}WindowList.a"
+	Asm {StdAOpts} -o "{Targ}" "{WindowMgrDir}WindowList.a"

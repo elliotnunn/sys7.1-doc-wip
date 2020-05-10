@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		ConnectionMgrExtensions.c
 
 	Contains:	Extensions to the Connection Manager
@@ -148,3 +155,130 @@ pascal CMErr  __CMPBIOKill(hConn, theIOPB)
 			(long) theIOPB, 0, 0 );
 	return(rval);
 }
+
+#if CubeE
+pascal CMErr  __CM35(hConn, async)
+	ConnHandle 	hConn;
+	Boolean 	async;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, long, long, long);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 116, 
+			(async ? 1 : 0), 0, 0 );
+	return(rval);
+}
+
+pascal CMErr  __CM36(hConn, async)
+	ConnHandle 	hConn;
+	Boolean 	async;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, long, long, long);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 117, 
+			(async ? 1 : 0), 0, 0 );
+	return(rval);
+}
+
+pascal CMErr  __CM37(hConn, async)
+	ConnHandle 	hConn;
+	Boolean 	async;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, long, long, long);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 118, 
+			(async ? 1 : 0), 0, 0 );
+	return(rval);
+}
+
+pascal CMErr  __CM38(hConn, async, bsync)
+	ConnHandle 	hConn;
+	Boolean 	async;
+	Boolean 	bsync;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, long, long, long);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 119, 
+			(async ? 1 : 0), (bsync ? 1 : 0), 0 );
+	return(rval);
+}
+
+struct BoobTown {
+	Boolean a;
+	long b;
+};
+
+pascal CMErr  __CM39(hConn, async, zoom1, zoom2)
+	ConnHandle 	hConn;
+	Boolean 	async;
+	long		zoom1;
+	long		zoom2;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, struct BoobTown *, long, long);
+	struct BoobTown MyStruct;
+	char theState;
+
+	MyStruct.a = async;
+	MyStruct.b = zoom1;
+
+	theState = HGetState(hConn);
+	(**hConn).flags &= ~cmStatusReserved0;
+
+	if(theState & 0x80) (**hConn).flags |= cmStatusReserved0;
+
+	HLock(hConn);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 120, 
+			&MyStruct, zoom2, 0 );
+	return(rval);
+}
+
+pascal CMErr  __CM3A(hConn, async, zoom1, zoom2) /* Identical to previous except that selector is 121 not 120 */
+	ConnHandle 	hConn;
+	Boolean 	async;
+	long		zoom1;
+	long		zoom2;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, struct BoobTown *, long, long);
+	struct BoobTown MyStruct;
+	char theState;
+
+	MyStruct.a = async;
+	MyStruct.b = zoom1;
+
+	theState = HGetState(hConn);
+	(**hConn).flags &= ~cmStatusReserved0;
+
+	if(theState & 0x80) (**hConn).flags |= cmStatusReserved0;
+
+	HLock(hConn);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 121, 
+			&MyStruct, zoom2, 0 );
+	return(rval);
+}
+
+pascal void  __CM3B(hConn)
+	ConnHandle 	hConn;
+{
+	CMErr			rval;
+	pascal long		(*callProc) (ConnHandle, short, long, long, long);
+	
+	(ProcPtr) callProc = (**hConn).defProc;
+	rval = (CMErr)(*callProc) ( hConn, 122, 
+			0, 0, 0 );
+
+	if(!((**hConn).flags & cmStatusReserved0)) HUnlock(hConn);
+}
+#endif

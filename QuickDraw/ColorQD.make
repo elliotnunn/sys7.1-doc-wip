@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ColorQD.make
 #
 #	Contains:	Makefile for color quickdraw.
@@ -99,3 +106,83 @@ CQDObjs							=	"{ObjDir}CheckDevicesINIT.a.o"			∂
 									"{ColorQDDir}TEXT.a"					∂
 									"{ColorQDDir}QDUtil.a"
 	Asm {StdAOpts} -o "{Targ}" "{ColorQDDir}CQD.a" -i "{QDPatchesDir}"
+
+
+# RAM-based version
+"{RsrcDir}QuickDrawPatchII.rsrc"	ƒ	"{IntAIncludes}ColorEqu.a"				∂
+									"{AIncludes}Slots.a"					∂
+									"{IntAIncludes}SlotMgrEqu.a"			∂
+									"{AIncludes}QuickDraw.a"				∂
+									"{AIncludes}SysEqu.a"					∂
+									"{IntAIncludes}SysPrivateEqu.a"			∂
+									"{AIncludes}syserr.a"					∂
+									"{AIncludes}ToolUtils.a"				∂
+									"{AIncludes}ROMEqu.a"					∂
+									"{AIncludes}Video.a"					∂
+									"{IntAIncludes}HardwarePrivateEqu.a"	∂
+									"{AIncludes}HardwareEqu.a"				∂
+									"{AIncludes}Palettes.a"					∂
+									"{ColorQDDir}ANGLES.a"					∂
+									"{ColorQDDir}Arith8Blt.a"				∂
+									"{ColorQDDir}ARCS.a"					∂
+									"{ColorQDDir}BITBLT.a"					∂
+									"{ColorQDDir}BITMAPS.a"					∂
+									"{ColorQDDir}cCrsrCore.a"				∂
+									"{ColorQDDir}ColorMgr.a"				∂
+									"{ColorQDDir}ColorAsm.a"				∂
+									"{ColorQDDir}QD.a"						∂
+									"{ColorQDDir}DRAWARC.a"					∂
+									"{ColorQDDir}DRAWLINE.a"				∂
+									"{ColorQDDir}DRAWTEXT.a"				∂
+									"{ColorQDDir}fasttraps.a"				∂
+									"{ColorQDDir}gdevice.a"					∂
+									"{ColorQDDir}GrafAsm.a"					∂
+									"{ColorQDDir}GWorld.a"					∂
+									"{ColorQDDir}LCURSOR.a"					∂
+									"{ColorQDDir}LINES.a"					∂
+									"{ColorQDDir}MaskAsm.a"					∂
+									"{ColorQDDir}OVALS.a"					∂
+									"{ColorQDDir}PACKRGN.a"					∂
+									"{ColorQDDir}PaletteMgr.a"				∂
+									"{QDPatchesDir}PaletteMgrPatch.a"		∂
+									"{ColorQDDir}patterns.a"				∂
+									"{ColorQDDir}PICTURES.a"				∂
+									"{ColorQDDir}POLYGONS.a"				∂
+									"{ColorQDDir}PUTLINE.a"					∂
+									"{ColorQDDir}PUTOVAL.a"					∂
+									"{ColorQDDir}PUTRGN.a"					∂
+									"{ColorQDDir}QDHooks.a" 				∂
+									"{ColorQDDir}QuickPolys.a" 				∂
+									"{ColorQDDir}RECTS.a"					∂
+									"{ColorQDDir}REGIONS.a"					∂
+									"{ColorQDDir}RGNBLT.a"					∂
+									"{ColorQDDir}RGNOP.a"					∂
+									"{ColorQDDir}RRECTS.a"					∂
+									"{ColorQDDir}ScaleBlt.a"				∂
+									"{ColorQDDir}seekMask.a"				∂
+									"{ColorQDDir}SEEKRGN.a"					∂
+									"{ColorQDDir}SORTPOINTS.a"				∂
+									"{ColorQDDir}STRETCH.A"					∂
+									"{ColorQDDir}TEXT.a"					∂
+									"{ColorQDDir}QDUtil.a"
+	Asm {StdAOpts} -o "{ObjDir}QD.a.o" -i "{ColorQDDir}" -d ADDRMODEFLAG=0 "{ColorQDDir}QD.a"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}QD.a.o"
+
+
+"{RsrcDir}QDciPatchROM.a.rsrc"	ƒ	"{ColorQDDir}Patches:QDciPatchROM.a"
+	Asm {StdAOpts} -o "{ObjDir}QDciPatchROM.a.o" -i "{ColorQDDir}" "{ColorQDDir}Patches:QDciPatchROM.a"
+	Link {StdLOpts} {StdAlign} -rt RSRC=0 -o "{Targ}" "{ObjDir}QDciPatchROM.a.o"
+
+
+# Linked patches
+
+"{ObjDir}AllBWQDPatch.a.o"		ƒ	"{QDPatchesDir}AllB&WQDPatch.a" # ditch the ampersand -- quoting!
+	Asm {StdAOpts} -o "{Targ}" -i "{ColorQDDir}" -i "{QDPatchesDir}" -i "{ColorQDDir}Classic:" "{QDPatchesDir}AllB&WQDPatch.a"
+
+
+"{ObjDir}QuickDrawPatches.a.o"	ƒ	"{QDPatchesDir}QuickDrawPatches.a"
+	Asm {StdAOpts} -o "{Targ}" -i "{ColorQDDir}" -i "{QDPatchesDir}" -i "{ColorQDDir}Classic:" "{QDPatchesDir}QuickDrawPatches.a"
+
+
+"{ObjDir}PaletteMgrPatches.a.o"	ƒ	"{QDPatchesDir}PaletteMgrPatches.a"
+	Asm {StdAOpts} -o "{Targ}" -i "{ColorQDDir}" -i "{QDPatchesDir}" -i "{ColorQDDir}Classic:" "{QDPatchesDir}PaletteMgrPatches.a"

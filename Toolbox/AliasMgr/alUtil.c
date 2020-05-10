@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		alUtil.c
 
 	Contains:	Sundry utility routines.
@@ -957,7 +964,7 @@ void AL_GetMyServer (StringPtr serverName) //I server name pointer
 
 	strH = GetString(kServerNameID);
 	if (strH != NULL)
-		BlockMove ((*strH), serverName, Length(*strH)+1);	//<SM4>
+		BlockMove ((*strH), serverName, GetHandleSize(strH));
 
 } // end of AL_GetMyServer routine
 
@@ -1795,8 +1802,7 @@ static Boolean SizeCompatible (AliasVolType thisVol, //I for this volume type
 
 		drvType = cpb.csParam[1] & kDriveTypeMask;
 
-		if ((drvType == 5) ||				// 4-Meg Typhoon
-			(drvType == 4) ||				// means super drive, all floppies will fit
+		if ((drvType == 4) ||				// means super drive, all floppies will fit
 		    (drvType == 3 && thisVol != kVolFloppy1400K) || // 800K drive, only 1.4Mb won't fit
 		    (drvType == 2 && thisVol == kVolFloppy400K)) // 400K drive, only 400K will fit
 			return (TRUE);

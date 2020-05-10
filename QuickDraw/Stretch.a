@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		Stretch.a
 ;
 ;	Copyright:	© 1981-1993 by Apple Computer, Inc., all rights reserved.
@@ -884,16 +891,6 @@ skipTable
 		blt		@CheckSwapping				; nope.
 		btst.l	#ColorizeInModeCaseBit,d0
 		beq		@CheckSwapping				; not modecase: go on
-
-;
-; This code reintroduced from version 54 for CubeE.
-;
-
-	if CubeE then							; <56>
-		move.l	([theGDevice]),a0			; <56> get a pointer to the device
-		tst.l	GDSearchProc(A0)			; <56> check the head of the search chain
-		beq		@CheckSwapping				; <56> no search proc: go on
-	endif									; <56> 
 
 ;
 ; fcolor and bcolor were mapped using search proc by colormap.  We want to use

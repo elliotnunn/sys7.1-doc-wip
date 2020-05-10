@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		piMAIN.a
 ;
 ;	Contains:		Pascal Interface for MPP and ATP drivers
@@ -12,9 +19,6 @@
 ;
 ;	Change History (most recent first):
 ;
-;	   <SM3>	 1/29/93	RB		Do not move the SCCLockout value to the status register, always
-;									do an ORI.W with it so that NuKernel works and the stack is not
-;									changed.
 ;	   <SM2>	10/28/92	SWC		Changed INCLUDEs to a LOAD of StandardEqu.d.
 ;		 <3>	 7/24/91	MH		also: MPPRefNum, ATPRefNum as per <2> below
 ;		 <2>	 7/24/91	MH		Added conditional wrapper(s) to prevent duplication of public
@@ -384,7 +388,7 @@ RemoveHdlBlks
 			LEA		 ListEl1,A1	  ; Address of List Head
 @00
 			MOVE  	SR,-(SP) 	  ; Save old interrupt state
-			ORI.W  	#SCCLockOut,SR	 ; Disable interrupts			<SM2> rb
+			MOVE.W  #SCCLockOut,SR	 ; Disable interrupts
 			MOVE.L	(A1),A0		 ; First Handle to Free
 			MOVE.L	(A0),A2		 ; Address of Block Text
 			MOVE.L	A0,D0		 ; Is List Empty?
@@ -521,7 +525,7 @@ UnlockAndLinkHdl	PROC
 			MOVE.L	(A0),A1		 ; A1 -> memory block
 
 			MOVE  	SR,-(SP) 	  ; turning off interrupts
-			ORI.W  	#SCCLockOut,SR	;						<SM2> rb
+			MOVE.W 	#SCCLockOut,SR
 
 			MOVE.L	ListEl1,(A1)		; get first element ptr
 			LEA	 	ListEl1,A1	  ; address of variable

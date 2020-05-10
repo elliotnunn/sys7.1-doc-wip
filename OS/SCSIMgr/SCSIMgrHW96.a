@@ -3,8 +3,8 @@
 ;
 ;	<Sys7.1>	  8/3/92	Reverted <SM9> boxFlag checks and tacked-on flags from <SM14>/<SM16>
 ;							Commented out the nonSerializedIO nops from <SM7> and <SM12>, and
-;							restored a short branch that the nops blew out
-;							Restored useless MaxBusErr code to Transfer_96 (from SCSIMgrHW96BIOS.a)
+;							restored a short branch that the nops blew out. Restored useless
+;							MaxBusErr code to Transfer_96 (from SCSIMgrHW96BIOS.a)
 ;				  9/2/94	SuperMario ROM source dump (header preserved below)
 ;
 

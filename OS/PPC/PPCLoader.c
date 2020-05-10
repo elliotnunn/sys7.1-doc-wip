@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		PPCLoader.c
 
 	Contains:	Code executed at patch install time.
@@ -9,9 +16,6 @@
 
 	   <SM6>	  3/9/93	PN		Remove ReQueueInformPB,Insert, Push,InitQueue, TraverseQueue
 									which is no longer used
-	   <SM5>	11/18/92	GMA		Set RomMapInsert to mapTrue before calling GetResource on 'ppci'
-									-16409. we are trying to move these PACK9 resources into ROM
-									eventually.
 		<25>	 4/14/92	BBM		<JSM>: Remove unfinished PPC code that is under the contitional
 									“TheFutute”, and remove the conditional “CubeE” since that is
 									reality. Remove conditionals, since all they do is confuse.
@@ -66,8 +70,6 @@
 #include <Resources.h>						// for mapTrue
 #include <String.h>							// for memset definition
 
-#define	ROMMapInsert	(* (short*) 0xB9E)	// <SM5><GMA>
-
 /*---------------------------------------------------------------------------------------------------
 	Prototypes of functions used only in this file.
 ---------------------------------------------------------------------------------------------------*/
@@ -95,7 +97,6 @@ void ppcLoader (void)
 	{
 		memset(globPtr,0,sizeof(PPCGlobalParams));	// Clear our globals.
 		
-		ROMMapInsert = mapTrue;						// <SM5><GMA>
 		if (( configHdl = GetResource ( 'ppci', -16409)) == NULL)
 			return;
 		configPtr = (PPCConfigInfo *)(*configHdl);

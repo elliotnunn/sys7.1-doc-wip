@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		Gestalt.make
 #
 #	Contains:	Makefile for Gestalt.
@@ -14,12 +21,18 @@
 
 
 
-GestaltObjs		=					"{ObjDir}GestaltFunction.a.o"					∂
+GestaltObjs		=					"{ObjDir}GestaltPatchHead.a.o"					∂
 									"{ObjDir}GestaltLookup.c.o"						∂
+									"{IfObjDir}Interface.o"							∂
+									"{ObjDir}GestaltFunction.a.o"					∂
 									"{ObjDir}GestaltExtensions.a.o"
 									
 "{LibDir}Gestalt.lib"			ƒ	{GestaltObjs}
 	Lib {StdLibOpts} -o "{Targ}" {GestaltObjs}
+
+
+"{RsrcDir}Gestalt.rsrc"			ƒ	"{LibDir}Gestalt.lib"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{LibDir}Gestalt.lib"
 
 
 "{ObjDir}GestaltFunction.a.o"	ƒ 	"{ObjDir}StandardEqu.d"		 					∂
@@ -34,6 +47,10 @@ GestaltObjs		=					"{ObjDir}GestaltFunction.a.o"					∂
 									"{IntAIncludes}BootEqu.a"						∂
 									"{GestaltDir}GestaltFunction.a"
 	Asm {StdAOpts} -o "{Targ}" "{GestaltDir}GestaltFunction.a"
+
+
+"{ObjDir}GestaltPatchHead.a.o"	ƒ 	"{GestaltDir}GestaltPatchHead.a"
+	Asm {StdAOpts} -o "{Targ}" "{GestaltDir}GestaltPatchHead.a"
 
 
 "{ObjDir}GestaltExtensions.a.o"	ƒ 	"{ObjDir}StandardEqu.d"		 					∂

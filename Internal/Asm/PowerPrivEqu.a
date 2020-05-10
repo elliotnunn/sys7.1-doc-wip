@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		PowerPrivEqu.a
 ;
 ;	Contains:	Equates used by the Power Manager
@@ -1032,6 +1039,7 @@ BootDevTicks	EQU			2*60*60			; Wait for boot device before sleep, in ticks.
 ;	Power Manager Power Voltages
 DefHysteresis	EQU			20				; default to 200mv
 DefLowWarn		EQU			585-512			; default low battery warning level
+NEWCUTOFF		EQU			560
 DefCutoff		EQU			560-512			; default dead battery warning level
 PMGRWARNLEVEL	EQU			585				; set low power level
 PGMRWAKELEVEL	EQU			609				; set hysteresis for 6.09(max allowed) volts for wake

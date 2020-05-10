@@ -73,7 +73,7 @@ ProcessMgrINITObjs = ∂
 {ObjDir}ProcessMgrIncludes.D ƒ {ProcessMgrDir}MakePMIncludes.a
 	Asm {StdEquAOpts} -o Dev:Null -d &DumpFile="'{ObjDir}ProcessMgrIncludes.D'" -i {IntAIncludes} {ProcessMgrDir}MakePMIncludes.a
 
-{RsrcDir}Scheduler.rsrc ƒƒ {SchedulerObjs}
+{RsrcDir}Scheduler.rsrc ƒƒ {SchedulerObjs} {RsrcDir}CDG5SystemSegment
 	# Omitting Link's -map arg yields a subtly different binary
 	Link {SchedulerObjs} ∂
 		-m main -map -o {Targ} ∂
@@ -87,16 +87,16 @@ ProcessMgrINITObjs = ∂
 		-ra   eppc_segment=sysheap,locked                   # scod -16462/$BFB2 ∂
 		-ra       Debugger=sysheap                          # scod -16461/$BFB3 ∂
 		> {TextDir}Scheduler.map
-	{ToolDir}CODE2scod {Targ} -16470                        # scod -16470/$BFAA (jt)
+	{RsrcDir}CDG5SystemSegment {Targ} -16470                # scod -16470/$BFAA (jt)
 
-{RsrcDir}DAHandlerCode.rsrc ƒ {DAHandlerObjs}
+{RsrcDir}DAHandlerCode.rsrc ƒ {DAHandlerObjs} {RsrcDir}CDG5SystemSegment
 	Link {DAHandlerObjs} ∂
 		-map -o {Targ} ∂
 		-ra           Main=sysheap,purgeable,locked         # scod -16478/$BFA2 ∂
 		-ra           Init=sysheap,purgeable,locked         # scod -16477/$BFA3 ∂
 		-ra        %A5Init=sysheap,purgeable,locked         # scod -16476/$BFA4 ∂
 		> {TextDir}DAHandler.map
-	{ToolDir}CODE2scod {Targ} -16479                        # scod -16479/$BFA1 (jt)
+	{RsrcDir}CDG5SystemSegment {Targ} -16479                # scod -16479/$BFA1 (jt)
 
 {BuildDir}ProcessMgrINIT ƒ {ProcessMgrDir}ProcessMgrINIT.r {ProcessMgrINITObjs} {RsrcDir}Scheduler.rsrc
 	Set RealObjDir {ObjDir}; Set ObjDir {RsrcDir} # Hack to adapt to old build system
@@ -255,3 +255,9 @@ ProcessMgrINITObjs = ∂
 {RsrcDir}DAHandler.rsrc ƒ {ProcessMgrDir}DAHandler.r {RsrcDir}DAHandlerCode.rsrc
 	Set CodeResFile {RsrcDir}DAHandlerCode.rsrc; Export CodeResFile
 	Rez {StdROpts} -o {Targ} {ProcessMgrDir}DAHandler.r
+
+{RsrcDir}CDG5SystemSegment ƒ {MakeDir}CDG5SystemSegment.c
+	C -o {ObjDir}CDG5SystemSegment.c.o {MakeDir}CDG5SystemSegment.c
+	Link -t MPST -c 'MPS ' -o {Targ} {ObjDir}CDG5SystemSegment.c.o ∂
+		{CLibraries}StdCLib.o {Libraries}Runtime.o {IfObjDir}Interface.o ∂
+		-sg SingleSegWorkaround=Main,STDCLIB,STDIO,SANELIB,%A5Init,INTENV,SADEV

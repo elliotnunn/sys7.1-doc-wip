@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		CommToolboxCore.c
 
 	Contains:	These routines are the core routines shared between the three major managers
@@ -12,10 +19,6 @@
 
 	Change History (most recent first):
 
-		 <2>	 8/12/93	kc		<mb>: I deleted all of the "TheFuture" conditionals in all of
-									the CommToolbox files per Mike Bell's instructions. I also had
-									to delete some old code that was compiled under the "CubeE"
-									conditional.
 		<11>	 10/4/91	JSM		Change PsychoticFarmerOrLater to TheFuture.
 		<10>	 10/2/91	DTY		Conditionalise <9> out of CubeE.
 		 <9>	  7/1/91	BH		fix CTBGetErrorString to return empty string if the tool returns
@@ -568,11 +571,15 @@ pascal Boolean __CTBMenu(CoreHandle hCore,short menuid,short item )
 
 pascal void __CTBGetErrorString(CoreHandle hCore,short id,Str255 errMsg,short MgrSel)
 {
-	long rval;
+#if !CubeE
+	long rval =
+#endif
 	
-	rval = CallToolProc(nil,hCore,(MgrSel == CMSel ? cmGetErrorStringMsg : CTBGetErrorStringMsg),
+	CallToolProc(nil,hCore,(MgrSel == CMSel ? cmGetErrorStringMsg : CTBGetErrorStringMsg),
 	 																	id,(long) errMsg,0,nil);
+#if !CubeE
 	if (rval) errMsg[0] = 0;						// return empty string if there is a problem
+#endif
 }
 
 pascal void __CTBEvent(CoreHandle hCore,EventRecord *theEvent)

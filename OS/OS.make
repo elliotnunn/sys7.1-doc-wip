@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		OS.make
 #
 #	Contains:	make file for OS library
@@ -67,14 +74,12 @@ RealTimeDir		=	{OSDir}RealTime:
 #include {ADBDir}ADBMgr.make
 #include {TimeMgrDir}TimeMgr.make
 #include {MemoryMgrDir}MemoryMgr.make
-#include {BeepDir}Beep.make
 #include {FPEmulationDir}FPEmulation.make
 #include {GestaltDir}Gestalt.make
 #include {KeyboardDir}Keyboard.make
 #include {NetBootDir}NetBoot.make
 #include {VDigDir}VDig.make
 #include {I2CDir}I2C.make
-#include {RealTimeDir}RealTime.make
 
 
 OSObjs	= 							"{ObjDir}clock.a.o"								∂
@@ -282,3 +287,11 @@ OSObjs	= 							"{ObjDir}clock.a.o"								∂
 
 "{ObjDir}VMPatches.a.o"			ƒ	"{OSDir}VMPatches.a"
 	Asm {StdAOpts} -o "{Targ}" "{OSDir}VMPatches.a"
+
+
+"{ObjDir}KbdPatches.a.o"		ƒ	"{OSDir}Keyboard:KbdPatches.a"
+	Asm {StdAOpts} -o "{Targ}" "{OSDir}Keyboard:KbdPatches.a"
+
+
+"{ObjDir}Mouse.a.o"				ƒ	"{OSDir}Mouse.a"
+	Asm {StdAOpts} -o "{Targ}" "{OSDir}Mouse.a"

@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		Interface.Make
 #
 #	Contains:	Makefile that builds Interface.o.
@@ -16,7 +23,7 @@
 #	   <SM2>	11/11/92	RB		Changed packages.a to PackagesGlue.a
 
 IfAOpts			= {StdAOpts}
-IfCOpts			= {StdCOpts}
+IfCOpts			= {StdCOpts} -mbg on
 
 
 CTDir			=	{ToolBoxDir}CommToolbox:

@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		EditionMgr.make
 #
 #	Contains:	Makefile for the Edition Manager.
@@ -42,7 +49,7 @@ EditionMgrObjs				=		"{ObjDir}dpDispatcher.a.o"						∂
 
 
 "{RsrcDir}EditionMgr.rsrc"		ƒƒ	{EditionMgrObjs}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt PACK=11 -m PACKENTRY {EditionMgrObjs} || Exit 1
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt PACK=11 -ra Main=resSysHeap,resPurgeable -m PACKENTRY {EditionMgrObjs} || Exit 1
 
 
 "{ObjDir}dpPackEntry.a.o"		ƒ	"{ObjDir}StandardEqu.d"							∂

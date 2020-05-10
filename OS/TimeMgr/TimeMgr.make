@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		TimeMgr.make
 #
 #	Contains:	Makefile for the Time Manager.
@@ -10,8 +17,8 @@
 #	Change History (most recent first):
 #
 
-TimeMgrObjs	=					"{ObjDir}TimeMgr.a.o"								∂
-								"{ObjDir}TimeMgrPatch.a.o"
+TimeMgrObjs	=					"{ObjDir}TimeMgrPatch.a.o"							∂
+								"{ObjDir}TimeMgr.a.o"
 
 
 "{LibDir}TimeMgr.lib"			ƒ	{TimeMgrObjs}
@@ -24,8 +31,6 @@ TimeMgrObjs	=					"{ObjDir}TimeMgr.a.o"								∂
 	Asm {StdAOpts} -o "{Targ}" "{TimeMgrDir}TimeMgr.a"
 
 
-"{ObjDir}TimeMgrPatch.a.o"		ƒ	"{ObjDir}StandardEqu.d"							∂
-									"{IntAIncludes}HardwarePrivateEqu.a"			∂
-									"{TimeMgrDir}TimeMgrPatch.a"
+"{ObjDir}TimeMgrPatch.a.o"		ƒ	"{TimeMgrDir}TimeMgrPatch.a"
 	Asm {StdAOpts} -o "{Targ}" "{TimeMgrDir}TimeMgrPatch.a"
 

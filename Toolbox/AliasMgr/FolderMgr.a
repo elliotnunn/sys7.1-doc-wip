@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		FolderMgr.a
 ;
 ;	Contains:	Folder Manager
@@ -13,7 +20,6 @@
 ;
 ;	   <SM4>	10/29/92	SWC		Backed out <SM3> and fixed the INCLUDE filenames.
 ;	   <SM3>	10/28/92	SWC		Changed the INCLUDEs to a LOAD of StandardEqu.d.
-;		<SM2>	10/22/92	CSS		Change short branches to word branches.
 ;		<24>	 6/12/91	LN		added #include 'SysPrivateEqu.a'
 ;		<23>	 4/16/91	PP		sad,#??????:After making _LockRng call for Network Trash, return
 ;									errors ioErr and paramErr (for unimplemented afp _LockRng) to
@@ -1352,7 +1358,7 @@ pDiskResult			equ			a4					; pointer to the resulting disk
 	endwith
 		move.l		d0,a0							; get handle in address register, too
 		tst.l		(a0)							; check if it is purged
-		bz 			Done							; <SM2> CSS
+		bz.s		Done
 
 		move.l		a0,cacheHandle					; use this later
 		_GetHandleSize								; get the full length of the handle

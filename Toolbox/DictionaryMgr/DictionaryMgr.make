@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		DictionaryMgr.make
 #
 #	Contains:	Makefile for the Dictionary Manager Package.
@@ -19,8 +26,8 @@ DictMgrPackObjs					= 	"{ObjDir}DictionaryMgr.a.o"						∂
 									"{ObjDir}BTreeGlue.a.o"							∂
 									"{IfObjDir}Interface.o"
 									
-"{RsrcDir}DictionaryMgr.rsrc"		ƒ	{DictMgrPackObjs}
-	Link -o {Targ} {DictMgrPackObjs} {StdLOpts} -rt dimg=-16385 -m DictionaryMgrPackEntry
+"{RsrcDir}DictionaryMgr.a.rsrc"		ƒ	{DictMgrPackObjs}
+	Link -o {Targ} {DictMgrPackObjs} {StdLOpts} -rt dimg=0 -m DictionaryMgrPackEntry
 
 
 "{ObjDir}DictionaryMgr.a.o"		ƒ	"{ObjDir}StandardEqu.d"							∂

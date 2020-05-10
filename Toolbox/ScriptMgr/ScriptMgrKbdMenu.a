@@ -1,11 +1,10 @@
 ;
 ;	Hacks to match MacOS (most recent first):
 ;
-;	<Sys7.1>	  8/3/92	Changed 'ST/SF ResLoad' to 'MOVE.B/CLR.B ResLoad' in several places
-;							(messier, and hits the condition registers). Reverted the <42> code
-;							forcing 'About Keyboards' menu item to be in the system font. Reverted
-;							the <43> fix in some string copying code, and reverted an associated
-;							optimization in that code and another place too.
+;	<Sys7.1>	  8/3/92	Reverted the <43> fix in some string copying code, and reverted an
+;							associated optimization in that code and another place too. Reverted the
+;							<42> code forcing 'About Keyboards' menu item to be in the system font.
+;							Changed 'ST/SF ResLoad' to 'MOVE.B/CLR.B ResLoad' in several places.
 ;				  9/2/94	SuperMario ROM source dump (header preserved below)
 ;
 

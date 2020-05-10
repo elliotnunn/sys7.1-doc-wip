@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		PowerMgrPatches.a
 ;
 ;	Contains:	patches for the power manager
@@ -145,6 +152,970 @@ ROMPmgrOp			ROMBind	(IIci,$888ec)
 SlpQInstall			ROMBind (IIci,$8976C)
 SlpQRemove			ROMBind (IIci,$89784)
 SetSupervisorMode	ROMBind (IIci,$89474)
+SomeSleepProc		ROMBind (Portable,$4628)
+
+
+
+Burninate		InstallProc		(Portable)
+				WITH	PmgrRec,pmCommandRec,SleepqRec
+
+				leaResident	WakeQRec,A0
+				leaResident	SCCWakeFix,A1
+
+				MOVE.L	A1,SleepqProc(A0)
+				MOVE.W	#slpQType,SleepqType(A0)
+				CLR.W	SleepqFlags(A0)
+				_SlpQInstall
+
+				LEA		-20(SP),SP
+				MOVE.L	SP,A0
+				MOVE.L	#$10077,D0			; Portable: SleepFlags
+				_ReadXPRam
+				MOVE.B	(A0),D1
+				AND.B	#(1<<RingWakeup)|(1<<TimerWakeup),D1
+				BEQ		@neitherWakeup
+
+				; Set up a PMgr record for rewriting an identical timer value
+				LEA		pmData(SP),A1
+				MOVE.L	A1,pmRBuffer(SP)
+				MOVE.L	A1,pmSBuffer(SP)
+
+				BTST	#TimerWakeup,D1
+				BEQ.S	@noTimerWakeup
+				MOVE.W	#0,pmLength(SP)
+				MOVE.W	#timerRead,pmCommand(SP)
+				MOVE.L	SP,A0
+				_PmgrOp
+				MOVE.W	#4,pmLength(SP)
+				MOVE.W	#timerSet,pmCommand(SP)
+				MOVE.L	SP,A0
+				_PmgrOp
+@noTimerWakeup
+
+				BTST	#RingWakeup,D1
+				BEQ.S	@noRingWakeup
+				MOVE.W	#0,pmLength(SP)
+				MOVE.W	#modemRead,pmCommand(SP)
+				MOVE.L	SP,A0
+				_PmgrOp
+				AND.B	#(1<<ModemPwr)|(1<<ModemAorB)|(1<<RingWakeEnable),(A1)
+				OR.B	#1<<RingWakeEnable,(A1)
+				MOVE.W	#1,pmLength(SP)
+				MOVE.W	#modemSet,pmCommand(SP)
+				MOVE.L	SP,A0
+				_PmgrOp
+@noRingWakeup
+@neitherWakeup
+				LEA		20(SP),SP
+
+
+			movea.l	PmgrBase,a2					; get power mgr globals
+
+
+;PatchBatWatchVBL	
+			lea		BatVBLTask(a2),a0			; get pointer to vbl queue element
+			_VRemove							; remove it from the queue
+			leaResident	BatWatch,a1
+			move.l	a1,vblAddr(a0)
+			move.w	#1,vblCount(a0)				; enable vbl element
+			_Vinstall
+
+
+			MOVE.L	#AccessBase,A0
+			CMP.B	#$AD,(A0)
+			BEQ.S	@noDo
+;PatchSndVBL
+			lea		SwVBLTask(a2),a0			; a0 = ptr to SndWatch VBL queue blk
+			_VRemove							; remove it from the queue
+			leaResident	SndWatch,a1				; a1 = addr of SndWatch resident code
+			move.l	a1,vblAddr(a0)
+			move.w	#1,vblCount(a0)				; enable vbl element
+			_Vinstall
+@noDo
+
+
+; The Power Mgr can compare the current cursor to the watch
+				CLR.L	-(SP)
+				MOVE.L	#'CURS',-(SP)
+				MOVE.W	#4,-(SP)
+				_GetResource
+				MOVE.L	(SP)+,A0
+				MOVE.L	(A0),D0
+				_StripAddress
+				MOVE.L	D0,RAMwatchPtr(A2)
+
+				CLR.L	-(SP)
+				MOVE.L	#'CURS',-(SP)
+				MOVE.W	#4,-(SP)
+				MOVE.W	#MapTrue,ROMMapInsert
+				_GetResource
+				MOVE.L	(SP)+,A0
+				MOVE.L	(A0),D0
+				_StripAddress
+				MOVE.L	D0,ROMwatchPtr(A2)
+
+
+				RTS
+
+
+
+portaPmgrOp		PatchProc	_PmgrOp,(Portable)
+				WITH	PmgrRec,pmCommandRec,SleepqRec
+
+				AND.W	#$600,D1		; extra bits as below...
+				BEQ.S	PmgrOpTrap
+				MOVEM.L	D3/D4,-(SP)
+				CMP.W	#$400,D1
+				BEQ.S	@jsrOld			; IdleUpdate/IdleState
+				BLO.S	@jsrOld
+				; what remains is _SerialPower
+				BTST	#7,D0			; test bOff bit
+				BEQ		SerialPowerTrap
+@jsrOld
+				jsrOld
+				MOVEM.L	(SP)+,D3/D4
+				RTS
+
+
+PmgrOpTrap
+				CMP.W	#pMgrADB,pmCommand(A0)
+				BNE		DoPmgrOp
+				CMP.W	#9,pmLength(A0)
+				BLS		DoPmgrOp
+				MOVE.W	#pMgrADBoff,pmCommand(A0)
+				MOVE.W	#0,pmLength(A0)
+				BSR		DoPmgrOp
+
+				LEA		pmRBuffer(A0),A1
+				MOVE.L	A1,pmSBuffer(A0)
+				MOVE.B	5(A1),D0
+				OR.B	#2,D0
+				MOVE.B	D0,5(A1)
+				MOVE.B	6(A1),D0
+				MOVE.B	D0,2(A1)
+
+				SUB.W	#1,D0
+				MOVE.W	D0,D3
+@rloop			MOVE.B	7(A1,D3),-(SP)
+				DBRA	D3,@rloop
+
+				ADD.W	#7,A1
+@wloop			MOVE.B	(SP)+,(A1,D0)
+				DBRA	D0,@wloop	
+
+				LEA		pmRBuffer(A0),A1
+				MOVE.L	10(A1),D3
+				MOVE.W	#15,12(A1)
+				LEA		12(A1),A1
+				MOVE.L	A1,pmSBuffer(A0)
+				MOVE.W	#writePmgrRAM,pmCommand(A0)
+				MOVE.W	#3,pmLength(A0)
+				BSR		DoPmgrOp
+
+				LEA		pmRBuffer(A0),A1
+				MOVE.L	D3,10(A1)
+				MOVE.L	4(A1),D3
+				MOVE.W	#9,6(A1)
+				LEA		6(A1),A1
+				MOVE.L	A1,pmSBuffer(A0)
+				MOVE.W	#writePmgrRAM,pmCommand(A0)
+				MOVE.W	#8,pmLength(A0)
+				BSR		DoPmgrOp
+
+				LEA		pmRBuffer(A0),A1
+				MOVE.L	D3,4(A1)
+				MOVE.W	#3,(A1)
+				MOVE.L	A1,pmSBuffer(A0)
+				MOVE.W	#writePmgrRAM,pmCommand(A0)
+				MOVE.W	#8,pmLength(A0)
+				BSR		DoPmgrOp
+
+				RTS
+
+
+SerialPowerTrap
+				MOVE.W	D0,D1
+				CLR.L	D2
+				CLR.L	D3
+				CLR.L	D4
+				LEA		-pmBlkSize(SP),SP
+				LEA		pmData(SP),A0
+				MOVE.L	A0,pmRBuffer(SP)
+				MOVE.L	A0,pmSBuffer(SP)
+				BCLR	#0,D1
+				BNE.S	@bail
+				MOVE.W	#modemRead,pmCommand(SP)
+				MOVE.W	#0,pmLength(SP)
+				MOVE.L	SP,A0
+				BSR.S	DoPmgrOp
+
+				MOVE.B	pmData(A0),D3
+				BTST	#3,D3
+				BEQ.S	@bail
+				MOVE.L	#$10077,D0
+				_ReadXPRam
+				BTST	#UseIntrnlModem,(A0)
+				BNE.S	@bail
+				MOVE.B	D3,D0
+				AND.B	#2,D0
+				LSL.B	#1,D0
+				CMP.B	D0,D1
+				BEQ.S	@othercase
+@bail
+				OR.B	#$90,D2
+				MOVEQ	#0,D3
+@othercase
+				MOVE.W	#powerCntl,pmCommand(SP)
+				MOVE.W	#1,pmLength(SP)
+				MOVE.B	#$C0,pmData(SP)
+				MOVE.L	SP,A0
+				BSR.S	DoPmgrOp
+
+				MOVEQ	#8,D0
+				MOVE.L	D0,A0
+				_Delay
+
+				OR.B	#$82,D2
+				MOVE.W	#powerCntl,pmCommand(SP)
+				MOVE.W	#1,2(SP)
+				MOVE.B	D2,pmData(SP)
+				MOVE.L	SP,A0
+				BSR.S	DoPmgrOp
+
+				TST.B	D3
+				BEQ.S	@bail2
+				MOVE.B	#$88,pmData(SP)
+				MOVE.W	#1,pmLength(SP)
+				MOVE.W	#powerCntl,pmCommand(SP)
+				MOVE.L	SP,A0
+				BSR.S	DoPmgrOp
+@bail2
+				LEA		pmBlkSize(SP),SP
+				MOVEM.L	(SP)+,D3/D4
+				MOVEQ	#0,D0
+				RTS
+
+
+DoPmgrOp
+				MOVEM.L	A0-A6/D1-D7,-(SP)
+				MOVE.W	SR,D5
+				MOVE.L	VIA,A1
+				MOVE.B	vIER(A1),D4
+				MOVE.B	D4,-(SP)
+
+				AND.B	#1<<ifCB1,D4
+				MOVE.B	#1<<ifCB1,vIER(A1)
+
+				SUB.L	#2,SP
+				MOVE.L	PmgrBase,A2
+				CMP.W	#$FFFF,A2
+				BEQ.S	@noGlobals
+				MOVE.B	SaveSpeedo(A2),D3
+				MOVE.W	D3,(SP)
+				MOVE.B	#$10,SaveSpeedo(A2)
+@noGlobals
+
+				TST.W	Clock16M
+				SUB		#48,SP
+				MOVE.L	SP,A3
+				MOVE.L	SCCRd,A6
+				ADD.L	#6,A6
+				LEA		(A1),A5
+				MOVE.B	#$FF,vDIRA(A1)		; all to inputs?
+				MOVE.B	vBufA(A1),D2
+				SWAP	D2
+
+				MOVEQ	#7,D3
+@bigloop
+				CLR.B	vDIRA(A1)
+				MOVE.W	TimeVIADB,D2
+				LSL.W	#2,D2
+@timeloop
+				BTST	#1,vBufB(A1)
+				BEQ.S	@bitNotSet
+				MOVE.B	vBufA(A1),D0
+				CMP.B	#$FF,D0
+				BEQ.S	@exitloop
+@bitNotSet
+				DBRA	D2,@timeloop
+				MOVE.L	#pmBusyErr,D0
+				BRA		@beatIt
+@exitloop
+
+				OR.W	#$700,SR
+				TST.W	Clock16M
+				MOVE.B	vBufB(A1),D6
+				SWAP	D6
+				MOVE.B	vDIRB(A1),D6
+				BCLR	#7,vDIRB(A1)
+				LEA		1(A0),A2
+				MOVEQ	#$40,D2
+				BSR		pmSend
+				BEQ		@notsure
+
+				MOVE.L	A3,PollStack
+				CMP.L	PollStack,SP
+				BEQ.S	@equalsPollStack
+				MOVE.L	A3,D7
+				MOVEM.L	A0-A4/D0-D6,(A3)
+				MOVE.L	PollProc,D2
+				BEQ.S	@noPollProc
+				NOP
+				NOP
+				PEA		@noPollProc
+				MOVE.L	D2,-(SP)
+				RTS
+@noPollProc
+				MOVE.L	D7,A3
+				MOVEM.L	(A3),A0-A4/D0-D6
+@equalsPollStack
+				MOVE.B	D6,vDIRB(A1)
+				SWAP	D6
+				MOVE.B	D6,vBufB(A1)
+				MOVEQ	#$40,D2
+				MOVE.W	D5,SR
+
+				DBRA	D2,*
+				DBRA	D3,@bigloop
+
+				BRA.S	@beatIt
+@notsure
+				MOVEQ	#0,D1
+				LEA		3(A0),A2
+				MOVE.B	(A2),D1
+				BSR		pmOther
+				BNE.S	@beatIt
+				SUB.W	#1,D1
+				BMI.S	@mi
+				MOVE.L	4(A0),A2
+@loop2
+				BSR		pmOther
+				BNE.S	@beatIt
+				DBRA	D1,@loop2
+
+@mi
+				MOVE.B	1(A0),D0
+				BTST	#3,D0
+				BEQ.S	@noFail
+				MOVE.L	A0,A2
+				ADD.L	#1,A2
+				MOVE.W	TimeVIADB,D2
+@timeloop2
+				BTST	#1,(A1)
+				BEQ.S	@testresult
+				MOVE.B	(A5),(A5)
+				BMI.S	@withinloop
+				NOP
+				MOVE.B	(A6),-(SP)
+@withinloop
+				DBRA	D2,@timeloop2
+
+				MOVE.L	#pmReplyTOErr,D0
+				BRA.S	@beatIt
+@testresult
+				CLR.L	(A0)
+				BSR		pmUnsure
+				BNE.S	@beatIt
+
+				ADD.L	#1,A2
+				BSR.W	pmUnsure
+				BNE.S	@beatIt
+
+				MOVE.W	2(A0),D1
+				MOVE.L	8(A0),A2
+
+				SUB.W	#1,D1
+				BMI.S	@noFail
+@loop3
+				BSR		pmUnsure
+				BNE.S	@beatIt
+				DBRA	D1,@loop3
+@noFail
+				MOVEQ	#0,D0
+@beatIt
+				MOVE.B	#$FF,vDIRA(A1)
+				SWAP	D2
+				MOVE.B	D2,vBufA(A1)
+				CLR.B	vDIRA(A1)
+				MOVE.L	D0,D4
+				MOVE.L	A3,PollStack
+				CMP.L	PollStack,SP
+				BEQ.S	@dontReturn
+				MOVE.L	PollProc,D2
+				BEQ.S	@dontReturn
+				NOP
+				NOP
+				PEA		@dontReturn
+				MOVE.L	D2,-(SP)
+				RTS
+@dontReturn
+				MOVE.L	PollStack,SP
+				ADD.L	#$30,SP
+				MOVE.L	D4,D0
+				MOVE.L	VIA,A1
+				MOVE.B	D6,vDIRB(A1)
+				SWAP	D6
+				MOVE.B	D6,vBufB(A1)
+
+				MOVE.L	PmgrBase,A2
+				CMP.W	#$FFFF,A2
+				BEQ.S	@noPmgrGlobs
+				MOVE.W	(SP),D3
+				MOVE.B	D3,SaveSpeedo(A2)
+				CMP.B	#$10,D3
+				BEQ.S	@noPmgrGlobs
+				TST.W	Clock1M
+@noPmgrGlobs
+				ADD.L	#2,SP
+				MOVE.B	(SP)+,D4
+				MOVE.B	D4,vIER(A1)
+				MOVE.W	D5,SR
+				MOVEM.L	(SP)+,A0-A6/D1-D7
+				TST.W	D0
+				RTS
+
+
+pmOther
+				MOVE.W	#$400,D2
+pmSend
+				MOVEQ	#0,D0
+				MOVE.L	(SP)+,A4
+				MOVE.B	#$FF,vDIRA(A1)
+				MOVE.B	(A2)+,vBufA(A1)
+				BCLR	#0,vBufB(A1)
+@someloop
+				BTST	#1,vBufB(A1)
+				BEQ.S	@trySomethingElse
+				MOVE.B	(A5),(A5)
+				BMI.S	@mi
+				NOP
+				MOVE.B	(A6),-(SP)
+@mi
+				DBRA	D2,@someloop
+				MOVE.L	#pmSendStartErr,D0
+				BRA.S	pmCommonReturn
+@trySomethingElse
+				MOVEQ	#$40,D2
+				BSET	#0,vBufB(A1)
+@otherloop
+				BTST	#1,vBufB(A1)
+				BNE.S	pmCommonReturn
+				MOVE.B	(A5),(A5)
+				BMI.S	@mi2
+				NOP
+				MOVE.B	(A6),-(SP)
+@mi2
+				DBRA	D2,@otherloop
+				MOVE.L	#pmSendEndErr,D0
+pmCommonReturn
+				BSET	#0,vBufB(A1)
+				CLR.B	vDIRA(A1)
+				TST.L	D0
+				JMP		(A4)
+
+
+pmUnsure
+				MOVEQ	#0,D0
+				MOVE.L	(SP)+,A4
+				MOVE.B	#0,vDIRA(A1)
+				MOVEQ	#$40,D2
+@someloop
+				BTST	#1,vBufB(A1)
+				BEQ.S	@trySomethingElse
+				MOVE.B	(A5),(A5)
+				BMI.S	@mi
+				NOP
+				MOVE.B	(A6),-(SP)
+@mi
+				DBRA	D2,@someloop
+				MOVE.L	#pmRecvStartErr,D0
+				BRA.S	pmCommonReturn
+@trySomethingElse
+				MOVEQ	#$40,D2
+				BCLR	#0,vBufB(A1)
+				MOVE.B	vBufA(A1),(A2)+
+@otherloop
+				BTST	#1,vBufB(A1)
+				BNE.S	pmCommonReturn
+				MOVE.B	(A5),(A5)
+				BMI.S	@mi2
+				NOP
+				MOVE.B	(A6),-(SP)
+@mi2
+				DBRA	D2,@otherloop
+				MOVE.L	#pmRecvEndErr,D0
+				BRA.S	pmCommonReturn
+
+
+
+portaSleep		PatchProc	_Sleep,(Portable)
+				WITH	PmgrRec,pmCommandRec,SleepqRec
+				IMPORT	DoQueueStack
+;________________________________________________________________________________________
+;
+;	GoToSleep, WakeUp, SleepQInstall, SleepQRemove 
+;
+;	Enter	: D1 = trap word
+;			  D0 = Sleep type
+;
+;	Exit	: All regs unchanged
+;
+;	SlpQInstall adds a sleep queue entry into the sleep queue.
+;
+;	SlpQRemove deletes a sleep queue entry from the sleep queue.
+;
+;	GoToSleep is called by the event manager when it determines that
+;	there is no work being done. Drivers are called to save their state,
+;	then the PMGR is ordered to put the system to sleep. When a waking
+;	event occurs, the PMGR powers up the system. The reset code jumps to
+;	WakeUp if the sleep flag is set. WakeUp restores the system hardware
+;	state, reloads the 68000 regs, and returns to the calling routine.
+;________________________________________________________________________________________
+
+GoToSleep	BTST	#9,D1					; $A28A
+			BNE		SlpQInstall
+			BTST	#10,D1					; $A48A
+			BNE		SlpQRemove
+***			BRA		@Sleep					; $A08A
+@Sleep		
+			MOVE.W	SR,-(SP)
+			MOVEM.L	A0-A6/D1-D7,-(SP)
+			MOVE.W	D0,D2
+
+			MOVE.L	PMgrBase,A0				; Get Power Manager Base Pointer
+			BSET	#InSleep,PmgrFlags(A0)	; test and set sleep semaphore
+			BNE.S	Exit					; if in sleep, exit! don't re-enter
+
+@checkAuto	CMP.B	#SleepRequest,D0		; auto sleep request
+			BEQ.S	@validselector
+
+@checkDnd	CMP.B	#SleepDemand,D0			; User sleep, from finder or command key
+			BEQ.S	@validselector
+			
+@checkNow	CMP.B	#SleepNow,D0			; Critical low power sleep
+			BNE.S	AbortSleep
+
+@validselector
+			BCLR	#AvoidNetDiag,\
+						PmgrFlags(A0) 		; tst/clear the avoid bit
+			BNE.S	@traverse				; if bit was set, skip dialog
+
+			MOVE.L	SleepNetHook(A0),D3		; 	IF SleepNetHook present THEN
+			BEQ.S	@closeAT				;
+			MOVEA.L	D3,A1					;		Get pointer
+			JSR		(A1)					; 		Call Hook
+			BNE.S	AbortSleep
+			BRA.S	@traverse
+@closeAT									; ENDIF
+			BSR.W	CheckAppleTalk			; Close AppleTalk
+			BNE.S	AbortSleep				; Branch if close denied
+			
+@traverse	MOVE.W	D2,D0					; Restore D0
+			CMP.W	#SleepNow,D0			; If passing sleepnow to sleepq then change it 
+			BNE.S	@doQ					; to a sleep demand
+			MOVEQ	#SleepDemand,D0			; sleepNow -> sleepDemand
+
+@doQ		BSR.W	DoQueueStack			; Walk the queue
+			BNE.S	AbortSleep				; Ok to goto sleep ?  Nope.  Get out!
+			BSR.W	CloseAppleTalk			; Else shut down atalk
+			BCLR	#InSleep,PmgrFlags(A0)	; clr the sleep indicator
+			jmpROM	SomeSleepProc
+
+AbortSleep	BCLR	#InSleep,PmgrFlags(A0)	; Clear the sleep indicator
+Exit		MOVE.W	D2,D0					; Restore sleep type to D0
+			MOVEM.L	(SP)+,A0-A6/D1-D7
+			MOVE.W	(SP)+,SR
+			RTS								; Return to caller
+
+;———————————————————————————————————————————————————————————————————————
+;
+; SlpQInstall/SlpQRemove - Installs/Removes entries in the sleep queue.
+;
+; Enrty:	A0 = SlpQRec (pointer)
+;
+; Exit:		D0 = Result code (word)
+;———————————————————————————————————————————————————————————————————————
+
+SlpQInstall		
+			CMP.W	#slpQType,SleepqType(A0)
+			BNE.S	SlpQErr
+			
+			MOVE.L	PmgrBase,A1
+			LEA		SleepQHdr(A1),A1
+			_Enqueue
+			RTS
+
+SlpQErr		MOVEQ	#SlpTypeErr,D0
+			RTS
+
+SlpQRemove	CMP.W	#slpQType,SleepqType(A0)
+			BNE.S	SlpQErr
+			
+			MOVE.L	PmgrBase,A1
+			LEA		SleepQHdr(A1),A1
+			_Dequeue
+			RTS			
+
+
+;________________________________________________________________________________________
+;
+;	CheckAppleTalk - checks AppleTalk drivers depending on the sleep
+;	level, what is open, and what the user OK's.
+;
+;________________________________________________________________________________________
+
+				STRING	PASCAL
+CheckAppleTalk	
+			MOVEM.L	A0-A3/D1-D2,-(SP)		; Try to close AppleTalk and warn user of this			<v1.4>
+			SUB.W	#ioQElSize,SP			; Allocate IO stack frame
+			MOVE.L	SP,A3					; Save this place
+			
+			MOVE.L	PmgrBase,A2				;
+			MOVEQ	#$0F,D1					; Lower nibble indicates ATalk in use
+			AND.B	PortBUse,D1
+			CMP.B	#1,D1
+			BNE		@okexit					; Do exit if no Atalk
+		
+			MOVE.W	D0,D1					; Case on request, demand, and now sleeps
+			CMP.B	#SleepRequest,D0		; Request case
+			BNE.S	@dmndcase
+
+
+;________________________________________________________________________________________
+; Request sleep (time out) case. If plugged in or chooser bit set or server mounted then sleep
+; denied, else ok.
+;________________________________________________________________________________________
+
+@reqcase	BTST	#noATChg,ChooserBits	; If magic chooser bit set then no sleep
+			BEQ		@done
+			
+			BTST	#HasCharger,Charger(A2)	; If plugged in then no sleep
+			BNE		@done
+			
+			BTST	#XPPLoadedBit,PortBUse	; Test for XPP in use
+			BNE.S	@reqcase1				; Branch if so
+
+			MOVE.B	#ClosedMPP,WakeWarn(A2)	; Set flag for wake up warning (MPP closed)
+			BRA		@okexit					; Bye now
+			
+@reqcase1	BSR		XPPCheck				; Try to close XPP
+			BNE		@done					; Branch if not
+			
+			MOVE.B	#ClosedXPP,WakeWarn(A2)	; Set flag for wake up warning (XPP closed)
+			BRA		@okexit
+
+;________________________________________________________________________________________
+; Demand sleep (Finder - Battery DA) case. User warned of different conditions and given the choice
+; to sleep or not.
+;________________________________________________________________________________________
+
+@dmndcase	CMP.B	#SleepDemand,D0			; Demand case
+			BNE.S	@nowcase
+			
+			BTST	#noATChg,ChooserBits	; If no magic chooser bit then branch
+			BNE.S	@dmndcase1
+
+; Magic chooser bit is set so give the user the big bad warning. 
+
+			BSR.W	HarshWarn				; Warn user of impending doom
+			BNE		@done					; No sleep if user is scared off
+			
+			MOVE.B	#ClearedChsr,WakeWarn(A2)	; Set flag for wake up warning	(magic bit cleared)
+			BSET	#noATChg,ChooserBits	; Clear magic chooser bit
+			BRA		@okexit
+		
+; Only MPP is open so give the user the wimpy warning.
+
+@dmndcase1	BTST	#XPPLoadedBit,PortBUse	; Test for XPP in use
+			BNZ.S	@dmndcase2				; Branch if so
+			
+			BSR.W	WimpyWarn				; Warn user of possible problems
+			BNE.S	@done					; Branch if chickened out
+
+			MOVE.B	#ClosedMPP,WakeWarn(A2)	; Set flag for wake up warning (MPP closed)
+			BRA.S	@okexit					; We're cool
+
+; XPP is open and a server may be mounted. If no server then give the wimpy warning, else
+; give a stronger one.
+
+@dmndcase2	BSR		XPPCheck				; Try to close XPP
+			BNE.S	@dmndcase3				; Branch if not able
+
+			BSR.W	WimpyWarn				; Warn user of possible problems
+			BNE.S	@done					; Branch if chickened out
+
+			MOVE.B	#ClosedXPP,WakeWarn(A2)	; Set flag for wake up warning (XPP closed)
+			BRA.S	@okexit					; We're cool
+
+; Server is mounted so give the strong warning.
+
+@dmndcase3	BSR.W	StrongWarn				; Be firm but gentle
+			BNE.S	@done					; Talked him out of it
+			
+			MOVE.B	#ClosedSvr,WakeWarn(A2)	; Set flag for wake up warning (server lost)
+			BRA.S	@okexit					; It was rough but we're fine
+
+;________________________________________________________________________________________
+; Now sleep (Low power) case. Close any and all but select the right wake up warning.
+;________________________________________________________________________________________
+
+@nowcase	MOVE.B	#ClearedChsr,WakeWarn(A2)	; Set flag for wake up warning	(magic bit cleared)
+			BSET	#noATChg,ChooserBits	; Clear magic chooser bit
+			BEQ.S	@nowcase4				; Branch if bit was active
+
+			MOVE.B	#ClosedMPP,WakeWarn(A2)	; Set flag for wake up warning (MPP closed)
+			BTST	#XPPLoadedBit,PortBUse	; Test for XPP in use
+			BNZ.S	@nowcase4				; Branch if so
+			
+			MOVE.B	#ClosedXPP,WakeWarn(A2)	; Set flag for wake up warning (XPP closed)
+			BSR		XPPCheck				; Try to close XPP
+			BEQ.S	@nowcase4				; Branch if did
+
+			MOVE.B	#ClosedSvr,WakeWarn(A2)	; Set flag for wake up warning (server lost)
+		
+@nowcase4
+@okexit		MOVEQ	#0,D0
+
+@done		ADD.W	#ioQElSize,SP			; Release stack frame
+			MOVEM.L	(SP)+,A0-A3/D1-D2
+			TST.W	D0
+			RTS
+
+
+;________________________________________________________________________________________
+;
+;	91/02/13 - AG
+;
+;	Close appletalk drivers if necessary
+;
+;________________________________________________________________________________________
+CloseAppleTalk	
+			MOVEM.L	A0-A3/D1-D2,-(SP)		; Try to close AppleTalk and warn user of this			<v1.4>
+			SUB.W	#ioQElSize,SP			; Allocate IO stack frame
+			MOVE.L	SP,A3					; Save this place
+			
+			MOVE.L	PmgrBase,A2				;
+			MOVEQ	#$0F,D1					; Lower nibble indicates ATalk in use
+			AND.B	PortBUse,D1
+			CMP.B	#1,D1
+			BNE		@Closedone				; Do exit if no Atalk
+			jsrROM	AllClose				; Shutdown everything
+
+@Closedone	ADD.W	#ioQElSize,SP			; Release stack frame
+			MOVEM.L	(SP)+,A0-A3/D1-D2
+			TST.W	D0
+			RTS
+
+;———————————————————————————————————————————————————————————————————————
+; CloseATalk support routines.
+;———————————————————————————————————————————————————————————————————————
+
+StrongWarn	MOVE.W	#-16386,D0
+			BRA.S	Warn
+			
+WimpyWarn	MOVE.W	#-16387,D0
+			BRA.S	Warn
+			
+HarshWarn	MOVE.W	#-16388,D0
+
+Warn		CLR.W	-(SP)					; Send the warning
+			MOVE.W	D0,-(SP)		
+			CLR.L	-(SP)
+			_Alert
+			MOVE.W	(SP)+,D0				; D0 non-zero if canceled
+			SUBQ.W	#1,D0					; <t31> 1 is sleep button
+			RTS
+
+			
+;———————————————————————————————————————————————————————————————————————
+;
+;	XPPCheck - this is a routine checks to see if any servers are mounted.
+;		D0 will return the error from the close.  if no error, no servers!
+;		to restore the world, reopen the driver after.
+;
+;	input
+;		a3	pointer to pb
+;
+;	output
+;		d0	result 
+;			== 0	no servers mounted
+;			!= 0	servers mounted
+;
+;	Usage
+;		a0	pointer to pb
+;		a1	pointer to driver name
+;		a3	pointer to pb
+;
+;———————————————————————————————————————————————————————————————————————
+XPPCheck	MOVE.L	a3,a0						; Get pb pointer
+
+			MOVE.W	#~xppUnitNum,ioRefNum(A0)	;
+			_Close								; Close XPP
+
+			MOVE.L	d0,-(sp)					; save result
+			LEA		#'.XPP',a1					; Get XPP refnum
+			MOVE.L	a1,ioVNPtr(a0)				; load pointer to driver
+			MOVE.B	#fsCurPerm,ioPermssn(a0)	; set permission
+			_Open								; get refnum
+			MOVE.L	(sp)+,d0					; restore result
+
+			TST.W	d0							; test close result
+			RTS									; Sucess returned in status
+
+
+portaSysTask	PatchProc	_SystemTask,(Portable)
+			WITH	PmgrRec
+
+			jsrOld
+			MOVE.L	PmgrBase,A1
+			TST.B	MBState
+			BNE.S	@clicked
+@idleUpdate
+			_IdleUpdate
+			RTS
+@clicked
+			TST.B	watchCrsr(A1)
+			BNE.S	@idleUpdate
+			RTS
+
+
+;________________________________________________________________________________________
+;
+;	91/02/13 - AG
+;
+; 	DoQueueStack - this routine is called to traverse the sleep queue.  if
+;		the sleep type is "now", "demand", or "WakeUp", the queue will only
+;		be run once. otherwise, the queue will be run twice. once to check if
+;		its ok to sleep, if ok, the sleep type is changed to "demand" and the 
+;		queue is rerun.  if not ok, then the sleep type is change to "Unlock"
+;		and the queue is rerun,  Each proc is passed its queue entry in A0.
+;
+;	input	
+;		d0	sleep type
+;		a0	ptr to pmgrglobals
+;
+;	output
+;		d0	
+;			== 0	ok to sleep
+;			!= 0	queue rejected auto sleep
+;
+;	usage
+;	d	d0	sleep type/result
+;	 	a0	pointer to first element/ ptr to pmgrglobals
+;
+;———————————————————————————————————————————————————————————————————————
+
+DoQueueStack	PROC	EXPORT
+			WITH	PmgrRec,pmCommandRec,SleepqRec
+
+			MOVEM.L	A0/D1,-(SP)				; save pmgrglobals ptr
+			MOVE.L	SlpQHead(A0),A0			; Get ptr to first element
+		
+			CMP.W	#SleepRequest,D0		; is it auto sleep ?
+			BNE.S	@runTheQueue			; if no, just run the queue
+		
+@testTheQueue	
+			BSR.s	Handle_Element			; ask queue about auto sleep
+			BNE.s	@undosleepreq			; if error returned, undo sleep
+			MOVEQ	#SleepDemand,D0			; ... else set to sleep demand
+
+@runTheQueue	
+			BSR.S	Handle_Element			; handle element
+			CLR.L	D0						; return no error
+
+@exit		MOVEM.L	(SP)+,A0/D1				; restore pmgrglobals ptr
+			RTS
+
+@undosleepreq	
+			MOVEQ	#SleepUnlock,D0			; Since sleep denied, set to unsleep
+			BSR.S	Handle_Element			; handle element
+			MOVEQ	#SleepUnlock,D0			; return non zero result
+			BRA.S	@exit
+		
+
+;———————————————————————————————————————————————————————————————————————
+;
+;	Handle Element - this is a routine which is used to execute a queue element.  if the
+;		element pointer is null, the routine exits and returns 0 in d0.  if the element
+;		pointer is not null, then the routine will do two thing:
+;			1)	handle the next element recursively
+;			2)	execute the current element's sleep proc
+;		the queue will essentially be traversed in post fixed order
+;
+;	input
+;		a0	pointer to queue element
+;		d0	sleep type 
+;
+;	output
+;		d0	result 		
+;			== 0	ok to sleep
+;			!= 0	sleep rejected
+;
+;	Usage
+;	 	a0	pointer to element
+;	d	a1	pointer to sleep proc
+;	d	d0	sleep type/result
+;	d	d1	saved sleep type/ condition code check
+;
+;———————————————————————————————————————————————————————————————————————
+ProcRegs	REG		a0-a6/d1-d7
+
+Handle_Element	
+			MOVE.L	a0,d1						; test element pointer
+			BEQ.S	@noelement					; if invalid element ptr, exit with d0 clear
+			MOVE.L	d0,d1						; save a copy of type in d1
+			
+@validelement	
+			MOVEM.L	a0/d1,-(sp)					; save element pointer and type
+			MOVE.L	SleepqLink(a0),a0			; pass in pointer to next element
+			BSR.S	Handle_Element				; handle the next element in queue
+			MOVEM.L	(sp)+,a0/d1					; restore pointer and type
+			CMP.W	#1,D1
+			BNE.S	@callproc
+			TST.W	D0
+			BNE.S	@exit						; if result != zero, exit
+			
+@callproc		
+			MOVE.L	d1,d0						; restore type to d0
+			MOVEM.L	ProcRegs,-(sp)				; save the world before calling proc				<15> ag
+			MOVE.L	SleepqProc(a0),a1			; get a pointer to the proc
+			JSR		(a1)						; call sleep proc
+			MOVEM.L	(sp)+,ProcRegs				; restore the world
+
+			TST.L	d0							; set condition codes on result
+			RTS
+			
+@noelement	moveq	#0,d0						; clear result
+@exit		RTS									; exit
+
+
+portaPowerOff	PatchProc	_PowerOff,(Portable)
+			MOVE.W	#60,A0
+			_Delay
+
+			SUB		#4,SP						; clear pmData
+			MOVE.L	SP,A0
+			CLR.L	(A0)
+			MOVEQ	#0,D1
+			MOVEQ	#pMgrADBoff,D0
+			MOVE.L	A0,-(SP)					; pmRBuffer -> pmData
+			MOVE.L	A0,-(SP)					; pmSBuffer -> pmData
+			MOVE.W	D1,-(SP)					; pmLength = 0
+			MOVE.W	D0,-(SP)					; pmCommand = pMgrADBoff
+			MOVE.L	SP,A0
+			_PmgrOp
+			LEA		8(SP),SP					; fix the stack, preserving A0 (why?)
+			MOVE.L	(SP)+,A0
+			ADD		#4,SP
+
+			_HideCursor
+
+			CLR.L	WarmStart
+
+			MOVE.W	#SleepNow,D0
+			_Sleep
+
+			RTS
 
 
 pollProcRegs	reg		d0-d6/a0-a4
@@ -212,9 +1183,7 @@ SndWatch	PROC
 			jsrROM	PMGRrecv
 			MOVE.B	(A0),D2					; Get sound state
 			BTST	#1,D2
-			; (SKH) BEQ.S	@Clearlatch				; Branch if latch is set
-			bra.s	@noSound
-			
+			BEQ.S	@Clearlatch				; Branch if latch is set			
 			_IdleUpdate						; update activity indicator
 									
 @Clearlatch	MOVE.B	#sndOnclrLtch,(A0)		; Turn on sound power and clear the latch
@@ -364,6 +1333,354 @@ BatWatchOut	LEA		BatVBLTask(A2),A0		; Get pointer to vbl task
 
 
 
+portaInstallWake	InstallProc		(Portable)
+			MOVE.L		PmgrBase,A1
+			leaResident	portaWakeUp,A2
+			MOVE.L		A2,PmgrRec.WakeVector(A1)
+			RTS
+
+
+
+portaWakeUp	PROC	EXPORT
+			WITH	PmgrRec
+
+			MOVE.L	#wmStConst,WarmStart
+			MOVE.L	SndBase-4,SP
+			MOVE.W	#6,RAMconfigBase
+
+			MOVE.L	PmgrBase,A2
+			CLR.B	Level4Cnt(A2)
+			MOVE.B	#$FF,LastLevel(A2)
+			CLR.L	BatQ(A2)
+			CLR.L	BatQ+4(A2)
+			MOVE.B	#8,BatQIndex(A2)
+
+			MOVE.L	ASCBase,A0
+			LEA		$808(A0),A0				; unknown offset?!
+			MOVEQ	#6,D0
+@ascResLoop	MOVE.B	(SP)+,-(A0)
+			DBRA	D0,@ascResLoop
+			TST.B	ascFifoInt(A0)
+
+			MOVE.L	VIA,A0
+			MOVEM.W	(SP)+,D0-D5
+			MOVE.B	D0,vBufB(A0)
+			MOVE.B	D1,vDIRB(A0)
+			MOVE.B	D2,vBufA(A0)
+			MOVE.B	D3,vIER(A0)
+			MOVE.B	D4,vACR(A0)
+			MOVE.B	D5,vPCR(A0)
+			MOVE.B	vT2CH(A0),vT2CH(A0)
+			MOVE.B	vT1CH(A0),vT1CH(A0)
+
+			MOVE.L	(SP)+,ResetPC
+
+			jsrROM	InitSCSI				; Init the SCSI chip
+
+			LEA		Time,A0					; Restore Time
+			MOVEQ	#timeRead,D0
+			jsrROM	PMGRrecv
+
+			jsrROM	KbdReset				; clear the keyboard maps
+
+			MOVEM.L	(SP)+,D1-D7/A0-A6
+			SUB		#56,SP
+			MOVE.W	56(SP),SR
+
+			BSR		SCSIDiskWakeAlert		; check if a disk mode cable is plugged in
+			BSR.S	MPPOpen					; Open the driver since elements in the queue might need some MPP services
+			MOVEQ	#SleepWakeUp,D0			; Go through wake queue
+			jsrROM	DoQueue					; Run through the queue in proper order
+
+			_CountADBs
+			CMP.B	#2,D0
+			BLE.S	@noReInit
+			_ADBReInit
+@noReInit
+
+			MOVEQ	#0,D0
+			MOVEM.L	(SP)+,D1-D7/A0-A6
+			ADD.L	#2,SP
+			RTS
+
+
+;———————————————————————————————————————————————————————————————————————
+;
+;	MPPOpen - routine to open the MPP driver.  If the driver is not necessary, the open
+;			will fail, so just try to open the driver blindly
+;
+;	input
+;		none
+;
+;	output
+;		none
+;
+;	usage
+;		a0 - pointer to iopb
+;		a1 - pointer to driver name
+;
+;———————————————————————————————————————————————————————————————————————
+
+MPPOpen		MOVEM.L	A0-A3/D1-D2,-(SP)
+			SUB.L	#ioQElSize,SP			; Allocate IO stack frame
+			MOVEA.L	SP,A0					; Save this place
+			
+			LEA		#'.MPP',A1				; Get MPP refnum
+			MOVE.L	A1,ioVNPtr(A0)
+			MOVE.B	#fsCurPerm,ioPermssn(A0)
+			_Open
+
+			LEA		ioQElSize(SP),SP		; Release stack frame
+			MOVEM.L	(SP)+,A0-A3/D1-D2
+			RTS
+
+
+;———————————————————————————————————————————————————————————————————————
+;
+;	SCSIDiskWakeAlert - Checks if the SCSI Disk Mode cable is plugged in when
+;			we wake up. If it is, put up a DeepShit window with a message.
+;
+;———————————————————————————————————————————————————————————————————————
+
+SCSIDiskWakeAlert
+			MOVE.L	SP,D3
+
+			MOVE.L	ROMBase,A0
+			CMP.B	#$11,ROMHeader.ROMRelease(A0)
+			BNE.W	@return
+			BSR		TestForDiskMode
+			BNE		@return
+
+;	save the pixels that will be clobbered by the DS alert
+
+			CLR.L	D4
+			CLR.L	D5
+			TST.B	QDExist
+			BNZ.S	@savedErrBoxPixels
+
+			MOVE.L	GrafGlobals(A5),A0
+			MOVE.L	thePort(A0),D4
+			MOVE.L	#bitmapRec+448*126/8,D0	; bitmap rec + 8bit data
+			_NewPtr
+			TST.W	D0
+			BNE.S	@savedErrBoxPixels
+
+			MOVE.L	A0,D5					; this is the dest bitmap, saved...
+			PEA		bitmapRec(A0)			; set baseAddr to the guts of the buffer
+			MOVE.L	(SP)+,(A0)+
+			MOVE.W	#56,(A0)+				; set rowBytes
+			MOVE.L	#$00000000,(A0)+		; topLeft
+			MOVE.L	#$007E01C0,(A0)+		; botRight
+			SUBA	#$74,SP
+			MOVE.L	SP,A6
+			jsrROM	AllocFakeRgns
+			MOVE.L	SP,-(SP)
+			_InitPort
+			MOVE.L	GrafGlobals(A5),A0
+			MOVE.L	A6,thePort(A0)
+
+			PEA		screenBits(A0)			; srcBits = the screen
+			MOVE.L	D5,-(SP)				; dstBits = our new allocated bitmap
+			BCLR	#7,DSAlertRect 			; SECRETFLAG = 0
+			PEA		DSAlertRect				; srcRect = rect where error box goes
+			MOVE.L	D5,A0
+			PEA		bounds(A0)				; dstRect = our entire allocated bitmap
+			CLR.W	-(SP)					; mode = 0
+			CLR.L	-(SP)					; maskRgn = nil
+			_CopyBits
+			BSET	#7,DSAlertRect			; SECRETFLAG = 1
+@savedErrBoxPixels
+
+;	put the alert on the screen and wait until the cable is removed...
+
+			MOVE.W	#dsSCSIWarn,D0			; put up the DeepShit alert
+			_SysError
+
+@NotGone	MOVEA.L	VIA,A0
+			MOVEQ	#3,D1
+@OuterLoop	MOVE.W	#$7FFF,D0
+@InnerLoop	TST.B	(A0)					; throttle the loop with a VIA access
+			DBRA	D0,@InnerLoop
+			DBRA	D1,@OuterLoop
+
+			BSR		TestForDiskMode			; is the disk mode cable still attached?
+			BEQ.S	@NotGone				; -> yep, keep waiting
+
+;	they finally removed the cable, so clean everything up...
+
+			TST.L	D5
+			BEQ.S	@useGNE
+			MOVE.L	D5,-(SP)				; srcBits = our bitmap
+			MOVE.L	GrafGlobals(A5),A0
+			MOVE.L	A6,thePort(A0)
+			PEA		screenBits(A0)			; dstBits = the screen
+			MOVE.L	D5,A0
+			PEA		bounds(A0)				; srcRect = our entire allocated bitmap
+			BCLR	#7,DSAlertRect			; SECRETFLAG = 0
+			PEA		DSAlertRect				; dstRect = rect where error box goes
+			CLR.W	-(SP)					; mode = 0
+			CLR.L	-(SP)					; maskRgn = nil
+			_CopyBits
+			BSET	#7,DSAlertRect			; SECRETFLAG = 1
+
+			MOVE.L	D5,A0
+			_DisposePtr
+			ADDA	#$74,SP
+			BRA.S	@reSetPort
+@useGNE
+			CLR.B	DSWndUpdate 			; flag GNE to remove the alert
+			TST.L	D4
+			BEQ.S	@return
+@reSetPort
+			MOVE.L	D4,-(SP)
+			_SetPort
+@return
+			RTS
+
+
+;———————————————————————————————————————————————————————————————————————
+;
+;	TestForDiskMode - checks if we're setup for SCSI Disk Mode
+;
+;	input
+;		none
+;
+;	output
+;		CCR	-	BEQ if the SCSI DiskMode cable is attached
+;
+;———————————————————————————————————————————————————————————————————————
+
+TestForDiskMode
+			MOVE.L	#$00EE01<<8,-(SP)		; populate pmData
+			MOVE.L	SP,-(SP)				; pmRBuffer -> pmData
+			MOVE.L	(SP),-(SP)				; pmSBuffer -> pmData
+			MOVE.W	#3,-(SP)				; pmLength
+			MOVE.W	#readPmgrRAM,-(SP)		; pmCommand
+			MOVE.L	SP,A0
+			_PmgrOp
+			MOVE.L	pmCommandRec.pmData(SP),D0
+			BTST	#29,D0
+			LEA		pmCommandRec.pmBlkSize(SP),SP
+			RTS
+
+
+portaInitializeStrings	InstallProc		(Portable)
+;___________________________________________________________________________________
+; Routine:	InitializeStrings
+;
+; Inputs:	none
+;
+; Outputs:	none
+;
+; Destroys:	d0-d3,a0-a2
+;
+;___________________________________________________________________________________
+
+InitializeStrings
+
+SignatureReg	equ			$FC0200				; address of backlight signature
+SignatureAruba	equ			$A5					; signature for aruba backlight
+SignatureUpgrd	equ			$A3					; signature for upgrade backlight
+SignatureAsahi	equ			$AD					; signature for asahi backlight
+
+LPsicnNum		EQU		-16386					; Small battery icon
+LPstr0Num		EQU		-16386					; no backlight
+LPstr0NumBL		EQU		-16511
+LPstr1NumBL		EQU		-16512
+LPstr2NumBL		EQU		-16516					; Added new one for Andy <r9> HJR
+LPstr3NumBL		EQU		-16513
+
+BatstrWarn0		EQU		-16514					; <t5> new bad battery strings
+BatstrWarn1		EQU		-16515
+
+				WITH	PmgrRec
+
+				MOVE.L	PmgrBase,A2
+				MOVE.L	#'SICN',D1
+
+				MOVE.W	#LPsicnNum,D2
+				BSR		GetDetachRes			; Get the battery icon
+				BEQ.S	@getstrings
+				MOVE.L	A1,lpSICNHndl(A2)		; Save the handle locally
+
+@getstrings		MOVE.L	#SignatureReg,A0
+				CMP.B	#SignatureAruba,(A0)
+				BEQ.S	@dimmable
+				CMP.B	#SignatureUpgrd,(A0)
+				BEQ.S	@dimmable
+				CMP.B	#SignatureAsahi,(A0)
+				BEQ.S	@dimmable
+
+				MOVEQ	#3,D4					; strings for non-backlit screen
+				MOVE.W	#LPstr0Num,D2
+				MOVEQ	#lpSTR0Ptr,D3
+@loop			BSR		LoadString
+				SUB.W	#1,D2
+				ADD.L	#4,D3
+				DBRA	D4,@loop
+				BRA		@return
+
+@dimmable
+				move.w	#LPstr0NumBL,D2			; get first warning string
+				move.l	#lpSTR0Ptr,D3
+				bsr		LoadString
+
+				move.w	#LPstr1NumBL,D2			; get 25% warning string
+				move.l	#lpSTR2Ptr,D3
+				bsr		LoadString
+
+				move.w	#LPstr3NumBL,D2			; get 10 second warning
+				move.l	#lpSTR3Ptr,D3
+				bsr.s	LoadString
+
+@return			rts
+
+;------------------------------------------------------------------------------------------
+;
+;	LoadString - used to load a low power string into the power manager globals
+;
+;	input	
+;		a2 - pointer to powermgr
+;		d2 - string resource id
+;		d3 - offset of string pointer in powermanager
+;
+;	output	
+;		none
+;
+;	usage	
+;	d	d1 - resource type
+;		d2 - string resource id
+;		d3 - offset of string pointer in powermanager
+;	d	a1 - handle to string
+;		a2 - pointer to powermgr
+;------------------------------------------------------------------------------------------
+
+LoadString		move.l	#'STR ',d1			; set to string resource type
+				bsr.s	GetDetachRes		; get and detach string resource
+				beq.s	@exit				; if no string, exit
+				move.l	(a1),(a2,d3)		; else install pointer in pmgr globals
+@exit			rts							; done
+
+; Gets and detaches a resource.
+; Parameters:
+;	D1	Resource Type
+;	D2	Resource ID
+; Returns:
+;	A1	Handle to resource
+; Registers:
+;	D0/A0 destroyed
+
+GetDetachRes
+				SUBQ.L	#4, SP			; For return address
+				MOVE.L	D1, -(SP)		; Resource type
+				MOVE.W	D2, -(SP)		; Resource ID
+				_GetResource
+				MOVE.L	(SP), A1		; Get resource handle to return
+				_DetachResource
+				MOVE.L	A1,D0			; Set result code
+				RTS
+
+
 ;===================================================================================		<r9> thru next <r9> djw
 ;	PowerMiscPatches  -  collection of all the Terror patches
 ;
@@ -373,7 +1690,7 @@ BatWatchOut	LEA		BatVBLTask(A2),A0		; Get pointer to vbl task
 
 			machine	mc68030
 
-InstallPowerMgrPatches	PROC EXPORT
+InstallPowerMgrPatches	InstallProc		(IIci,hasTerror,hasPwrMgr)
 
 			bsr		ResetSoftwareCutoff					; reset the power mgr's shutdown level
 			bsr		InitializeStrings					; init all warning and alert strings
@@ -704,6 +2021,7 @@ PatchPmgrOp
 ;_________________________________________________________________________________________
 
 SleepPtch	PROC
+			IMPORT	DoQueueStack
 			WITH	PmgrRec
 
 			BTST	#9,D1						; $A28A
@@ -1101,8 +2419,7 @@ NewSndWatch
 			move.w	#SoundRead,d0			; PMGR command, get sound state
 			jsrROM	PMGRrecv
 			move.b	(a0),d2					; Get sound state
-			; (SKH) beq.s	@noSound		; branch if no sound activity
-			bra.s	@noSound				; SKH - Never power down sound.
+			beq.s	@noSound				; branch if no sound activity
 
 			btst.l	#1,d2
 			bne.s	@sndActive				; the latch is set

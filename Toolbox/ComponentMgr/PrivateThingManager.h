@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		Private Thing Manager.h
 
 	Copyright:	© 1990-1993 by Apple Computer, Inc., all rights reserved.
@@ -127,6 +134,7 @@ typedef struct rtFile
 	short	referenceCount;
 	short	vRefNum;
 	long	fileID;
+	Str63	name;
 	} rtFile;
 
 
@@ -155,6 +163,6 @@ typedef struct
 #define kComponentInstanceAllocationSize 32
 #define kComponentFileAllocationSize 1
 
-void doComponentSearch (void);
+pascal void __ComponentSearch (void);
 
 #endif _PrivateThingManager_

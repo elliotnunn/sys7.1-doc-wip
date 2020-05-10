@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		MenuMgr.a
 ;
 ;	Contains:	Menu Manager for MacIntosh User Interface ToolBox
@@ -481,10 +488,6 @@ CreateMenuList
 
 				clr		theMenu					; clear lo mem so no hilited menu			<FJL C222>
 
-				move.l	a1, MenuCInfo			; store the color table too					<FJL C408>
-				IMPORT	GetMBColors
-				bsr		GetMBColors				; get menubar color info from the system	<FJL C408>
-
 				MOVEQ	#$0C,D0					;only use 2 bits worth
 				AND.B	SPMisc2,D0				;get pRam flags
 				LSR		#2,D0					;get menuFlash in the low bits
@@ -506,17 +509,9 @@ CreateMenuList
 
 IMDone
 
-				RTS								; <SM13> this was mistakenly deleted at some point
-
 ; InitMList alloc’s a menuList with no menus and no hierarchical menus					<FJL C222>
 				ENTRY	InitMList
 InitMList
-				moveq	#mctEntrySize, d0		; allocate one record in the color tbl	<FJL C408>
-				_NewHandle						;										<FJL C408>
-				move.l	(a0), a1				; dereference
-				move	#mctLastIDIndic, mctID(a1)	; store -99 as ID ==> last entry	<FJL C408>
-				move.l	a0, -(SP)				; store it on the stack temporarily		<FJL C408>
-
 				moveq	#InitMListSize, d0		; get size of menuList d.s.
 				_NewHandle	CLEAR				; alloc it
 				move.l	(a0), a1				; dereference the handle
@@ -524,77 +519,24 @@ InitMList
 												;set up the menu header
 				move.w	#mbMenu1Loc, lastRight(a1)	; set lastRight to ten (decimal)
 
-				move.l	(SP)+, a1				; get the color tbl handle in a1		<FJL C408>
-
 				rts
 				ENDPROC
 
-
-GetMBColors		PROC	ENTRY
-;-----------------------------------------------
-;	Utility -- GetMBColors
-;-----------------------------------------------
-; See if there is a menubar color table entry.  It will automatically look for one in	<FJL C408>
-; the applications resfile then in the system res file.									<FJL C408>
-;
-				move.b	#1, -(SP)			; force Resource Load to true
-				_SetResLoad
-
-				subq	#4, SP				; make room for the result
-				move.l	#'mctb', -(SP)		; push resource type
-				clr.w	-(SP)				; push menuID 0 = menu bar
-				_GetResource				; get the resource
-				move.l	(SP)+, a0			; get the handle in a0
-				move.l	a0, d0				; set z-flag
-				beq.s	@1					; handle is nil, so no color table
-
-				_HGetState					; get state of resource
-				move.b	d0, -(SP)			; store them on the stack
-				move.l	a0, -(SP)			; store handle on stack too
-				_HLock						; lock the handle down temporarily
-
-				move.l	(a0), a0			; get ptr to resource
-				move	(a0)+, -(SP)		; push number of table entries
-				move.l	a0, -(SP)			; push base address of table
-				_SetMCEntries				; call trap
-
-				move.l	(SP)+, a0			; get handle
-				move.b	(SP)+, d0			; and previous state
-				_HSetState					; return handle to previous state
-
-@1				rts
-				ENDPROC
 
 CLEARMENUBAR	PROC	EXPORT
 ;
 ; PROCEDURE ClearMenuBar -- clear the menuBar/menuList data structure
 ;
 
-;•HMClearMenuBarPatch roll in from BalloonPatch28.a
-			IMPORT	ptchHMGetBalloons
-			JSR		ptchHMGetBalloons					; what is the state of What Is? mode?
-			BEQ.S	@BalloonsOff						; EQ means no, so, let's not do anything.
-			SUBQ	#2,SP								; remove any balloons that might have been up
-			_HMRemoveBalloon							; do the remove
-			TST.W	(SP)+								; toss result
-
-@BalloonsOff	
 				IMPORT	GetA0List
 				BSR		GetA0List				; check for purged list			<EHB 11-Apr-85>
 
 				MOVE.L	MENULIST,A0				; get handle to menuList
 				_DisposHandle					; dispose of the handle			<FJL C222>
 
-				move.l	MenuCInfo, a0			; get handle to color tbl			<FJL C408>
-				_DisposHandle					; and toss it						<FJL C408>
-
 				IMPORT	InitMList
 				bsr		InitMList				; init a new one				<FJL C222>
 				move.l	a0, menuList			; and store it					<FJL C222>
-
-				move.l	a1, MenuCInfo			; and store it too				<FJL C408>
-				IMPORT	GetMBColors
-				bsr		GetMBColors				; get menubar color info from the system	<FJL C408>
 
 				CLR.W	THEMENU					; no menu is hilited
 
@@ -692,10 +634,6 @@ DELETEMENU		PROC	EXPORT
 				CLR.W	-(SP)					;											<PMAB568	07Sep88	EMT>
 				_HiliteMenu						; Unhighlight it							<PMAB568	07Sep88	EMT>
 @NotHilited										;											<PMAB568	07Sep88	EMT>
-
-				move	4(SP), -(SP)			; push the menuID					<FJL C408>
-				move	#mctAllItems, -(SP)		; push flag meaning all items		<FJL C408>
-				_DelMCEntries					; call delete routine				<FJL C408>
 
 				moveq	#0, d1					; clear d1 for GetHIndex			<FJL C222>
 				MOVE.W	4(SP),D1				; get the menuID
@@ -851,104 +789,6 @@ INSERTMENU		PROC	EXPORT
 ;	If beforeID = -1 then insert menu at front of HMenuList						<FJL C222>
 ;	Used < 0 as the criteria for inserting in HMenus, changed to = -1			<FJL 8May87>
 
-;  Roll in PatchInsertMenu in SystemMenuPatch.a
-; When this patch sees a system menu (-16385 thru -32768), it adds it to the system menu bar.
-; If the system menu bar doen't exist, this patch creates it.
-; If the menu is not a system menu, ensure that the beforeID is modified so that the
-; menu is inserted before the system menu partition.
-				IMPORT	FindFirstSystemMenu6BO
-InsertStack		RECORD	{base},DECR
-	ParamBegin:	EQU		*			; start parameters after this point
-menuHdl			DS.L	1
-beforeID		DS.W	1
-	ParamSize:	EQU		ParamBegin-*
-retAddr			DS.L	1
-base			DS.W	0
-	LocalSize:	EQU		*
-				ENDR
-
-				WITH	InsertStack
-				CMP.W	#$FFFF, beforeID(SP)				; beforeID = -1 ==> H Menu
-				beq		OldInsertMenu
-
-; If a system menu is being inserted, put it into the System Menu Bar
-
-				MOVE.L	menuHdl(SP), A0						; Get the MenuHandle
-				MOVE.L	(A0), A0							; dereference
-				SUBQ.L	#4,SP								; Make Room for result & VAR
-				MOVE.W	menuID(A0),-(SP)					; Push the menuID
-				PEA		4(SP)								; Point to VAR
-				_IsSystemMenu								; Do it the standard way
-				ADDQ.L	#2,SP								; Eat the result
-				TST.B	(SP)+								; Is it a system menu?
-				BNE.S	@DoSystemMenu						; EQ means it is a system menu
-
-; Menu for main list, be sure it is inserted before all the system menus
-				BSR		FindFirstSystemMenu6BO				; Find the system menu partition
-				beq		OldInsertMenu										; Do old stuff if no system menus
-				MOVE.W	D0, D1								; Save off 6BO of 1st system menu
-				MOVE.W	beforeID(SP), D0					; Get the beforeID
-				BEQ.S	@forceBeforeSys						; branch if zero
-				BSR		Find6BOFromID						; Find its offset
-				BEQ.S	@forceBeforeSys						; branch if the beforeID not in list
-				CMP.W	D1, D0								; Is it after the system partition?
-				ble		OldInsertMenu										; No, do as caller wanted
-				MOVE.W	D0, D1								; It is after the system partition
-
-@forceBeforeSys	; the beforeID must be changed to before the 1st system menu
-				MOVE.L	MenuList, A0						; get the menulist
-				MOVE.L	(A0), A0							; deref
-				MOVE.L	menuOH(A0,D1.W), A0					; get the menuhandle to insert before
-				MOVE.L	(A0), A0							; deref
-				MOVE.W	menuID(A0), beforeID(SP)			; Make beforeID be 1st system menu
-				bra		OldInsertMenu										; Now go do it
-
-@DoSystemMenu
-; If menuID already exists in system menulist, we're done!
-				MOVE.L	MenuList, A1						; Save Menulist
-				MOVE.L	SystemMenuList, MenuList			; Store system as menulist
-				JSR		Find6BOFromID						; Is this menuID already in the list?
-				MOVE.L	A1, MenuList						; Restore Menulist
-				TST.W	D0									; Was the menuID found?
-				BNE.S	@Done								; Don't double insert it, done.
-
-; Swap the two menu lists so this menu inserts into the system menu
-				MOVE.W	beforeID(SP), D0					; Get the beforeID
-				BEQ.S	@AddAtEnd							; Yes, branch
-				MOVE.L	MenuList, A1						; Save Menulist
-				MOVE.L	SystemMenuList, MenuList			; Store system as menulist
-				JSR		Find6BOFromID						; Look up the beforeID
-				MOVE.L	A1, MenuList						; Restore Menulist
-				TST.W	D0									; Was the menuID found?
-				BNE.S	@DoTheAdd
-@AddAtEnd
-				MOVE.L	SystemMenuList, A0					; Get system menulist
-				MOVE.L	(A0), A0							; deref
-				MOVE.W	lastMenu(A0), D0					; Get last menu
-				ADDQ.W	#6, D0								; Insert "before" the end
-@DoTheAdd
-				SUBQ.L	#4, SP								; Make room for result
-				MOVE.L	SystemMenuList, -(SP)				; handle
-				MOVE.W	D0, -(SP)							; Move the offset
-				CLR.W	-(SP)								; as a long with high cleared
-				CLR.L	-(SP)								; ptr1 = 0
-				CLR.L	-(SP)								; len1 = 0
-				PEA		6+20(SP)							; ptr2 = menuhandle parameter
-				MOVEQ.L	#6, D0
-				MOVE.L	D0, -(SP)							; len2 = 6
-				_Munger										; Munge away!  Left coord will be junk.
-				ADDQ.L	#4, SP								; Dump result
-				; Remember to update the lastMenu field
-				MOVE.L	SystemMenuList, A0					; Get system menulist
-				MOVE.L	(A0), A0							; handle -> ptr
-				ADDQ.W	#6, lastMenu(A0)					; Bump the count
-@Done
-				MOVE.L	(SP)+, A0							; Get the return address
-				ADDQ.L	#ParamSize, SP						; Cut back the parameters
-				JMP		(A0)
-
-OldInsertMenu
-
 				movem.l	d3/a3-a4,-(SP)			; save working registers
 
 				cmp.w	#$FFFF, 16(SP)			; beforeID = -1 ==> H Menu		<FJL 8May87>
@@ -963,7 +803,7 @@ OldInsertMenu
 				MOVE	menuID(a0), d1			; get menuId of menu to be installed
 				IMPORT	GetIndex
 				BSR		GETINDEX				; is it already in the list?
-				BNE		@DONEINSERT				; don’t insert same one twice
+				BNE.S	@DONEINSERT				; don’t insert same one twice
 
 				move.w	16(SP),d1				; get beforeID
 				BSR		GETINDEX				; get index into menuList of beforeID menu
@@ -1062,25 +902,6 @@ DRAWMENUBAR		PROC	EXPORT
 ;	Call HiliteMenu around DrawMenuBar so that don’t have dangling bits behind all around <FJL PMAB255>
 ; 	Clear the low memory bits whenever we draw the menu bar.
 
-; <SM17> CSS
-;Roll in SynchKeyboardMenuState —	Make sure the keyboard menu state corresponds to the
-;							application’s desired setting (enable/disable) in the
-;							application-specific global flag, scriptDisableKybds
-; from MenuMgrPatch.a, this patch says that it shouldn't be rolled in because the
-; it should be in the process manager.  Well, for 7.1 it is not in the process manager,
-; so I am rolling it in anyways.
-				moveq	#smKeySynchKbdMenuState,d0	; Set up the KeyScript verb
-				move.w	d0,-(sp)					; to just synchronize the keyboard menu
-				_KeyScript							; Do it.
-;end Roll in SyncKeyboardMenuState
-
-;Roll in ValidateMenuBarWhenDrawing
-				bclr	#MenuBarInvalidBit,MenuBarInvalidByte					; clear the local invalid bit
-				bclr	#MenuBarGlobalInvalidBit,MenuBarGlobalInvalidByte		; clear the global invalid bit	<6> 
-;Roll in PatchMDDrawMenuBar from ModialDiaglogMenuPatches.a	 <PN> <SM5>			
-				import PushMenuState,PopMenuState     ;<PN> <SM5>
-				jsr		PushMenuState			; Potentially save off the menu state <PN> <SM5>
- 
 				Move.W	TheMenu, -(SP)			; save off currently hilited menu		<FJL PMAB255>
 				Clr.W	-(SP)					; call HiliteMenu(0)
 				_HiliteMenu
@@ -1093,7 +914,7 @@ DRAWMENUBAR		PROC	EXPORT
 				BSR		CallMBarProc			; execute the defproc					<DAF 20Aug86>
 
 				_HiliteMenu						; TheMenu is already on the stack.		<FJL PMAB255>
-				jsr		PopMenuState			; Restore the menu state if it was saved <PN> <SM5>
+				;jsr		PopMenuState			; Restore the menu state if it was saved <PN> <SM5>
 
 				RTS
 				ENDPROC
@@ -1174,23 +995,6 @@ HILITEMENU		PROC	EXPORT
 ; if MBarHeight <= 3 then don’t hilite.  Otherwise MBarProc will save off a VERY LARGE
 ; handle for the bits behind the menu title.
  
-; HiliteMenu draw menu bar if invalid
-; ROLL IN ValidateMenuBarWhenDrawing
-				IMPORT	ValidateMenuBar
-				jsr		ValidateMenuBar
-		
-; Roll in PatchMDHiliteMenu
-; The saves menus state, calls old HiliteMenu, then restores state
-				import PushMenuState,PopMenuState ;<SM5> <PN>
-
-				parametersStackFrame
-menuID			ds.w		1					; the menuID <SM5> <PN>
-				endStackFrame
-
-				linkSave
-				jsr		PushMenuState			; Potentially save off the menu state <SM5> <PN>
-				move.w	menuID(a6),-(sp)		; Push the parameter <SM5> <PN>
-
 				Cmpi.W	#3, MBarHeight			; is height > 3					<PMAB233 FJL>
 				Bgt.S	@HeightOK				; yes -> ok
 				Bra.S	HLNone					; no	-> nope, skip entirely
@@ -1199,7 +1003,7 @@ menuID			ds.w		1					; the menuID <SM5> <PN>
 
 @HeightOK		MOVE.W	theMenu,D1				; get the currently hilited menu
 				BEQ.S	HLOn					; if theMenu is 0, then don’t unhilite	<DAF 20Aug86>
-				CMP.W	(SP),D1					; is this the currently hilited menu	<DAF 20Aug86>
+				CMP.W	4(SP),D1				; is this the currently hilited menu	<DAF 20Aug86>
 				BEQ.S	HLDone					; already hilited, so skip				<DAF 20Aug86>
 
 				IMPORT	GetIndex
@@ -1215,7 +1019,7 @@ menuID			ds.w		1					; the menuID <SM5> <PN>
 ; now, turn on the selected menu
 
 HLOn
-				MOVE.W	(SP),D1					; get menuID of new selection			<DAF 20Aug86>
+				MOVE.W	4(SP),D1				; get menuID of new selection			<DAF 20Aug86>
 				BSR		GetIndex				; convert to menuIndex
 				BEQ.S	HLNone					; if zero, invalid menuID				<FJL C175>
 				SWAP	D0						; save menuIndex in hi half
@@ -1225,17 +1029,15 @@ HLOn
 				MOVEQ	#5,D0					; set up the hilite message				<DAF 20Aug86>
 				BSR		CallMBarProc			; execute the defproc					<DAF 20Aug86>
 HLDone				
+				MOVE.L	(SP)+,A0
 				MOVE.W	(SP)+,theMenu			; update theMenu					<FJL C175>
-				bra		Done
-; don’t store the menuID if we couldn’t find the index.  No index means the			<FJL C175>
-; menuID doesn’t exist on the menu bar, and storing a non-existent menuID			<FJL C175>
-; in theMenu global causes the next HiliteMenu(0) to flip the bar (ugh-ly).			<FJL C175>
+				JMP		(A0)
 HLNone						; get the return address			<FJL C175>
+				move.l	(sp)+,a0
 				addq.l	#2, SP					; throw away the parameter			<FJL C175>
 				clr.w	theMenu					; update theMenu					<FJL C175>
 Done
-				jsr		PopMenuState			; Restore the menu state if it was saved <SM5> <PN>
-				restoreUnlinkReturn
+				JMP		(A0)
 				ENDPROC
 
 ENABLEITEM		PROC	EXPORT
@@ -1371,7 +1173,7 @@ lastFuncResult	EQU		menuDragSave - 2		; funcResult last time thru MSLoop		<FJL C
 lastItemResult	EQU		lastFuncResult - 2		; itemResult last time thru MSLoop		<FJL C222>
 firstMenuID		EQU		lastItemResult - 2		; ID of REGULAR menu up					<FJL C222>
 NewHMenuOffset	EQU		firstMenuID - 2			; offset into MenuList of new HMenu		<FJL C222>
-SelectFrame		EQU		NewHMenuOffset			; number of bytes to save				<FJL C222>
+SelectFrame		EQU		NewHMenuOffset-8			; number of bytes to save				<FJL C222>
 
 msHMenuStorage	EQU		4						; 4 bytes per menu needed for temp storage <FJL C222>
 
@@ -1389,90 +1191,6 @@ MENUSELECT		PROC	EXPORT
 ;	is called "whichMenu" and holds the menuId of the menu that was chosen; if its
 ;	zero, no menu was chosen.  The low word is called "whichItem" and contains the item
 ;	number of the selected item.  If no choice was selected, the longWord result is zero
-
-	; MenuSelect draw menu bar if invalid
-	; ROLL IN DrawMenuBarIfInvalidOnMenuSelect
-				IMPORT	ValidateMenuBar
-				IMPORT	ptchHMUpdateHelpMenu
-				IMPORT	ptchHMShowHelpAboutDialog
-				IMPORT	ptchHMToggleWhatIs
-				
-				jsr		ValidateMenuBar
-;Roll in PatchMDMenuSelect
-;The saves menus state, calls old MenuSelect, then restores state
-				import PushMenuState,PopMenuState ;<PN> <SM5>
-
-				resultsStackFrame
-result			ds.l		1					; the MenuSelect result <PN> <SM5>
-				parametersStackFrame
-startPt			ds.l		1					; the start point <PN> <SM5>
-				endStackFrame
-
-				linkSave A2						;								<SM15> To preserve A2!
-				MOVE.L	MenuList,D0				; check if menu list is nil.	<SM12> rb, start
-				BEQ.S	@CallOldCode			; if NIL just call the old trap
-
-				JSR		ptchHMUpdateHelpMenu	; update the menu checked status
-
-				MOVE.L	ExpandMem,A2			; <33> point to the expand mem ptr
-				MOVE.L	ExpandMemRec.emHelpGlobals(A2),A2	; <33> A2 = global ptr
-				CLR.W	hmgSystemMenuID(A2)		; <33> clear the last system menu ID
-				CLR.W	hmgSystemMenuItem(A2)	; <33> clear the last system menu item
-				ST		hmgInMenuSelectFlag(A2)	; <33> say that we're in MenuSelect
-@CallOldCode									; <SM12> rb, end
-
-				jsr		PushMenuState			; Potentially save off the menu state <PN> <SM5>
-				subq	#4,sp					; Make room for result <PN> <SM5>
-				move.l	startPt(a6),-(sp)		; Push the parameter <PN> <SM5>
-
-				jsr		OrigninalMenuSelect		;<PN> <SM5>
-				move.l	(sp)+,result(a6)		; Store the result <PN> <SM5>
-				jsr		PopMenuState			; Restore the menu state if it was saved <PN> <SM5>
-				
-				MOVE.L	result(a6),D0			; get the result of the _MenuSelect call <SM12> rb, start
-				MOVE.L	ExpandMem,A2						; <33> point to the expand mem ptr
-				MOVE.L	ExpandMemRec.emHelpGlobals(A2),A2	; <33> A2 = global ptr
-
-				SWAP	D0							; put menu ID in low word for test
-				TST.W	D0							; was the menu ID non-zero?
-				BNE.S	@NormalMenuSelect			; yes, so just return result of _MenuSelect
-
-				MOVE.W	hmgSystemMenuID(A2),D1		; return the last system menu ID
-				BEQ.S	@NormalMenuSelect			; if zero then the menu wasn't the help menu
-
-				SWAP	D1							; put menu ID in hiword
-				MOVE.W	hmgSystemMenuItem(A2),D1	; return the last help menu item
-
-@HandleHelpMenu
-				CMP		#kHMAboutHelpItem,D1		; was it the about item
-				BNE.S	@TryShowBalloonsItem		; no, check for Show/Hide Balloons item
-
-				JSR		ptchHMShowHelpAboutDialog	; show the about dialog
-				BRA.S	@HelpMenuHandled			; exit w/ zeroed menu result long
-
-@TryShowBalloonsItem
-				CMP.W	#kHMShowBalloonsItem,D1		; was the selection Show/Hide Balloons??
-				BNE.S	@DoneHelpMenu				; no, it was some other item
-
-				JSR		ptchHMToggleWhatIs			; toggles state of "Show Balloons" global,
-				BRA.S	@HelpMenuHandled			; exit w/ zeroed menu result long
-
-@DoneHelpMenu
-				MOVE.L	D1,D0						; put the setup menu result in D0 for result(A6)
-				BRA.S	@CorrectedResult			; exit
-
-@HelpMenuHandled
-				MOVEQ	#0,D0						; say that hi and lo words are zero
-@NormalMenuSelect
-				SWAP	D0							; put item number back in lo word
-@CorrectedResult
-				MOVE.L	D0,result(a6)				; stuff the non-corrected result
-
-				CLR.W	hmgInMenuSelectFlag(A2)		; <33> say that we're out of MenuSelect
-
-				restoreUnlinkReturn
-				
-OrigninalMenuSelect	
 
 				LINK	A6,#SelectFrame			;set up a stack frame
 				MOVEM.L D2-D7/A2-a4,-(SP)		;save work registers
@@ -1497,7 +1215,7 @@ OrigninalMenuSelect
 				PEA		MSavePort(A6)
 				_GetPort
 
-				move.l	wMgrCPort, a2			; get color port
+				move.l	wMgrPort, a2			; get port
 
 				move.l	a2, -(SP)				; set the port
 				_SetPort
@@ -1511,6 +1229,8 @@ OrigninalMenuSelect
 				CLR		D5						; current menuIndex is empty
 				CLR		D4						; oldMenuIndex is empty
 				clr		msLastMenu(a6)			; clear msLastMenu index				<FJL C222>
+				IMPORT	SetTickCounters
+				bsr		SetTickCounters			; set DelayTicks and DragTicks
 				clr.l	lastItemResult(a6)		; clear both lastFuncResult and lastItemResult
 				clr		firstMenuID(a6)			; no menu selected at start
 
@@ -1518,10 +1238,6 @@ OrigninalMenuSelect
 				move.l	(a0), a0
 				move.b	mbMenuDelay(a0), menuDelaySave(a6)
 				move.b	mbMenuDrag(a0), menuDragSave(a6)
-
-				IMPORT	SetTickCounters			; <SM13> call SetTickCounters after
-												; menuDelaySave and menuDragSave are set up
-				bsr		SetTickCounters			; set DelayTicks and DragTicks			<FJL C222>
 
 				MOVE.L	STARTPT(A6),D3			; start off with initial mouse point
 
@@ -1781,7 +1497,7 @@ PopUpMenuSelect	PROC	EXPORT					;;<FJL C844>
 				PEA		MSavePort(A6)
 				_GetPort
 
-				move.l	wMgrCPort, a2			; get color port
+				move.l	wMgrPort, a2			; get port
 
 				move.l	a2, -(SP)				; set the port
 				_SetPort
@@ -1823,17 +1539,6 @@ PopUpMenuSelect	PROC	EXPORT					;;<FJL C844>
 				bsr		GetHIndex				; convert ID to index
 				move	d0, d4					; save index in D4						<PMAB364	23Jan88	EMT>
 				beq		@EndPopUpMS				; zero index ==> couldn’t find it (shouldn’t happen)
-
-; Alter WMgr portRect to point to the rect of the device the cursor is on
-				MOVE.L	CrsrDevice, A1			; Get the cursor GDevice				<PMAB364	23Jan88	EMT>
-				MOVE.L	(A1), A1				; Dereference							<PMAB364	23Jan88	EMT>
-				MOVE.L	gdRect+topLeft(A1), portRect+topLeft(A2)	; Copy to			<PMAB364	23Jan88	EMT>
-				MOVE.L	gdRect+botRight(A1), portRect+botRight(A2)	; WMgr portRect		<PMAB364	23Jan88	EMT>
-
-				IMPORT	DirtyHMenus
-				BSR		DirtyHMenus				; Dirty size of all hierchical menus	<PMAB364	23Jan88	EMT>
-				MOVE.L	PopUpMenuH(A6), -(SP)	; Push the menuHandle					<PMAB539	19Jul88	EMT>
-				_CalcMenuSize					; And recalculate it					<PMAB539	19Jul88	EMT>
 
 				move	d4, d5					; copy saved index to D5				<PMAB364	23Jan88	EMT>
 
@@ -1939,13 +1644,6 @@ PopUpMenuSelect	PROC	EXPORT					;;<FJL C844>
 				clr		funcResult(A6)			; no Item ==> so clear Func too
 
 @DonePopUpMS	move	(SP)+, MBarHeight		; restore previous MBarHeight saved on the stack
-; Restore WMgr portRect. WMgrCPort is in A2
-				MOVE.L	WMgrPort, A0			; Get b&w WMgrPort						<PMAB364	23Jan88	EMT>
-				MOVE.L	portRect+topLeft(A0), portRect+topLeft(A2)		; Copy to		<PMAB364	23Jan88	EMT>
-				MOVE.L	portRect+botRight(A0), portRect+botRight(A2)	; WMgr portRect	<PMAB364	23Jan88	EMT>
-
-				IMPORT	DirtyHMenus
-				BSR		DirtyHMenus				; Dirty size of all hierchical menus	<PMAB364	23Jan88	EMT>
 
 				IMPORT	DoneMS
 				bra		DoneMS					; use common code
@@ -2005,7 +1703,7 @@ CALCMENUSIZE	PROC	EXPORT
 				MOVE.L	SP, -(SP)				;										<PMAB364	23Jan88	EMT>
 				_GetPort						;										<PMAB364	23Jan88	EMT>
 
-				MOVE.L	WMgrCPort, A1			; Get color port						<PMAB364	23Jan88	EMT>
+				MOVE.L	WMgrPort, A1			; Get port								<PMAB364	23Jan88	EMT>
 
 				MOVE.L	A1, -(SP)				; Set the port							<PMAB364	23Jan88	EMT>
 				_SetPort						;										<PMAB364	23Jan88	EMT>
@@ -2760,18 +2458,6 @@ paramSize	EQU		18
 				_LoadResource					; load it
 				MOVE.L	D3, A0					; get the MDEF handle
 
-; Some programmers are pretty slimy and load a MDEF that is empty.  They then					<LW4> fau
-; stuff some code into it.  However, since HLOCK does not flush the cache anymore,				<LW4> fau
-; the code that they stuff into it might not get written back to memory.  To solve this,		<LW4> fau
-; we check here whether the MDEF resource size is less than, say, 32 bytes.  If so, we			<LW5> chp
-; assume that they have already loaded the MDEF and modified it, so we flush the cache			<LW4> fau
-; for them.
-
-				_GetHandleSize					; How big is our MDEF Handle					<LW4> fau
-				cmp.l		#32,D0				; Is it "small"									<LW5> chp
-				bhi.s		@RealMDEF			; no, don't flush the cache						<LW4> fau
-				jsr			([jCacheFlush])		; else, flush the caches.						<LW4> fau
-@RealMDEF										;												<LW4> fau
 				_HLock							; lock it the gentleman’s way		<C169>
 				MOVE.L	(A0),A0					; handle -> pointer
 
@@ -2987,15 +2673,6 @@ SetMenuBar		PROC	EXPORT
 				_HandToHand						; make a copy of the parameter list	<FJL C222>
 				move.l	a0, menuList			; store the new menuList			<FJL C222>
 
-				MOVE.L	a0,D0				; Get result
-				BEQ.S	@done				; EQ means no menulist or memfull
-
-				; Call the MBDF to put in the system menus
-				MOVEQ	#2,D0				; set up for the menu-edge-calc msg
-				CLR.L	D1					; calc entire bar
-				IMPORT	CallMBarProc
-				jsr		CallMBarProc
-@done
 				RTS
 				ENDPROC
 
@@ -3698,26 +3375,6 @@ MENUKEY
 ;
 ; Hilite the "parent" menu when a hierarchical menu is chosen.						<FJL C222>
 
-; Roll in PatchMDMenuKey  <SM5> <PN>
-				import 	PushMenuState,PopMenuState ;<SM5> <PN>
-
-				resultsStackFrame
-result			ds.l		1					; the menukey result <SM5> <PN>
-				parametersStackFrame
-ch				ds.w		1					; the char to pass thru <SM5> <PN>
-				endStackFrame
-
-				linkSave
-				jsr		PushMenuState			; Potentially save off the menu state <SM5> <PN>
-				subq	#4,sp					; Make room for MenuKey result <SM5> <PN>
-				move.w	ch(a6),-(sp)			; Push the character <SM5> <PN>
-
-				jsr		OriginalMenuKey			;<SM5> <PN>
-
-				move.l	(sp)+,result(a6)		; Save off the result <SM5> <PN>
-				jsr		PopMenuState			; Restore the menu state if it was saved <SM5> <PN>
-				restoreUnlinkReturn
-OriginalMenuKey	
 				link	a6, #KeyFrame			; set up stackframe
 				MOVEM.L D3-D6/A3,-(SP)			;save work registers
 
@@ -4399,14 +4056,6 @@ DELMENUITEM		PROC	EXPORT					;										<EHB 15-Apr-85>
 ; make stack parallel with SetItem, below.
 				MOVE.L	(SP),-(SP)				; old RTS -> phony newItem
 				MOVEM.L D3-D4/A2-A4,-(SP)		; save work registers
-
-; begin by removing item’s entry in menu color table									<FJL C408>
-
-				MOVE.L	30(SP),A3				; get menu handle						<FJL C408>
-				MOVE.L	(A3),A0					; get menu ptr							<FJL C408>
-				move	menuID(a0), -(sp)		; push menuID on stack					<FJL C408>
-				MOVE.W	30(SP),-(sp)			; push itemNum on stack					<FJL C408>
-				_DelMCEntries					; and remove item's menu color entry	<FJL C408>
 
 ; set up for rest of DelMenuItem
 

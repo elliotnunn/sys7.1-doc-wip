@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		PPCBrowser.c
 
 	Contains:	C routines for the PPC Browser
@@ -11,10 +18,7 @@
 
 	Change History (most recent first):
 
-	   <SM2>	11/18/92	GMA		Set RomMapInsert to mapTrue before caliing GetResource on 'ppcc'
-									-5856. we are trying to move these resources into ROM
-									eventually.
-		<36>	 10/2/90	JAL		Changed all occurances of GetMyZone to PPCGetMyZone because of conflict 
+SM2		<36>	 10/2/90	JAL		Changed all occurances of GetMyZone to PPCGetMyZone because of conflict 
 									with new AppleTalk Phase II.  Screwed up version <35>.
 		<34>	 9/21/90	JSM		Update to use new "real" PPCToolbox.h (I checked, it generates
 									exactly the same object code as the last revision.)
@@ -265,7 +269,6 @@ MyPPCBrowser(const Str255 prompt, const Str255 applListLabel, Boolean defaultSpe
 	globs->thePortInfo = thePortInfo;
 	
 	/* get NBP and PPC parameters from configuration resource */
-	ROMMapInsert = mapTrue;								// <SM2> <GMA>
 	h = GetResource(BrowseConfigType, BrowseConfigID);
 	if (h)
 	{

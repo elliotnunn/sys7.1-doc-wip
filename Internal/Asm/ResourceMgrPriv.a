@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ResourceMgrPriv.a
 ;
 ;	Contains:	private equates for the Resource Manager
@@ -8,8 +15,6 @@
 ;	Change History (most recent first):
 ;
 ;	   <SM9>	 5/27/93	SAM		Added definition for mapForceSysHeap.
-;	   <SM8>	 3/31/93	SAM		Changed kDeanBit from 2 (which was conflicting with
-;									systemEnabledBit) to bit 1.
 ;	   <SM7>	 12/4/92	RB		Added kFakeResourceOverrideMapRefNum
 ;	   <SM6>	 7/27/92	FM		Add elements to the ResourceMgr stack frame for use in StdEntry
 ;									and StdExit to implement resource overrides.
@@ -317,10 +322,10 @@ reSize			EQU 	rHndl+4 		; resource entry size
 ;
 ; Stack frame definition
 
-ioStkFrame		EQU		-ioHQElSize		; stack frame is ioHQElSize long
+ioStkFrame		EQU		-ioHQElSize+2	; stack frame is ioHQElSize long
 rMgrStack		EQU		ioStkFrame		; Resource mgr stack frame = IOStkFrame
 
-kDeanBit		equ		1						; <SM8><53> This bit in BrianBits will mark whether or not this call to CheckLoad allocates the master pointer
+kDeanBit		equ		2						; <53> This bit in BrianBits will mark whether or not this call to CheckLoad allocates the master pointer
 kBrianBits		equ		$B20					; <53> We never define this in an interface file
 
 kInitialEntryCount	equ	30						; Make space for 30 resources at first

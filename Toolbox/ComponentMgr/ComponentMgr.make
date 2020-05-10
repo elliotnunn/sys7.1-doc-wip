@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		ComponentMgr.make
 #
 #	Contains:	Makefile for the Component Manager.
@@ -21,6 +28,7 @@ ComponentMgrObjects 				=	"{ObjDir}ThingManagerDispatcher.a.o"										∂
 										"{ObjDir}ThingManager.c.o"						∂
 										"{ObjDir}ThingSearch.c.o"						∂
 										"{ObjDir}ThingFiles.c.o"						∂
+										"{ObjDir}ThingManagerPatch.a.o"
 
 "{LibDir}ComponentMgr.lib"			ƒ	{ComponentMgrObjects}
 	Lib {StdLibOpts} {ComponentMgrObjects} -o "{Targ}"
@@ -33,6 +41,10 @@ ComponentMgrObjects 				=	"{ObjDir}ThingManagerDispatcher.a.o"										∂
 										"{AIncludes}Components.a"						∂
 										"{IntAIncludes}LinkedPatchMacros.a"
 	Asm {StdAOpts} "{ComponentMgrDir}ThingManagerDispatcher.a" -o "{Targ}"
+
+
+"{ObjDir}ThingManagerPatch.a.o" 	ƒ	"{ComponentMgrDir}ThingManagerPatch.a"
+	Asm {StdAOpts} "{ComponentMgrDir}ThingManagerPatch.a" -o "{Targ}"
 
 
 "{ObjDir}ThingManager.c.o" 			ƒ  	"{ComponentMgrDir}ThingManager.c" 				∂

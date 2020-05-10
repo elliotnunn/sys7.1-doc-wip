@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		StartMgr.make
 #
 #	Contains:	Makefile for main code image.
@@ -48,8 +55,14 @@ Boot3Objects			=	"{ObjDir}Boot3.a.o"									∂
 "{RsrcDir}Gibbly.rsrc"		ƒƒ	"{StartDir}Gibbly.r"
 	Rez {StdROpts} -a -o "{targ}" -d ROMBuildTime="{ROMBuildTime}" "{StartDir}Gibbly.r" || Exit 1
 
-"{RsrcDir}Gibbly.rsrc"		ƒƒ	{Boot3Objects}
-	Link {StdLOpts} {StdAlign} -o "{Targ}" {Boot3Objects} -rt 'boot=3' -ra =resSysHeap,resLocked || Exit 1
+"{RsrcDir}BootBlocks.a.rsrc"	ƒ	"{ObjDir}Boot1.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}Boot1.a.o"
+
+"{RsrcDir}StartSystem.a.rsrc"	ƒ	"{ObjDir}Boot2.a.o"
+	Link {StdLOpts} {StdAlign} -o "{Targ}" -rt RSRC=0 "{ObjDir}Boot2.a.o"
+
+"{RsrcDir}BootCode.a.rsrc"	ƒ	{Boot3Objects}
+	Link {StdLOpts} {StdAlign} -o "{Targ}" {Boot3Objects} -rt 'RSRC=0' -ra =resSysHeap,resLocked || Exit 1
 
 "{LibDir}StartMgr.lib"		ƒ	{StartMgrObjs}
 	Lib {StdLibOpts}	{StartMgrObjs} -o "{Targ}"
@@ -108,9 +121,7 @@ Boot3Objects			=	"{ObjDir}Boot3.a.o"									∂
 	Asm {StdAOpts} -o "{Targ}" "{StartDir}StartTop.a"
 
 
-"{ObjDir}StartInit.a.o"		ƒ	"{MakeDir}Universal.make"						∂
-								"{MakeDir}RISC.make"							∂
-								"{ObjDir}StandardEqu.d"							∂
+"{ObjDir}StartInit.a.o"		ƒ	"{ObjDir}StandardEqu.d"							∂
 								"{IntAIncludes}HardwarePrivateEqu.a"			∂
 								"{MemoryMgrDir}MemoryMgrPriv.a"					∂
 								"{AIncludes}SCSI.a"								∂
@@ -237,6 +248,14 @@ Boot3Objects			=	"{ObjDir}Boot3.a.o"									∂
 	C {StdCOpts} -o "{Targ}" "{StartDir}UnivTestEnv:SONIC_Test.c" -i "{StartDir}UnivTestEnv:"
 
 
+"{ObjDir}Boot1.a.o"				ƒ	"{StartDir}Boot1.a"
+	Asm {StdAOpts} -o "{Targ}" "{StartDir}Boot1.a"
+
+
+"{ObjDir}Boot2.a.o"				ƒ	"{StartDir}Boot2.a"
+	Asm {StdAOpts} -o "{Targ}" "{StartDir}Boot2.a"
+
+
 "{ObjDir}Boot3.a.o"				ƒ	"{IntAIncludes}LinkedPatchMacros.a"				∂
 									"{ObjDir}StandardEqu.d"							∂
 									"{AIncludes}Folders.a"							∂
@@ -244,7 +263,7 @@ Boot3Objects			=	"{ObjDir}Boot3.a.o"									∂
 									"{IntAIncludes}BootEqu.a"						∂
 									"{IntAIncludes}ScriptPriv.a"					∂
 									"{StartDir}Boot3.a"
-	Asm {StdAOpts} -d SONYNONPORTABLE=1 -o "{Targ}" "{StartDir}Boot3.a"
+	Asm {StdAOpts} -d SONYNONPORTABLE=1 -d onMac=1 -o "{Targ}" "{StartDir}Boot3.a"
 
 
 "{ObjDir}DispatchPatch.a.o"		ƒ 	"{ObjDir}StandardEqu.d"							∂

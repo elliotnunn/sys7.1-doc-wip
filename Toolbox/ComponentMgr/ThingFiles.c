@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		ThingFiles.c
 
 	Copyright:	© 1991-1993 by Apple Computer, Inc., all rights reserved.
@@ -80,77 +87,31 @@ Boolean FSSpecEqual( register FSSpec *fileSpecA, register FSSpec *fileSpecB )
 short AddComponentFSSpec( FSSpec *fspec )
 {
 	register rtFile *rtFileList = ComponentManagerGlobals->rtFileTable;
-	register short i, empty = -1;
+	register short i, empty;
 	register short count = ComponentManagerGlobals->rtFileTotalCount;
-	HParamBlockRec pb;
-	OSErr err = -1;
-
-	// get the file's id
-	pb.fidParam.ioNamePtr = fspec->name;
-	pb.fidParam.ioVRefNum = fspec->vRefNum;
-	pb.fidParam.ioSrcDirID = fspec->parID;
-	err = PBCreateFileIDRefSync(&pb);
-	if (err == fidExists) err = noErr;
 
 	/* first check to see if it's already there */
 
 	for (i=0; i<count; i++) {
-		if (rtFileList->referenceCount)		/* is this spot in use? */
+		if (rtFileList->vRefNum)
 			{
-			if (rtFileList->vRefNum == 0)
+			// this entry contains an FSSpec handle, not a file id
+			if ( FSSpecEqual((FSSpec *)(&rtFileList->vRefNum), fspec) )
 				{
-				// this entry contains an FSSpec handle, not a file id
-				if ( FSSpecEqual(*(FSSpec **)rtFileList->fileID, fspec) )
-					{
-foundIndex:
-				rtFileList->referenceCount++;
-				return i;
-				}
+			rtFileList->referenceCount++;
+			return i;
 			}
-		else
-				{
-				// this entry contains a file id
-				if ((fspec->vRefNum == rtFileList->vRefNum) &&
-					(pb.fidParam.ioFileID == rtFileList->fileID))
-					goto foundIndex;
-				}
-			}
+		}
 		else
 			empty = i;
 	rtFileList++;
 	}
 
-	/* didn't find it so add it to an empty spot */
-
-	if (empty < 0) {
-		// need to grow the table. no empty spot was available.
-		if (GrowRTFileTable( kComponentFileAllocationSize ))
-			return empty;								/* error: could not allocate a file entry */
-
-		empty = ComponentManagerGlobals->rtFileTotalCount - 1;		// last entry should always be free
-	}
-
 	rtFileList = ComponentManagerGlobals->rtFileTable + empty;
-	if (err) {
-		// need to make a copy of the FSSpec and save it away
-		rtFileList->fileID = (Handle)NewHandleSys(0);
-		if (rtFileList->fileID) {
-			PtrAndHand((Ptr)fspec, (Handle)rtFileList->fileID, sizeof(FSSpec));
-			if (MemError() == noErr) {
-				rtFileList->vRefNum = 0;
-				goto rememberFile;
-			}
-		}
-		empty = -1;
-	}
-	else {
-		// just save away the file id
-		rtFileList->vRefNum = fspec->vRefNum;
-		rtFileList->fileID = pb.fidParam.ioFileID;
-rememberFile:
-		rtFileList->referenceCount = 1;
-		ComponentManagerGlobals->rtFileUsedCount++;
-	}
+
+	BlockMove((Ptr)fspec, (Ptr)(&rtFileList->vRefNum), sizeof(FSSpec));
+	rtFileList->referenceCount = 1;
+	ComponentManagerGlobals->rtFileUsedCount++;
 
 	return empty;
 }
@@ -186,6 +147,10 @@ rtFileNum AddComponentResFile( Handle h )
 {
 	FSSpec fspec;
 
+	if (ComponentManagerGlobals->rtFileUsedCount >= ComponentManagerGlobals->rtFileTotalCount) {
+		if(GrowRTFileTable(1)) return -1;
+	}
+
 	if (_FSSpecFromResource( h, &fspec ))
 		return -1;
 
@@ -206,11 +171,7 @@ OSErr RemoveComponentResFile( rtFileNum fn )
 	if (!--rtFileList->referenceCount)
 		{
 		// since the reference count went to zero, this spot is free
-		if (rtFileList->vRefNum == 0)
-			{
-			// the file id was really a handle to an FSSpec, so toss it
-			DisposHandle((Handle)rtFileList->fileID);
-			}
+		rtFileList->vRefNum = 0;
 		ComponentManagerGlobals->rtFileUsedCount--;
 		}
 

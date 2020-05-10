@@ -1,0 +1,661 @@
+    MakePatch 000 PROTECTGETTRAP, _A046, (Plus,SE,II,Portable,IIci,noPatchProtector)
+    MakePatch 002 PROTECTSETTRAP, _SetTrapAddress, (Plus,SE,II,Portable,IIci,noPatchProtector)
+    MakeInstall 004 LOADPROCESSMANAGERSEGMENTSLOWERI
+    MakeInstall 005 RemoveFromROM, (Plus,SE,II)
+    MakeInstall 006 NEWBUGZ
+    MakeInstall 007 NEWMICN
+    MakeInstall 008 NEWOSTT
+    MakeInstall 009 NEWTBTT
+    MakeInstall 00A NEWXTTT
+    MakeInstall 00B NEWRSRC
+    MakeInstall 00C NEWQDRW
+    MakeInstall 00D REPLACEFS
+    MakeInstall 00E REPLACEHDWR
+    MakeInstall 00F QDRWBITSSET1, (Plus,SE,Portable)
+    MakeInstall 010 QDRWBITSSET2, (II,IIci)
+    MakePatch 021 SHUTDOWNPATCH, _ShutDown
+    MakeInstall 027 SHUTINIT
+    MakeInstall 028 ENABLEPDMSGS, (IIci,hasTERROR)
+    MakePatch 02C RAMDISKALERTPATCH, _ShutDown, (IIci)
+    MakeInstall 02F PATCHHWPRIV68000, (Plus,SE,Portable)
+    MakeInstall 030 PATCHHWPRIVII, (II,IIci,notTERROR)
+    MakeInstall 031 PATCHHWPRIVTERROR, (IIci,hasTERROR)
+    MakePatch 033 HWPRIVTRAP, _HWPriv
+    MakePatch 03E DONTDOMUCHSWAPPINGOFTHEMMUMODE, _SwapMMUMode, (Plus,SE,Portable)
+    MakePatch 03F SWAPHMMU, _0DBC, (II,notAUX,hasHMMU)
+    MakePatch 03F SWAPHMMU, _SwapMMUMode, (II,notAUX,hasHMMU)
+    MakeInstall 040 INSTALLSWAPPMMU, (II,notVM,notAUX,hasPMMU,using24BitHeaps)
+    MakePatch 041 SWAPPMMU, _SwapMMUMode, (II,notVM,notAUX,hasPMMU,using24BitHeaps)
+    MakePatch 041 SWAPPMMU, _0DBC, (II,notVM,notAUX,hasPMMU,using24BitHeaps)
+    MakePatch 043 DISPATCHHELPER, _DispatchHelperTrap
+    MakePatch 045 PROCHELPER, _ProcHelperTrap
+    MakePatch 046 NONVMDEFERUSERFN, _DeferUserFn, (Plus,SE,II,Portable,IIci,notVM)
+    MakeInstall 047 GETRIDOFPOWERMGRINFREEZETIME, (Plus,SE,II,IIci,notAUX)
+    MakeInstall 048 INSTALLTIMEMGRPLUSSEII, (Plus,SE,II,notAUX)
+    MakeInstall 049 INSTALLTIMEMGRPORTABLEIICI, (Portable,IIci,notAUX)
+    MakeInstall 056 ALIASMGRINSTALL
+    MakePatch 058, _AliasDispatch
+    MakeInstall 107 SCSIC96INSTALL, (IIci,hasC96)
+    MakeInstall 108 SCSIBUSYPLUSINSTALL, (Plus)
+    MakeInstall 109 SCSIBUSYOTHERINSTALL, (SE,II,Portable,IIci,notAUX)
+    MakePatch 10A SCSIDISPATCHCOMMON, _SCSIDispatch, (Plus,SE,II,Portable,IIci,notAUX)
+    MakeInstall 10E PATCHSCSIDRIVERS
+
+HFS.lib: FileMgrPatches.a
+    MakePatch 17A HFSDISPHOOK, _HFSDispatch
+    MakePatch 182 SETFILLOCK, _SetFilLock
+    MakePatch 183, _RstFilLock
+    MakePatch 187 CLOSEPATCH, _Close
+    MakePatch 188 FIXDISKSWITCH, _C031, (Plus,SE,II)
+    MakePatch 189 FORCESETPORTINDISKSWAP, _C9C9
+    MakePatch 18A ACCUMULATEDISKSWITCHRECTINTOUPDA, _C873
+    MakePatch 18B FIXVOLUMERENAMES, _Rename
+    MakePatch 18D MYCMSETUP, _0770
+    MakePatch 191 PREFLIGHTOPENRF, _OpenRF
+    MakePatch 195 FIXDTRMV3, _07BC, (II,Portable,IIci)
+    MakePatch 196 MOUNTVOLFOR1991, _MountVol
+    MakePatch 197 NOCLOSEONOFFLINE, _OffLine
+    MakePatch 198 NOCLOSEONEJECT, _Eject
+    MakePatch 19B UNMOUNTFORTHENINETIES, _UnmountVol
+    MakePatch 19C FIXBTFLUSH, _0738
+    MakePatch 19D DSHOOKFIXITPATCH, _03EA
+    MakePatch 1B1 PATCHBASICIO, _0720
+    MakePatch 1B2 DONTTRUNCATEMULTIFORKS, _C0DB
+    MakeInstall 1BE HFS70INIT
+    MakePatch 1BF SAVED1ACROSSBTDELETE, _0734, (Plus)
+    MakePatch 1C0 SAVED3ACROSSBTSEARCH, _0748, (Plus)
+    MakePatch 1C1 SAVED1ACROSSBTINSERT, _0740, (Plus)
+    MakePatch 1C2 SAVED3ACROSSBTGETRECORD, _073C, (Plus)
+    MakeInstall 1C3 KILLCHECKREMOUNTNICEWAY, (II,Portable,IIci)
+    MakePatch 1C4 KILLCHECKREMOUNTSICKWAY, _0744, (Plus,SE)
+    MakePatch 1C5 KILLCHECKREMOUNTSICKERWAY, _07D8, (SE)
+    MakePatch 1C6 KILLCHECKREMOUNTSICKESTWAY, _0704, (Plus)
+
+HFS.lib: LaterFileMgrPatches.a
+    MakePatch 1C7 MOUNTVOLPATCH, _03E6, (Plus)
+    MakePatch 1C8 MFSRENAMEPATCH, _03E6, (Plus)
+
+    MakePatch 1D2 HIGHLEVELFSDISPATCH, _HighLevelFSDispatch
+
+
+    MakePatch 1F3 BWStdText, _StdText, (Plus,SE,Portable)
+    MakePatch 1F4 BWStdTxMeas, _StdTxMeas, (Plus,SE,Portable)
+    MakePatch 1F5 #0002, _MeasureText, (Plus,SE,Portable)
+    MakePatch 1F6 BWFontManager, _InitFonts, (Plus,SE,Portable)
+    MakePatch 1F7, _FMSwapFont, (Plus,SE,Portable)
+    MakePatch 1F8, _GetFName, (Plus,SE,Portable)
+    MakePatch 1F9, _RealFont, (Plus,SE,Portable)
+    MakePatch 1FA, _GetFNum, (Plus,SE,Portable)
+    MakePatch 1FB, _SetFontLock, (Plus,SE,Portable)
+    MakePatch 1FC, _SetFScaleDisable, (Plus,SE,Portable)
+    MakePatch 1FD, _SetFractEnable, (Plus,SE,Portable)
+    MakePatch 1FE, _FontMetrics, (Plus,SE,Portable)
+
+    MakePatch 2BA SetAppBaseCacheCleaner, _SetApplBase
+    MakePatch 2BB InitApplZoneCacheCleaner, _InitApplZone
+
+    MakePatch 2C1 ATMPatch, _SetTrapAddress
+    MakePatch 2C3 ATMPatchDisable, _Launch
+
+    MakePatch 2C4 SplineCall, _FontDispatch
+    MakeInstall 2C8 InstallBassCommon
+    MakeInstall 2C9 ForceInitFontsCall, (SE,II,Portable,IIci)
+    MakeInstall 2CA PlusCorrectTxMeasVector, (Plus)
+    MakeInstall 2CB InitPartialFonts
+    MakeInstall 2CC InstallFontGestalt
+    MakePatch 39E DISKCACHEINITZONEPATCH, _InitZone
+    MakePatch 39F DISKCACHESETRESPURGEPATCH, _SetResPurge
+    MakePatch 3A2 StdText, _StdText, (II,IIci)
+    MakePatch 3A4 StdTxMeas, _StdTxMeas, (II,IIci)
+    MakePatch 3A5 #0014, _MeasureText, (II,IIci)
+    MakePatch 3A6 FontManager, _InitFonts, (II,IIci)
+    MakePatch 3A7, _FMSwapFont, (II,IIci)
+    MakePatch 3A8, _GetFName, (II,IIci)
+    MakePatch 3A9, _RealFont, (II,IIci)
+    MakePatch 3AA, _GetFNum, (II,IIci)
+    MakePatch 3AB, _SetFontLock, (II,IIci)
+    MakePatch 3AC, _FontMetrics, (II,IIci)
+    MakeInstall 3AD EXTBTREEINSTALL
+    MakePatch 3AE BTFUNCS, _BTreeDispatch
+    MakeInstall 3DD PPCINSTALL
+    MakePatch 3EB ppcDispatcher, _PPC
+    MakeInstall 49A KILLOLDNMGLOBAL, (Portable,IIci)
+    MakeInstall 49B SETUPNOTIFICATIONMGR
+    MakePatch 49C InstallNMInitApplZone, _InitApplZone, (Plus,SE,II)
+    MakePatch 49D InstallNMGNEFilter, _029A, (Plus,SE,II)
+    MakePatch 49E InstallNMSystemTask, _SystemTask, (Plus,SE,II)
+    MakePatch 49F USENEWNMTASK, _SystemTask, (Portable,IIci)
+    MakePatch 4A0 GLUNMINST, _NMInstall
+    MakePatch 4A1 GLUNMRMV, _NMRemove
+    MakePatch 4C7 INSRTRESMENU, _InsertResMenu
+    MakePatch 4C9 INITPROCMENU, _InitProcMenu, (Plus,SE)
+    MakePatch 4CA INITMENUS, _InitMenus, (Plus,SE)
+    MakePatch 4CD CLEARMENUBAR, _ClearMenuBar, (Plus,SE)
+    MakePatch 4D0 DELETEMENU, _DeleteMenu, (Plus,SE)
+    MakePatch 4D4 INSERTMENU, _InsertMenu, (Plus,SE)
+    MakePatch 4D6 DRAWMENUBAR, _DrawMenuBar, (Plus,SE)
+    MakePatch 4D7 FLASHMENUBAR, _FlashMenuBar, (Plus,SE)
+    MakePatch 4DA HILITEMENU, _HiliteMenu, (Plus,SE)
+    MakePatch 4DB ENABLEITEM, _EnableItem, (Plus,SE)
+    MakePatch 4DF DISABLEITEM, _DisableItem, (Plus,SE)
+    MakePatch 4E5 MENUSELECT, _MenuSelect, (Plus,SE)
+    MakePatch 4E8 POPUPMENUSELECT, _PopUpMenuSelect, (Plus,SE)
+    MakePatch 4EB CALCMENUSIZE, _CalcMenuSize, (Plus,SE)
+    MakePatch 4FC MENUCHOICE, _MenuChoice, (Plus,SE,Portable)
+    MakePatch 4FD GETMENUBAR, _GetMenuBar, (Plus,SE,II)
+    MakePatch 4FE SETMENUBAR, _SetMenuBar, (Plus,SE)
+    MakePatch 4FF DISPOSEMENU, _DisposMenu
+    MakePatch 500 GETITEMCMD, _GetItemCmd, (Plus,SE)
+    MakePatch 501 SETITEMCMD, _SetItemCmd, (Plus,SE)
+    MakePatch 507, _MenuKey, (Plus,SE)
+    MakePatch 508 APPENDMENU, _AppendMenu, (Plus,SE)
+    MakePatch 509, _InsMenuItem, (Plus,SE)
+    MakePatch 512 GETMHANDLE, _GetMHandle, (Plus,SE)
+    MakePatch 513 DELMENUITEM, _DelMenuItem, (Plus,SE)
+    MakePatch 517 ADDRESMENU, _AddResMenu
+    MakePatch 518 SETCLIPFORCALLDRAWMDEF, _C8AA, (II)
+    MakePatch 519 PATCHINSMENUITEM, _InsMenuItem, (Portable,IIci)
+    MakePatch 51A SAVEMDEFHANDLESTATEAROUNDCALCMEN, _CalcMenuSize
+    MakePatch 51B SAVEA5AROUNDCALLMDEFPROC, _C9A2, (Portable,IIci)
+    MakePatch 51C FIXBTSTBUGINMENUKEY, _MenuKey, (II,Portable,IIci)
+    MakePatch 51D USEUPPERTEXTINMENUKEY, _C054, (II,Portable,IIci)
+    MakePatch 51E SYNCHKEYBOARDMENUSTATE, _DrawMenuBar
+    MakePatch 51F IIDELETEMENU, _DeleteMenu, (II)
+    MakePatch 520 IIGETMHANDLE, _GetMHandle, (II)
+    MakePatch 521 IIBOTHMENUSELECTS, _PopUpMenuSelect, (II)
+    MakePatch 522, _MenuSelect, (II)
+    MakePatch 523 IIHILITEMENUFIX, _HiliteMenu, (II)
+    MakePatch 524 IIMENUSELECTFIX, _C938, (II)
+    MakePatch 525 IIMENUMGRSYSERRORS, _C9C9, (II)
+    MakePatch 526 IIGETITEMCMD, _GetItemCmd, (II)
+    MakePatch 527 IISETITEMCMD, _SetItemCmd, (II)
+    MakePatch 528 IIINSERTMENU, _InsertMenu, (II)
+    MakePatch 529 IICOUNTMITEMS, _C950, (II)
+    MakePatch 52A IIDRAWMENUBAR, _DrawMenuBar, (II)
+    MakePatch 52B IIDELMENUITEM, _DelMenuItem, (II)
+    MakePatch 52C IICALCMENUSIZE, _CalcMenuSize, (II)
+    MakePatch 52D IISETMENUBAR, _SetMenuBar, (II)
+    MakePatch 52E IIAPPENDORINSERTITEM, _AppendMenu, (II)
+    MakePatch 52F, _InsMenuItem, (II)
+    MakePatch 530 IIDELMCENTRIES, _DelMCEntries, (II)
+    MakePatch 531 IISAVEA5AROUNDCALLMDEFPROC, _C9A2, (II)
+    MakePatch 532 MENUMGRDISPATCH, _MenuDispatch
+    MakePatch 53C INVALMENUBAR, _InvalMenuBar
+    MakePatch 53D VALIDATEMENUBARWHENDRAWING, _DrawMenuBar
+    MakePatch 53E DRAWMENUBARIFINVALIDONMENUSELECT, _MenuSelect
+    MakePatch 53F DRAWMENUBARIFINVALIDONHILITEMENU, _HiliteMenu
+    MakeInstall 540 INITVALIDATEMENUBARSEMAPHORE
+    MakeInstall 542 INITSYSTEMMENULIST
+    MakePatch 543 GETMENUBARDOESNOTRETURNSYSTEMMEN, _GetMenuBar
+    MakePatch 544 SETMENUBARADDSSYSTEMMENUS, _SetMenuBar
+    MakePatch 545 PATCHINSERTMENU, _InsertMenu
+    MakePatch 547 FIXTYPOINFIXATAN2, _FixATan2
+    MakeInstall 548 INSTALLSLOT, (II,notAUX)
+    MakeInstall 54D PATCHGETCSTRING, (IIci,notAUX)
+    MakePatch 58B, _TEInit, (Plus,SE,II,Portable)
+    MakePatch 58C, _TEGetText, (Plus,SE,II,Portable)
+    MakePatch 58D, _TEDispose, (Plus,SE,II,Portable)
+    MakePatch 58E, _TextBox, (Plus,SE,II,Portable)
+    MakePatch 58F, _TESetText, (Plus,SE,II,Portable)
+    MakePatch 590, _TECalText, (Plus,SE,II,Portable)
+    MakePatch 591, _TESetSelect, (Plus,SE,II,Portable)
+    MakePatch 592, _TENew, (Plus,SE,II,Portable)
+    MakePatch 593, _TEStyleNew, (Plus,SE,II,Portable)
+    MakePatch 594, _TEUpdate, (Plus,SE,II,Portable)
+    MakePatch 595, _TEClick, (Plus,SE,II,Portable)
+    MakePatch 596, _0798, (Plus,SE,II,Portable)
+    MakePatch 597, _4090, (Plus,SE,II,Portable)
+    MakePatch 598, _4094, (Plus,SE,II,Portable)
+    MakePatch 599, _4098, (Plus,SE,II,Portable)
+    MakePatch 59A, _409C, (Plus,SE,II,Portable)
+    MakePatch 59B, _40A0, (Plus,SE,II,Portable)
+    MakePatch 59C, _40A4, (Plus,SE,II,Portable)
+    MakePatch 59D, _40A8, (Plus,SE,II,Portable)
+    MakePatch 59E, _40AC, (Plus,SE,II,Portable)
+    MakePatch 59F, _40B0, (Plus,SE,II,Portable)
+    MakePatch 5A0, _40B4, (Plus,SE,II,Portable)
+    MakePatch 5A1, _40C0, (Plus,SE,II,Portable)
+    MakePatch 5A2, _40C4, (Plus,SE,II,Portable)
+    MakePatch 5A3, _40C8, (Plus,SE,II,Portable)
+    MakePatch 5A4, _40CC, (Plus,SE,II,Portable)
+    MakePatch 5A5, _40D0, (Plus,SE,II,Portable)
+    MakePatch 5A6, _40D4, (Plus,SE,II,Portable)
+    MakePatch 5A7, _07F4, (Plus,SE,II,Portable)
+    MakePatch 5A8, _40B8, (Plus,SE,II,Portable)
+    MakePatch 5A9, _079C, (Plus,SE,II,Portable)
+    MakePatch 5AA, _TEDispatch, (Plus,SE,II,Portable)
+    MakePatch 5AB, _TECopy, (Plus,SE,II,Portable)
+    MakePatch 5AC, _TECut, (Plus,SE,II,Portable)
+    MakePatch 5AD, _TEDelete, (Plus,SE,II,Portable)
+    MakePatch 5AE, _40BC, (Plus,SE,II,Portable)
+    MakePatch 5AF, _07F8, (Plus,SE,II,Portable)
+    MakePatch 5B0, _07FC, (Plus,SE,II,Portable)
+    MakePatch 5B1, _TEActivate, (Plus,SE,II,Portable)
+    MakePatch 5B2, _TEDeactivate, (Plus,SE,II,Portable)
+    MakePatch 5B3, _TEIdle, (Plus,SE,II,Portable)
+    MakePatch 5B4, _TEPaste, (Plus,SE,II,Portable)
+    MakePatch 5B5, _TEInsert, (Plus,SE,II,Portable)
+    MakePatch 5B6, _TEKey, (Plus,SE,II,Portable)
+    MakePatch 5B7, _40D8, (Plus,SE,II,Portable)
+    MakePatch 5B8, _40DC, (Plus,SE,II,Portable)
+    MakePatch 5B9, _40E0, (Plus,SE,II,Portable)
+    MakePatch 5BA, _40E4, (Plus,SE,II,Portable)
+    MakePatch 5BB, _40E8, (Plus,SE,II,Portable)
+    MakePatch 5BC, _40EC, (Plus,SE,II,Portable)
+    MakePatch 5BD, _40F0, (Plus,SE,II,Portable)
+    MakePatch 5BE, _TESetJust, (Plus,SE,II,Portable)
+    MakePatch 5BF, _TEScroll, (Plus,SE,II,Portable)
+    MakePatch 5C0, _TEPinScroll, (Plus,SE,II,Portable)
+    MakePatch 5C1, _TESelView, (Plus,SE,II,Portable)
+    MakePatch 5C2, _TEAutoView, (Plus,SE,II,Portable)
+    MakePatch 5C3, _40F4, (Plus,SE,II,Portable)
+    MakePatch 5C4, _40F8, (Plus,SE,II,Portable)
+    MakePatch 5C5, _TEGetOffset, (Plus,SE,II,Portable)
+    MakeInstall 5C7 INSTALLTEXTEDITPATCHES, (Plus,SE,II,Portable)
+    MakePatch 5C8 PTCHTEFINDWORD, _07F8, (IIci)
+    MakePatch 5CA PTCHTEFINDLINE, _07FC, (IIci)
+    MakePatch 5CB PTCHSETFONT2KEYBOARD, _40EC, (IIci)
+    MakePatch 5CC PTCHSETKEYBOARD2FONT, _40F0, (IIci)
+    MakePatch 5CE PTCHTECHAR2PIXEL, _079C, (IIci)
+    MakePatch 5CF PTCHPIXEL2CHAR, _0798, (IIci)
+    MakePatch 5D2, _TEInit, (IIci)
+    MakePatch 5D3, _0A70, (IIci)
+    MakePatch 5D4, _40E0, (IIci)
+    MakePatch 5D5, _40B4, (IIci)
+    MakePatch 5D6, _4094, (IIci)
+    MakePatch 5D7, _40B0, (IIci)
+    MakePatch 5D8, _40C0, (IIci)
+    MakePatch 5D9, _40E4, (IIci)
+    MakePatch 5DA, _TEKey, (IIci)
+    MakePatch 5DB, _TEDelete, (IIci)
+    MakePatch 5DC, _TEActivate, (IIci)
+    MakePatch 5DD, _TEDeactivate, (IIci)
+    MakePatch 5DE, _TEDispatch, (IIci)
+    MakePatch 5DF, _TEGetText, (IIci)
+    MakePatch 5E0, _TESetText, (IIci)
+    MakePatch 5E1, _TECalText, (IIci)
+    MakePatch 5E2, _TECopy, (IIci)
+    MakePatch 5E3, _TECut, (IIci)
+    MakePatch 5E4, _TEIdle, (IIci)
+    MakePatch 5E5, _TEPaste, (IIci)
+    MakePatch 5E6, _TEInsert, (IIci)
+    MakePatch 5E7, _TESetJust, (IIci)
+    MakePatch 5E8, _TEScroll, (IIci)
+    MakePatch 5E9, _TEPinScroll, (IIci)
+    MakePatch 5EA, _TESelView, (IIci)
+    MakePatch 5EB, _TEAutoView, (IIci)
+    MakePatch 5EC, _TEGetOffset, (IIci)
+    MakePatch 5ED, _TEUpdate, (IIci)
+    MakePatch 5EE, _TESetSelect, (IIci)
+    MakePatch 5EF, _TEClick, (IIci)
+    MakePatch 5F0, _40DC, (IIci)
+    MakePatch 5F1, _40E8, (IIci)
+    MakePatch 5F2, _40D8, (IIci)
+    MakePatch 5F3, _40B8, (IIci)
+    MakePatch 5F4, _409C, (IIci)
+    MakePatch 5F5, _4098, (IIci)
+    MakePatch 5F6, _40A0, (IIci)
+    MakePatch 5F7, _40A4, (IIci)
+    MakePatch 5F8, _07F4, (IIci)
+    MakePatch 5F9, _4090, (IIci)
+    MakePatch 5FA PTCHMEASUREWIDTH, _40C4, (IIci)
+    MakePatch 5FB PTCHINVRTRECTANGLE, _40D0, (IIci)
+    MakePatch 5FE, _TENew, (IIci)
+    MakePatch 5FF, _TEStyleNew, (IIci)
+    MakePatch 604 PTCHPIXELWIDTHS, _40D4, (IIci)
+    MakePatch 605 #0217, _40C8, (IIci)
+    MakePatch 606 #0218, _0A74, (IIci)
+    MakePatch 60B #0219, _TextBox, (IIci)
+    MakePatch 60C PTCHTEXTBOXAFTERGETFONTINFO, _C88B, (IIci)
+    MakePatch 60D PTCHTEXTBOXPRESERVEGLYPH, _C893, (IIci)
+    MakePatch 60E PTCHGETSIZEAFTERGETFONTINFO, _C88B, (IIci)
+    MakePatch 60F PTCHTEDISPOSE, _TEDispose, (IIci)
+    MakePatch 610 PTCHHILITETEXTPRESERVEA4, _C8B5, (IIci)
+    MakeInstall 611 GESTALTTEINSTALL, (IIci)
+    MakeInstall 612 SetSosumi, (IIci)
+    MakeInstall 613 InitSoundMgrA, (Plus,SE)
+    MakeInstall 614 InitSoundMgrB, (II,Portable,IIci,notAUX,notEricksonSoundMgr)
+    MakeInstall 615 InitSoundMgrC, (IIci,notAUX,hasEricksonSoundMgr)
+    MakeInstall 618 _R2490, (IIci,notAUX)
+    MakePatch 64C __SNDAPPDEAD, _SndAppDead, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 64D __SNDDOCOMMAND, _SndDoCommand, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 64E __SNDDOIMMEDIATE, _SndDoImmediate, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 64F __SNDNEWCHANNEL, _SndNewChannel, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 650 __SNDDISPOSECHANNEL, _SndDisposeChannel, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 651 __SNDPLAY, _SndPlay, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 652 __SNDCONTROL, _SndControl, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 653 __SNDADDMODIFIER, _SndAddModifier, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 660 #0001, _SysBeep, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 666 ICONDISPATCH, _IconDispatch
+    MakePatch 6BB ADBREINIT, _ADBReInit, (SE,II,notAUX)
+    MakePatch 6BC PATCHADBOP, _ADBOp, (SE,II,notAUX)
+    MakeInstall 6BD INITADB, (SE,II,notAUX)
+    MakeInstall 6C6 PUTTERFIX, (SE,II,IIci,notAUX)
+    MakePatch 6C8 GETPMDATA, _ABC4, (Plus,SE,Portable)
+    MakePatch 6CC QDEXTDISPATCHER, _QDExtensions, (Plus,SE,Portable)
+    MakePatch 6E4 NEWFIXRATIO, _C869, (Plus,SE,Portable)
+    MakePatch 6E8 PATCHSTDPOLY, _StdPoly, (Plus,SE)
+    MakePatch 6E9 VISRGNCHANGED, _A0A5
+    MakePatch 6EA STRETCHBITS, _AB27, (Plus,SE,Portable)
+    MakePatch 6EB NEWSTDGETPIC, _StdGetPic, (Plus,SE,Portable)
+    MakePatch 6EC RGBFORECOLOR, _RGBForeColor, (Plus,SE,Portable)
+    MakePatch 6ED, _RGBBackColor, (Plus,SE,Portable)
+    MakePatch 6EE GETFORECOLOR, _GetForeColor, (Plus,SE,Portable)
+    MakePatch 6EF, _GetBackColor, (Plus,SE,Portable)
+    MakePatch 6F0 QDERROR, _QDError, (Plus,SE,Portable)
+    MakePatch 6F1 OPENCPICTURE, _OpenCPicture, (Plus,SE,Portable)
+    MakePatch 6FC PATCHSTDBITS, _StdBits, (Plus,SE,Portable)
+    MakePatch 6FD PORTABLEPATCHSTDPOLY, _StdPoly, (Portable)
+    MakePatch 6FE PATCHSTDRECT, _StdRect, (Plus,SE,Portable)
+    MakePatch 6FF PATCHSTDLINE, _StdLine, (Plus,SE,Portable)
+    MakePatch 700 PATCHSTDRRECT, _StdRRect, (Plus,SE,Portable)
+    MakePatch 701 PATCHSTDOVAL, _StdOval, (Plus,SE,Portable)
+    MakePatch 702 PATCHSTDARC, _StdArc, (Plus,SE,Portable)
+    MakePatch 703 PATCHSTDRGNSEPORTABLE, _StdRgn, (SE,Portable)
+    MakePatch 704 PATCHSTDRGNPLUS, _StdRgn, (Plus)
+    MakePatch 706 PATCHSTDCOMMENT, _StdComment, (Plus,SE,Portable)
+    MakePatch 709 PATCHOPENPICTURE, _OpenPicture, (Plus,SE,Portable)
+    MakePatch 70A PATCHCLOSEPICTURE, _ClosePicture, (Plus,SE,Portable)
+    MakePatch 70B PATCHOPENPORT, _OpenPort
+    MakePatch 70C PATCHINITPORT, _InitPort
+    MakePatch 70D PATCHSETPORT, _SetPort
+    MakePatch 70E PATCHLINETO, _LineTo
+    MakePatch 70F PATCHLINE, _Line
+    MakePatch 710 PATCHMOVETO, _MoveTo
+    MakePatch 711 PATCHMOVE, _Move
+    MakePatch 712 PATCHSHOWCURSOR, _0804, (Plus,SE,Portable)
+    MakePatch 713 SEEDFILL, _SeedFill, (Plus,SE,Portable)
+    MakePatch 714, _CalcMask, (Plus,SE,Portable)
+    MakePatch 716 PLUSSEDRAWPICTURE, _DrawPicture, (Plus,SE)
+    MakePatch 717 PICITEMPLUSSE, _AB9A, (Plus,SE)
+    MakeInstall 719 FIXPSTDBITS, (Plus)
+    MakePatch 71A PORTABLEDRAWPICTURE, _DrawPicture, (Portable)
+    MakePatch 71B PICITEMPORTABLE, _AB9A, (Portable)
+    MakeInstall 723 FIXSTDGETPICINGETPICDATA, (Plus)
+    MakePatch 72B BITMAPRGNPTCH, _BitMapRgn, (Plus,SE)
+    MakePatch 72D COMMTOOLBOXDISPATCHER, _CommToolboxDispatch
+    MakeInstall 72E SETUPGLOBALS
+    MakeInstall 72F SETUPGESTALT
+    MakeInstall 73E REGISTERBUILTINPORTS
+    MakePatch 73F FIXNEWCONTROL32BIT, _CA43, (II,IIci)
+    MakePatch 740 PATCHDISPOSECONTROLFORINVISIBLEC, _DisposControl, (Plus,SE,II,Portable)
+    MakePatch 741 PATCHDISPOSECONTROLFORINVISIBLEC, _DisposControl, (IIci)
+    MakePatch 742 PATCHDISPOSECONTROLFORCORRECTLAY, _DisposControl
+    MakePatch 743 CHECKMEMERRINSETCTITLE, _C024
+    MakePatch 744 SYSERRORIFNOCDEF, _C9A2, (Plus,SE,II)
+    MakePatch 745 DONTCHECKCONTROLRECTS, _C8AA, (Plus)
+    MakePatch 746 DRAWTHUMBOUTLINE, _C8A1, (II,IIci)
+    MakePatch 747 THROTTLESCROLLINGSPEED, _TrackControl
+    MakePatch 748 __USERDELAY, _UserDelay
+    MakePatch 74A SYSEVTIGNORENILFRONTWINDOW, _C924
+    MakePatch 74B FIXSYSTEMCLICK, _SystemClick, (IIci)
+    MakePatch 74C REMEMBERDCEHANDLEINSTEADOFPOINTE, _C9A2, (Plus,SE,II,Portable)
+    MakePatch 74D GETDCTLREFNUMFROMHANDLEFORSENDDR, _C924
+    MakePatch 74E GETDCTLREFNUMFROMHANDLEFORCLOSIN, _C91E
+    MakePatch 74F DEVICELOOP, _DeviceLoop
+    MakePatch 750 DIALOGMGRDISPATCH, _DialogDispatch
+    MakePatch 75F FIXSOUNDINDIALOG, _InitDialogs
+    MakePatch 760 ISDIALOGEVENTFIXES, _IsDialogEvent
+    MakePatch 761 DIALOGSELECTFIXES, _DialogSelect
+    MakePatch 762 DSEDITPATCH, _C9DC
+    MakePatch 763 CLOSEDIALOGTEXTEDITPATCH, _C023, (Plus,SE,II)
+    MakePatch 764 SETNEWEDITTEAUTOVIEW, _C813, (Plus,SE,Portable)
+    MakePatch 765 FIXDOALERTTODISPOSECICONHANDLES, _CA1F, (II,IIci)
+    MakePatch 766 SETITEXTVALIDRECT, _C92A, (Plus,SE,II)
+    MakePatch 767 DRAWITEMSETPORT, _C873, (II)
+    MakePatch 768 DISPOSDIALOGFIX, _DisposDialog, (II)
+    MakePatch 769 NOICTBDISPOSEINCLOSEDIALOG, _CA42, (II)
+    MakePatch 76A NODETACHRESOURCEINDOCOLOR, _C992, (II)
+    MakePatch 76B DUPLICATECOLORTABLEINNEWDIALOG, _CA41, (II)
+    MakePatch 76C CLEANUPTWOBYTES, _CouldAlert
+    MakePatch 76C CLEANUPTWOBYTES, _FreeAlert
+    MakePatch 76C CLEANUPTWOBYTES, _FreeDialog
+    MakePatch 76C CLEANUPTWOBYTES, _CouldDialog
+    MakePatch 76D FIXTEPASTE, _TEPaste, (II,IIci)
+    MakePatch 76E FIXTEDELETE, _TEDelete, (II,IIci)
+    MakePatch 773 FIXDOSTATICSUB, _C9E1
+    MakePatch 774 DONTPURGEDIALOGCOLORTABLES, _C9A0, (II,IIci)
+    MakePatch 77E DONTRELEASEWINDORCNTLRESOURCE, _C9A3, (Plus,SE)
+    MakePatch 7A5 __CHECKUPDATE, _CheckUpDate
+    MakePatch 7B2 __CALCVIS, _CalcVis
+    MakePatch 7B3 __CALCVISBEHIND, _CalcVBehind
+    MakePatch 7B6 __FRONTWINDOW, _FrontWindow
+    MakePatch 7BE MMHPROLOGUEFIX, _1EEC, (IIci,using32BitHeaps)
+    MakePatch 7BF MOREINITAPPLZONE, _InitApplZone, (Plus,SE)
+    MakePatch 7C0 BRACKETSETAPPBASEWITHINITAPPLZON, _SetApplBase
+    MakePatch 7C1 ALLOWNILDISPOSEPTR, _DisposePtr
+    MakePatch 7C2 RESRVMEMGROWSYSTEMHEAP, _ResrvMem
+    MakePatch 7C3 NEWPTRGROWSYSTEMHEAPCLEANLY, _NewPtr
+    MakePatch 7C4 SETROVINGPOINTERBEFORENEWHANDLE, _NewHandle
+    MakePatch 7C5 SETROVINGPOINTERBEFOREREALLOCHAN, _ReallocHandle
+    MakePatch 7C6 MOVEHHIPATCH, _MoveHHi
+    MakePatch 7C7 MOVEHLOW, _MoveHLow
+    MakeInstall 7C8 SPEEDYCIMEMORY, (IIci)
+    MakePatch 7CF BLOCKMOVEFIXMPS, _C02E, (Plus)
+    MakeInstall 7D1 INSTALLPLUSGROWZONE, (Plus)
+    MakePatch 7D4 MYCOMPACTMEM, _C04C, (Plus,SE,II,notAUX)
+    MakeInstall 7D6 FIXMYCOMPACTMEMCOMEFROMPATCHPROC, (Plus)
+    MakePatch 7D7 SYNCHIDLETIMEPROC, _SynchIdleTime
+    MakePatch 7D8 INITAPP, _InitApplication
+    MakePatch 7D9 CLEANUPAPP, _CleanupApplication
+    MakePatch 7DB PACK8PATCH, _Pack8
+    MakePatch 7DC PACK9PATCH, _Pack9
+    MakePatch 7DD PACK11PATCH, _Pack11
+    MakePatch 7DE PACK13PATCH, _Pack13
+    MakePatch 7DF PACK15PATCH, _Pack15
+    MakePatch 7E0 DICTIONARYDISPATCH, _DictionaryDispatch
+    MakeInstall 7E1 MISCPATCHESINSTALL
+    MakePatch 7E2 MODALDIALOGSETFLAGSANDADDFILTER, _ModalDialog
+    MakePatch 7E3 PATCHMDDRAWMENUBAR, _DrawMenuBar
+    MakePatch 7E4 PATCHMDMENUKEY, _MenuKey
+    MakePatch 7E5 PATCHMDHILITEMENU, _HiliteMenu
+    MakePatch 7E6 PATCHMDMENUSELECT, _MenuSelect
+    MakePatch 7E7 MODALDIALOGMENUSETUP, _ModalDialogMenuSetup
+    MakePatch 7E8 MDJGNEFILTER, _029A
+    MakeInstall 802 PLUSMOUSEINIT, (Plus)
+    MakeInstall 803 ADBMOUSEINIT, (SE,II,Portable,IIci)
+    MakePatch 807, _08EE, (Plus)
+    MakePatch 808 OPENRESFILE, _OpenResFile
+    MakePatch 809 CLASSICQDACTIVATEPALETTE, _ActivatePalette, (Plus,SE,Portable)
+    MakeInstall 80A BURNINATE, (Portable)
+    MakePatch 80B PORTAPMGROP, _PMgrOp, (Portable)
+    MakePatch 80C PORTASLEEP, _Sleep, (Portable)
+    MakePatch 80D PORTASYSTASK, _SystemTask, (Portable)
+    MakePatch 80F PORTAPOWEROFF, _PowerOff, (Portable)
+    MakeInstall 814 PORTAINSTALLWAKE, (Portable)
+    MakeInstall 816 PORTAINITIALIZESTRINGS, (Portable)
+    MakeInstall 817 INSTALLPOWERMGRPATCHES, (IIci,hasTERROR,hasPwrMgr)
+    MakePatch 820 PRGLUE, _PrGlue
+    MakeInstall 821 INSTALLLOWMEMORYPRINTING
+    MakePatch 822 LOWMEMORYPRINTINGDIALOGPATCH, _GetResource
+    MakePatch 823 NASTIERPATCH, _PrGlue
+    MakePatch 827 DRAWPICTUREFORPURGEDPICTURES, _DrawPicture
+    MakePatch 828 CHAREXTRAFIXDIV, _C84D, (II)
+    MakePatch 829 NEWGETCTABLE, _GetCTable, (IIci)
+    MakePatch 82A CINEWFIXRATIO, _C869, (IIci)
+    MakePatch 82B RGNOPSTACKSPACE, _C065, (II)
+    MakePatch 82C DISPOSEOFFSCREENBUFFERFIX, _C023, (IIci)
+    MakePatch 82D PATCHOPENCPORT, _OpenCPort, (II,IIci)
+    MakePatch 82E NEWGWORLDOPENCPORT, _CA00, (IIci)
+    MakePatch 82F PUTPMDATAPACKBITS, _C8CF, (IIci)
+    MakePatch 830 COPYBITSGETSCREENBASE, _CopyBits, (IIci)
+    MakePatch 831 COPYBITSDITHERWHILEFLATTENING, _C8EC, (IIci)
+    MakePatch 832 GWORLDGETMAXDEVICE, _CA27, (IIci)
+    MakePatch 833 CICLOSEPORTPATCH, _ClosePort, (IIci)
+    MakePatch 833 CICLOSEPORTPATCH, _AA02, (IIci)
+    MakePatch 835 NEWPIXMAP, _NewPixMap, (IIci)
+    MakePatch 836 BITMAPRGN, _BitMapRgn, (II,IIci)
+    MakeInstall 837 INSTALLPATCHBSETUP0, (IIci,hasTERROR)
+    MakePatch 839 SCINDTAB16, _ABB0, (IIci)
+    MakePatch 83A SCINDTAB32, _ABB1, (IIci)
+    MakePatch 83B RESOURCEDISPATCH, _ResourceDispatch
+    MakePatch 843 SETDEANBITIFRESOURCEWILLBELOADED, _07F0
+    MakePatch 856 CREATERESFILEDIRIDEXIT, _CreateResFile
+    MakePatch 857 CREATEDIRIDRESFILE, _HCreateResFile
+    MakePatch 858 OPENRESFILEDIRIDEXIT, _OpenResFile
+    MakePatch 859 OPENRFPERMDIRIDEXIT, _OpenRFPerm
+    MakePatch 85A OPENDIRIDRESFILE, _HOpenResFile
+    MakePatch 85B NEWCREATE, _C008
+    MakePatch 85C NEWOPENRF, _C00A
+    MakeInstall 85D INSTALLRESOURCEMGREXTENSIONS
+    MakePatch 85E VALIDATEFILESIZEINCHECKGROW, _C012
+    MakePatch 85F DONTLETSUITCASEPATCHRSRCZONEINIT, _SetTrapAddress
+    MakePatch 860 CHECKFORCHANGEDFOND, _ChangedResource
+    MakePatch 861 CHECKFORADDEDFOND, _AddResource
+    MakePatch 862 CHECKFORREMOVEDFOND, _RmveResource
+    MakeInstall 864 ROZSIZECORRECTION, (IIci)
+    MakePatch 865 STARTRGETRESOURCESEARCHFROMTOPOF, _RGetResource
+    MakePatch 866 MYUNIQUE1ID, _Unique1ID
+    MakePatch 867 MYUNIQUEID, _UniqueID
+    MakePatch 868 ADDRESOURCENILNAMEFIX, _AddResource
+    MakePatch 869 UPDATERESFILENEWHANDLEFAILURE, _C122, (Plus)
+    MakePatch 86A UPDATERESFILEDISPOSEHANDLECLEANU, _C023, (Plus)
+    MakePatch 86B MYLOADRESOURCE, _LoadResource
+    MakePatch 86C FIXSUPERLOADEQUATES, _C061, (Plus)
+    MakePatch 86D BADMAPCHECKINCHECKMAP, _C002, (Plus)
+    MakePatch 86E RMVENAMENAMELISTFIX, _C024
+    MakePatch 86F SAVERESTOREBITSDISPATCH, _SaveRestoreBits
+    MakePatch 87B FIXPUTSCRAP, _C9EF
+    MakePatch 87C F2PUTSCRAP, _C003
+    MakePatch 87D LOADSYSTEMCODE, _GetResource
+    MakePatch 87E LOAD1SYSTEMCODE, _Get1Resource
+    MakeInstall 87F SETUPSEEK40INSTEADOF79PATCH, (SE,II,Portable,IIci,notAUX,hasFDHDDriver,hasIWM)
+    MakePatch 880 SEEK40INSTEADOF79PATCH, _0236, (SE,II,Portable,IIci,notAUX,hasFDHDDriver,hasIWM)
+    MakeInstall 883 SETUPDCDDRIVENUMBERFORSE, (SE,has800KDriver)
+    MakePatch 884 CONTROLSEEK40ONEJECT, _0242, (Plus,SE,II,has800KDriver)
+    MakeInstall 887 SETUPFORMATPATCHES1, (Plus,SE,II,notAUX,has800KDriver)
+    MakeInstall 887 SETUPFORMATPATCHES1, (Portable,IIci,notAUX)
+    MakeInstall 888 SETUPFORMATPATCHES2, (IIci,notAUX,hasEricksonOverpatchMistake)
+    MakeInstall 888 SETUPFORMATPATCHES2, (SE,II,notAUX,hasFDHDDriver)
+    MakePatch 889 DISKSELECTSYNCCALLPATCH, _0B40, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 88B SEEKSYNCCALLPATCH, _0236, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 88F RDADDRFORMATPATCH, _022A, (Plus,SE,II,Portable,IIci,notAUX)
+    MakePatch 893 RECALPATCH, _023E, (Portable)
+    MakeInstall 894 INSTIODONEPATCH, (IIci)
+    MakeInstall 8D4 INSTALLTHINGMANAGER
+    MakePatch 8D6 DOSYSERRORUPDATES, _GetNextEvent
+    MakeInstall 8D7 CLEARSYSERRORUPDATERECT
+    MakePatch 8D8 FIXCHECKACTIVATE, _C030, (IIci,using32BitHeaps)
+    MakePatch 8D9 SETWINDOWMGRPORT, _C972
+    MakePatch 8DA LOADFKEYINGETNEXTEVENT, _C9A0, (Plus)
+    MakePatch 8DB KEYPADFKEYINGETNEXTEVENT, _C9A0, (SE,II)
+    MakePatch 8DC CHECKINHIBITFKEYINGETNEXTEVENT, _C9A0, (Portable,IIci)
+    MakePatch 8DD HLEAVAIL, _C030
+    MakePatch 8DE GETNEXTHLE, _C031
+    MakePatch 8E0 NOCHANGEINGROWWINDOW, _C976, (II)
+    MakePatch 8E1 PATCHTRACKGOAWAYFORDREAMS, _TrackGoAway
+    MakePatch 8E2 PATCHFINDWINDOWFORDREAMS, _FindWindow
+    MakePatch 8E3 PATCHGETAUXWIN, _GetAuxWin, (II,IIci)
+    MakePatch 8E5 PATCHGETAUXCTL, _GetAuxCtl, (II,IIci)
+    MakePatch 8E6 HIDEWINDOWBEFOREKILLINGCONTROLS, _C956
+    MakePatch 8E7 DOACTIVATEPALETTE, _C91C, (II)
+    MakePatch 8E8 MOVEWINDOWACTIVATEPALETTE, _MoveWindow, (II)
+    MakePatch 8E9 SIZEWINDOWACTIVATEPALETTE, _SizeWindow, (II)
+    MakePatch 8EA CLOSEWINDOWDISPOSEPALETTES, _CloseWindow, (II)
+    MakePatch 8EB SHOWHIDEACTIVATEPALETTE, _ShowHide, (II)
+    MakePatch 8EC PATCHSHOWHIDE, _ShowHide
+    MakePatch 8EE SHOWHIDEINSHOWWINDOW, _C908
+    MakePatch 8EF PATCHSECTRGN, _C8E4
+    MakePatch 8F0 PATCHDRAGGRAYRGN, _C905
+    MakePatch 8F1 PATCHSETCLIP, _C879
+    MakePatch 8F2 PATCHFRONTWINDOW, _C924
+    MakePatch 8F3 PATCHCALCVIS, _C909
+    MakePatch 8F4 FIXSETWINCOLOR, _C90C, (II,IIci)
+    MakePatch 8F5 FIXSETCTLCOLOR, _SetCtlColor, (II,IIci)
+    MakePatch 8F7 PATCHGETRESOURCE, _C9A0
+    MakePatch 8FE PATCHINITWINDOWS, _InitWindows
+    MakePatch 900 PATCHBEGINUPDATE, _BeginUpDate
+    MakePatch 902 PATCHENDUPDATE, _EndUpDate
+    MakePatch 904 PATCHCLIPABOVE, _ClipAbove
+    MakePatch 906 PATCHPAINTONE, _PaintOne
+    MakePatch 908 PATCHPAINTBEHIND, _PaintBehind
+    MakePatch 909 PATCHCLOSEWINDOW, _CloseWindow
+    MakePatch 90B __NEWWINDOW, _NewWindow
+    MakePatch 90C __NEWCWINDOW, _NewCWindow, (II,IIci)
+    MakePatch 90D __SELECTWINDOW, _SelectWindow
+    MakePatch 90E __BRINGTOFRONT, _BringToFront
+    MakePatch 90F __SENDBEHIND, _SendBehind
+    MakePatch 910 __SHOWWINDOW, _ShowWindow
+    MakePatch 912 __DRAGWINDOW, _DragWindow
+    MakePatch 913 __MOVEWINDOW, _MoveWindow
+    MakePatch 914 __ZOOMWINDOW, _ZoomWindow
+    MakePatch 917 __GETAUXWIN, _GetAuxWin, (II,IIci)
+    MakePatch 918 __SETWINCOLOR, _SetWinColor, (II,IIci)
+    MakePatch 919 __SETCTLCOLOR, _SetCtlColor, (II,IIci)
+    MakePatch 91A __GETAUXCTL, _GetAuxCtl, (II,IIci)
+    MakePatch 91C PATCHFINDWINDOW, _FindWindow
+    MakePatch 91E __DRAWNEW, _DrawNew
+    MakePatch 91F SETWTITLEACTIVATEPALETTE, _C8E5, (II,IIci)
+    MakePatch 920 LAYERDISPATCH, _LayerDispatch
+    MakeInstall 921 INITFASTERINVALS
+    MakePatch 923, _ValidRect
+    MakePatch 924, _InvalRect
+    MakePatch 925 SYSERRORIFNOWDEF, _C9A2, (Plus,SE,II)
+    MakePatch 926 CHECKPAINTWHITEWORD, _C8E4
+    MakePatch 927 PAINTBEHINDINDRAWNEW, _C90D
+    MakePatch 928 PAINTBEHINDINSENDBEHIND, _C90D
+    MakePatch 929 PAINTONEINSETDESKCPAT, _C90C, (II,IIci)
+    MakePatch 92A PAINTONEINMOVEWINDOW, _C90C
+    MakePatch 92B PAINTONEINBRINGTOFRONT, _C90C
+    MakePatch 92C PENMODEINDRAGTHERGN, _C89C
+    MakePatch 92D CALCVBEHINDINSENDBEHIND, _C90A
+    MakePatch 92E ACTIVATEPALETTELAYERBRACKET, _ActivatePalette, (II,IIci)
+    MakeInstall 92F SETUPPATCHINFO
+    MakeInstall 930 BKLIGHTINSTALL, (Portable)
+    MakeInstall 931 CLASSICBRIGHTPATCH, (SE)
+    MakeInstall 934 HELPMGRINSTALL
+    MakePatch 935 PACK14ENTRY, _Pack14
+    MakePatch 93A HMMODALDIALOGPATCH, _ModalDialog
+    MakePatch 93B HMSHOWHIDEPATCH, _ShowHide
+    MakePatch 93C HMISDIALOGEVENTPATCH, _IsDialogEvent
+    MakePatch 93D HMSYSTEMTASKPATCH, _SystemTask
+    MakePatch 93E HMOSEVENTAVAILPATCH, _OSEventAvail
+    MakePatch 93F HMMENUSELECTPATCH, _MenuSelect
+    MakePatch 940 HMSYSTEMMENUPATCH, _SystemMenu
+    MakePatch 941 HMCLEARMENUBARPATCH, _ClearMenuBar
+    MakePatch 948 TSMDispatch, _TSMDispatch
+    MakePatch 957 __SetCursorPatch, _SetCursor
+    MakePatch 958 __PaintBehindPatch, _PaintBehind
+    MakePatch 959 __SystemMenuPatch, _SystemMenu
+    MakePatch 95A __HMGetBalloonPatch, _Pack14
+    MakePatch 95B __PopUpMenuSelect, _PopUpMenuSelect
+    MakeInstall 95D TSMgrInstall
+    MakeInstall 99C ADDFONTSTOCHAIN
+    MakeInstall 99E SETSCANOVERRIDEMAPS
+    MakePatch 99F CLEARMEMORYATTRIBUTESONNEWMAPS, _07EC
+    MakePatch 9A0 JAMSYSMAPHNDLONLOADRESOURCE, _LoadResource
+    MakePatch 9A1 RSRCZONEINITOVERRIDE, _RsrcZoneInit
+    MakePatch 9A2 PREVENTOVERRIDEMAPSFROMBEINGCLOS, _CloseResFile
+    MakePatch 9A3 COUNTTYPESOVERRIDE, _CountTypes
+    MakePatch 9A4 GETINDEXEDTYPEOVERRIDE, _GetIndType
+    MakePatch 9A5 GETRESOURCEOVERRIDE, _GetResource
+    MakePatch 9A6 GETNAMEDRESOURCEOVERRIDE, _GetNamedResource
+    MakePatch 9A7 REMOVERESOURCEOVERRIDE, _RmveResource
+    MakePatch 9A8 ADDOVERRIDERESOURCE, _AddResource
+    MakePatch 9A9 CHANGEOVERRIDERESOURCE, _ChangedResource
+    MakePatch 9AA SETOVERRIDERESOURCEATTRIBUTES, _SetResAttrs
+    MakePatch 9AB UPDATERESOURCEOVERRIDEFILE, _UpdateResFile
+    MakePatch 9AE GET2RESOURCE, _Get1Resource
+    MakePatch 9AF GET2NAMEDRESOURCE, _Get1NamedResource
+    MakePatch 9B0 UNIQUE2ID, _Unique1ID
+    MakePatch 9B1 COUNT2TYPES, _Count1Types
+    MakePatch 9B2 GET2INDEXEDTYPE, _Get1IxType
+    MakePatch 9B3 COUNTRESOURCESOVERRIDE, _CountResources
+    MakePatch 9B4 COUNT2RESOURCES, _Count1Resources
+    MakePatch 9B5 GETINDEXEDRESOURCEOVERRIDE, _GetIndResource
+    MakePatch 9B6 GET2INDEXEDRESOURCE, _Get1IxResource
+    MakePatch 9BA RMVERESOURCEFLUSHCACHE, _RmveResource
+    MakePatch 9BB WRITERESOURCEFLUSHCACHE, _WriteResource
+    MakePatch 9BC OPENRESFILEFLUSHCACHE, _OpenResFile
+    MakePatch 9BD OPENRFPERMFLUSHCACHE, _OpenRFPerm
+    MakePatch 9BE HOPENRESFILEFLUSHCACHE, _HOpenResFile
+    MakePatch 9BF CLOSERESFILEFLUSHCACHE, _CloseResFile
+    MakeInstall 9D0 EDISKSHUTDOWNPTCH, (IIci,hasTERROR)
+    MakeInstall 9D1 LATELOAD, (IIci,hasTERROR)
+    MakeInstall A17 VMFINALINITIALIZATION, (Plus,SE,II,Portable,IIci,notAUX)
+    MakeInstall A18 ADBSECONDARYINITIALIZATION, (SE,II,Portable,IIci,notAUX)
+    MakeInstall A19 SLOTMGRSECONDARYINITIALIZATIONII, (II,notAUX)
+    MakeInstall A1A SLOTMGRSECONDARYINITIALIZATIONII, (IIci,notAUX)
+    MakeInstall A1B COLORQDSECONDARYINITIALIZATION, (II,IIci)
+    MakeInstall A1C SETUPICONCLUTS
+    MakeInstall A1D FONTMGRSECONDARYINITIALIZATION

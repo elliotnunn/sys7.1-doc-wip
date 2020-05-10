@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		GestaltExtensions.a
 ;
 ;	Contains:	Linked patches for Gestalt
@@ -10,8 +17,6 @@
 ;	Change History (most recent first):
 ;
 ;	  <SM10>	  6/7/93	wc		(Really BT)Fix a stupid bug of mine.
-;	   <SM9>	  6/6/93	BT		Add gestaltRISCV0ResMgrPatches to 'bugy' bits if rom is built
-;									with this option.
 ;	   <SM8>	  6/3/93	SAM		Updating the list of machine icons from the Gibbly project.
 ;	   <SM7>	 5/10/93	CSS		For 'bugy' return that the gestaltmtCheckFix has been fixed in
 ;									SuperMario. Also, update the support of bugy to include bits
@@ -94,6 +99,7 @@
 				INCLUDE 	'GestaltPrivateEqu.a'
 				INCLUDE		'SysPrivateEqu.a'
 				INCLUDE		'InternalOnlyEqu.a'
+				INCLUDE		'LinkedPatchMacros.a'
 
 ;————————————————————————————————————————————————————————————————————————————————————————————————————
 ; Record that describes stack frame for Gestalt functions
@@ -110,41 +116,168 @@ error				DS.W	1
 ;————————————————————————————————————————————————————————————————————————————————————————————————————
 
 
-NewGestaltSelectors		Proc	Export
-				WITH	ExpandMemRec, GestaltGlobals
-UnimplementedTrapNumber	EQU	$A89F
-PowerOffTrapNumber		EQU	$A05B
-
+Newbugz		InstallProc		(Plus,SE,II,Portable,IIci)
 				IMPORT		getBugFixes						; <24>
-				lea			getBugFixes,a0					; <24>
+				leaResident	getBugFixes,a0					; <24>
 				move.l		#gestaltBugFixAttrs,d0			; <24>
 				_NewGestalt
-				
-				IMPORT		getBugFixesTwo					; <SM6> CSS
-				lea			getBugFixesTwo,a0				; <SM6> CSS
-				move.l		#gestaltBugFixAttrsTwo,d0		; <SM6> CSS
-				_NewGestalt
-
-				IMPORT		getMachineIcon
-				lea			getMachineIcon,A0				; address of gestaltMachineIcon patch
-				MOVE.L		#gestaltMachineIcon,D0			; selector to add						
-				_NewGestalt
-								
-				IMPORT		getResourceAttrs				;												<20>
-				lea			getResourceAttrs, a0			;												<20>
-				move.l		#gestaltResourceMgrAttr, d0		; resource manager attributes					<20>
-				_NewGestalt									;												<20>
-				
 				RTS
 				
+Newmicn		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getMachineIcon
+				leaResident	getMachineIcon,A0				; address of gestaltMachineIcon patch
+				MOVE.L		#gestaltMachineIcon,D0			; selector to add						
+				_NewGestalt
+				RTS
+								
+Newostt		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getOSTable
+				leaResident	getOSTable, a0
+				move.l		#gestaltOSTable, d0
+				_NewGestalt
+				RTS
+
+Newtbtt		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getToolboxTable
+				leaResident	getToolboxTable, a0
+				move.l		#gestaltToolboxTable, d0
+				_NewGestalt
+				RTS
+
+Newxttt		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getExtToolboxTable
+				leaResident	getExtToolboxTable, a0
+				move.l		#gestaltExtToolboxTable, d0
+				_NewGestalt
+				RTS
+
+Newrsrc		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getResourceAttrs				;												<20>
+				leaResident	getResourceAttrs, a0			;												<20>
+				move.l		#gestaltResourceMgrAttr, d0		; resource manager attributes					<20>
+				_NewGestalt									;												<20>
+				RTS
+				
+Newqdrw		InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		CQDFeatures
+				leaResident	CQDFeatures, a0
+				move.l		#gestaltQuickdrawFeatures, d0
+				_NewGestalt
+				RTS
+
+Replacefs	InstallProc		(Plus,SE,II,Portable,IIci)
+				IMPORT		getFSAttr
+				leaResident	getFSAttr, a0
+				move.l		#gestaltFSAttr, d0
+				_ReplaceGestalt
+				RTS
+				
+Replacehdwr	InstallProc		(Plus,SE,II,Portable,IIci)
+				WITH	ExpandMemRec, GestaltGlobals
+UnimplementedTrapNumber	EQU	$A89F
+PowerOffTrapNumber		EQU	$5B
+
+				IMPORT		HasSoftPowerOff, hdwrOrigAddr, hdwrNewBits
+
+				leaResident	HasSoftPowerOff, a0				; Replace 'hdwr' selector with shim
+				move.l		#gestaltHardwareAttr, d0
+				_ReplaceGestalt
+				tst.w		d0
+				bne.s		@return
+				lea			hdwrOrigAddr, a1				; shim JSRs to original routine
+				move.l		a0, (a1)
+
+				move.w		#UnimplementedTrapNumber, d0	; Check for PowerOff selector
+				_GetTrapAddress
+				move.l		a0,a1
+				moveq		#PowerOffTrapNumber, d0
+				_GetTrapAddress ,newOS
+				cmp.l		a0, a1
+				beq.s		@return
+
+				move.l		ExpandMem, a0					; Check for machines known to lack soft power
+				move.l		emGestalt(a0), a0
+				cmp.w		#gestaltMacSE30, machType(a0)
+				beq.s		@return
+				cmp.w		#gestaltMacLC, machType(a0)
+				beq.s		@return
+				cmp.w		#gestaltMacLCII, machType(a0)
+				beq.s		@return
+				cmp.w		#gestaltMacClassic, machType(a0)
+				beq.s		@return
+
+				lea			hdwrNewBits, a0					; Set soft-power bit in the shim routine
+				move.l		#1<<gestaltHasSoftPowerOff, (a0)
+
+@return			rts
+
 				ENDWITH
 				ENDPROC
 
-;This get rolled into GestaltFunction.a 				
-;CQDFeatures		InstallProc	(II,IIci)
 	
+qdrwBitsSet1	InstallProc		(Plus,SE,Portable)
+				IMPORT		qdrwBits
+				lea			qdrwBits, a0
+				move.l		#(1<<gestaltHasGrayishTextOr), (a0)
+				rts
+
+
+qdrwBitsSet2	InstallProc		(II,IIci)
+				IMPORT		qdrwBits
+				lea			qdrwBits, a0
+				move.l		#(1<<gestaltHasColor)|(1<<gestaltHasDeepGWorlds)|(1<<gestaltHasDirectPixMaps)|(1<<gestaltHasGrayishTextOr), (a0)
+				rts
+
+
 ; these will get stripped out if nobody refers to them, so they are not conditionalized
 				
+************************************************************************
+*	OS trap table base
+************************************************************************
+
+getOSTable		Proc	Entry
+				move.l	#$00000400, d0			; this is the same on all machines
+
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+				EndProc
+
+************************************************************************
+*	Toolbox trap table base
+************************************************************************
+
+getToolboxTable		Proc	Entry
+				move.l	RomBase, a0				; get base of the rom... duh...
+				cmp.w	#$0075, ROMHeader.MachineNumber(a0)	; are we on a MacPlus?
+				bne.s	@notPlus
+				move.l	#$00000C00, d0			; this is only different on MacPlus
+				bra.s	@stdResult
+@notPlus
+				move.l	#$00000E00, d0			; this is where it goes on everything else
+@stdResult
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+
+************************************************************************
+*	Extended Toolbox trap table base
+************************************************************************
+getExtToolboxTable		Proc	Entry
+				move.l	RomBase, a0				; get base of the rom... duh...
+				cmp.w	#$0075, ROMHeader.MachineNumber(a0) ; are we on a MacPlus?
+				beq.s	@plusOrSE				; yes, return the table base address
+				cmp.w	#$0276, ROMHeader.MachineNumber(a0)	; are we on an SE?
+				beq.s	@plusOrSE				; yes, return the table base address
+				import	stdUnknown
+				lea		stdUnknown,a0
+				jmp		(a0)
+@plusOrSE
+				move.l	XToolTable, d0			; get the table base from the vector...
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+
 ************************************************************************
 *	<24> Bug fixes
 ************************************************************************
@@ -160,11 +293,10 @@ getBugFixes		Proc	Entry
 						(1<<gestaltSCSIFix)						|	\
 						(1<<gestaltKeyboardFix)					|	\
 						(1<<gestaltTrueTypeFix)					|	\						<25>
-						(1<<gestaltFixedMicroseconds)			|	\						<SM2>
 						(1<<gestaltSaveLastSPExtra)				|	\
 						(1<<gestaltDietPatches)					|	\						<26>
-						(0<<gestaltBackgroundPrintingPatch)		|	\
-						(0<<gestaltNoPreferredAlertPatch)		|	\
+						(1<<gestaltBackgroundPrintingPatch)		|	\
+						(1<<gestaltNoPreferredAlertPatch)		|	\
 						(1<<gestaltAllocPtrPatches)				|	\
 						(1<<gestaltEPPCConnectionTableFix)		|	\
 						(1<<gestaltDAHandlerPatch)				|	\
@@ -175,7 +307,11 @@ getBugFixes		Proc	Entry
 						(1<<gestaltPMSegmentTweaks)				|	\
 						(1<<gestaltWDEFZeroFix)					|	\
 						(1<<gestaltPACKSixFix)					|	\
-						(1<<gestaltMtCheckFix)					\							<SM7> CSS
+						(1<<gestaltResolveFileIDRefFix)			|	\
+						(1<<gestaltDisappearingFolderFix)		|	\
+						(1<<gestaltPowerBookSerialFix)			|	\
+						(1<<gestaltPowerBookSleepQFix)			|	\
+						(1<<gestaltPowerBookFloppyEjectFix)		\
 						, d0
 				
 				import	stdResult
@@ -183,42 +319,6 @@ getBugFixes		Proc	Entry
 				jmp		(a0)
 				EndProc
 				
-************************************************************************
-*	<SM6> More Bug fixes
-************************************************************************
-
-getBugFixesTwo		Proc	Entry
-		IF hasRISCV0ResMgrPatches THEN
-			 	move.l	#											\
-						(1<<gestaltEgretSCCFix)					|	\
-						(1<<gestaltEgretRdTimeFix)				|	\
-						(1<<gestaltEgretIRQPatch)				|	\
-						(1<<gestaltEgretTickHandlerFix)			|	\
-						(1<<gestaltSCSIFastAckFix)				|	\
-						(1<<gestaltPowerOffDelayFix)			|	\
-						(1<<gestaltGetIndResourceSysMapHandleFix) |	\
-						(1<<gestaltMoveHHiExtraStackSpace)		|	\
-						(1<<gestaltRISCV0ResMgrPatches)				\						<SM9> BT
-						, d0
-		ELSE
-			 	move.l	#											\
-						(1<<gestaltEgretSCCFix)					|	\
-						(1<<gestaltEgretRdTimeFix)				|	\
-						(1<<gestaltEgretIRQPatch)				|	\
-						(1<<gestaltEgretTickHandlerFix)			|	\
-						(1<<gestaltSCSIFastAckFix)				|	\
-						(1<<gestaltPowerOffDelayFix)			|	\
-						(1<<gestaltGetIndResourceSysMapHandleFix) |	\
-						(1<<gestaltMoveHHiExtraStackSpace)		|	\
-						(0<<gestaltRISCV0ResMgrPatches)				\						<SM9> BT
-						, d0
-		ENDIF
-				
-				import	stdResult
-				lea		stdResult,a0
-				jmp		(a0)
-				EndProc
-
 ************************************************************************
 *	Machine Icon
 ************************************************************************
@@ -256,81 +356,34 @@ MachineIconTable
 				dc.w	-16508					; (18) Asahi								<2>
 				dc.w	-16505					; (19) Tim LC
 				dc.w	-16504					; (20) Eclipse33/Zydeco						<2>
-				dc.w	-16503					; (21) Vail25 								<7>
-				dc.w	-16482					; (22) Carnation33 							<1>
-				dc.w	-16508					; (23) DBLight25							<1>
-				dc.w	-16454					; (24) Wombat 25/Lego						<14>
-				dc.w	-16482					; (25) Columbia								<3>
-				dc.w	-16508					; (26) DBLite33								<3>
-				dc.w	-16505					; (27) Dartanian							<3>
-				dc.w	-16505					; (28) DartanianLC							<3>
-				dc.w	-16456					; (29) Wombat 33Mhz/fridge					<3><14>
-				dc.w	-16454					; (30) Wombat 33/Lego						<3><14>
+				dc.w	3						; (21) Vail25 								<7>
+				dc.w	3						; (22) Carnation33 							<1>
+				dc.w	3						; (23) DBLight25							<1>
+				dc.w	3						; (24) Wombat 25/Lego						<14>
+				dc.w	3						; (25) Columbia								<3>
+				dc.w	3						; (26) DBLite33								<3>
+				dc.w	3						; (27) Dartanian							<3>
+				dc.w	3						; (28) DartanianLC							<3>
+				dc.w	3						; (29) Wombat 33Mhz/fridge					<3><14>
+				dc.w	3						; (30) Wombat 33/Lego						<3><14>
 				dc.w	-16503					; (31) FosterFarms							<3>
-				dc.w	-16508					; (32) Ansel (DBLite TFT)					<23>
+				dc.w	3						; (32) Ansel (DBLite TFT)					<23>
 				dc.w	3						; (33) db20									<3><11>
 				dc.w	3						; (34) Vail 16								<9><11>
 				dc.w	3						; (35) Carnation 25							<9><11>
 				dc.w	3						; (36) Carnation 16							<9><11>
-				dc.w	-16610					; (37) Cyclone33 (Fridge)					<24>
-				dc.w	-16454					; (38) Brazil16 in Lego						<10><14>
-				dc.w	-16454					; (39) Brazil32 in Lego						<10><14>
+				dc.w	3						; (37) Cyclone33 (Fridge)					<24>
+				dc.w	3						; (38) Brazil16 in Lego						<10><14>
+				dc.w	3						; (39) Brazil32 in Lego						<10><14>
 				dc.w	3						; (40) Brazil16 in Fridgidaire	(Killed)	<10><14>
 				dc.w	3						; (41) Brazil32 in Fridgidaire	(Killed)	<10><14>
-				dc.w	-16454					; (42) Brazil32c in Lego					<10><14>
-				dc.w	-16568					; (43) BoxSlice								<9><11>
-				dc.w	-16505					; (44) Monet								<21>
-				dc.w	-16454					; (45) Wombat 40/Lego						<9><11><14><18>
-				dc.w	-16455					; (46) WLCD 20Mhz/QFC						<9><11>
-				dc.w	-16455					; (47) WLCD 25 Mhz/QFC						<9><11>
+				dc.w	3						; (42) Brazil32c in Lego					<10><14>
+				dc.w	3						; (43) BoxSlice								<9><11>
+				dc.w	3						; (44) Monet								<21>
+				dc.w	3						; (45) Wombat 40/Lego						<9><11><14><18>
+				dc.w	3						; (46) WLCD 20Mhz/QFC						<9><11>
+				dc.w	3						; (47) WLCD 25 Mhz/QFC						<9><11>
 				dc.w	-16505					; (48) PowerBook 145 (same as 140/170)		<9>
-				dc.w	3						; (49) Brazil 32c in Fridgidaire			<10><14>
-				dc.w	-16749					; (50) Hook									<11>
-				dc.w	-16455					; (51) WLCD Consumer #1/QFC					<11>
-				dc.w	-16454					; (52) Wombat 20 Mhz/Lego					<11><14>
-				dc.w	-16456					; (53) Wombat 40 Mhz/Fridge					<11><14>
-				dc.w	-16455					; (54) Tempest25 (QFC)						<24>
-				dc.w	-17000					; (55) Box PDm/RiscQuadra					<11><16>
-				dc.w	-16503					; (56) Vail33								<35>
-				dc.w	-16455					; (57) WLCD33								<35>
-				dc.w	-17000					; (58) PDM66F								<19>
-				dc.w	-17000					; (59) PDM80F								<19>
-				dc.w	-17000					; (60) PDM100F								<19>
-				dc.w	-16504					; (61) TesseractL							<19>
-				dc.w	-16504					; (62) TesseractF							<19>
-				dc.w	-16504					; (63) TesseractC							<19>
-				dc.w	-16503					; (64) 930									<19>
-				dc.w	-16505					; (65) Hokusai								<21>
-				dc.w	-16505					; (66) BlackBird							<24>
-				dc.w	-16505					; (67) BlackBirdLC							<24>
-				dc.w	-17000					; (68) PDM evt1 WLCD						<24>
-				dc.w	-17000					; (69) PDM50 WLCD							<24>
-				dc.w	-16508					; (70) Escher25								<25>
-				dc.w	-16508					; (71) Escher33								<25>
-				dc.w	-16610					; (72) Cyclone40 (cyclone)					<24>
-				dc.w	-16455					; (73) Tempest33 (QFC)						<24>
-				dc.w	-16749					; (74) Hook33 (Hook)						<25>
-				dc.w	-16568					; (75) Slice25 (Slice)						<25>
-				dc.w	-17000					; (76) RISCWombat							<25>
-				dc.w	-16568					; (77) Slice33								<25>
-				dc.w	-16505					; (78) Norad								<28>
-				dc.w	-16508					; (79) BudMan								<28>
-				dc.w	-16503					; (80) primus20								<28>
-				dc.w	-16749					; (81) optimus20							<28>
-				dc.w	-16749					; (82) PeterPan								<28>
-				dc.w	-16503					; (83) Primus25								<28>
-				dc.w	-16503					; (84) primus33								<28>
-				dc.w	-16749					; (85) optimus25							<28>
-				dc.w	-16749					; (86) optimus33							<28>
-				dc.w	-16503					; (87) aladdin20							<28>
-				dc.w	-16503					; (88) aladdin25							<28>
-				dc.w	-16503					; (89) aladdin33							<28>
-				dc.w	-16455					; (90) Malcolm25 (QFC)						<35>
-				dc.w	-16455					; (91) Malcolm33 (QFC)						<35>
-				dc.w	-16568					; (92) Slimus25	(sliceBox)					<35>
-				dc.w	-16568					; (93) Slice33 (sliceBox)					<35>
-				dc.w	-17000					; (94) PDM 66 evt2-> (WLCD)					<36>
-				dc.w	-17000					; (95) PDM 80 evt2-> (WLCD)					<36>
 MachineIconTableEnd
 
 numMachineIcons	equ		(MachineIconTableEnd-MachineIconTable)/2
@@ -352,15 +405,13 @@ getMachineIcon
 				_Gestalt						;											<5>
 				move.l	a0,d0					; put machineType in d0 (only lsw is used)	<5>
 				
-				andi.w	#$FFFF,d0				; make sure only a word is valid			<SM4> rb
 				cmp.w	#numMachineIcons,d0		; do we have a table entry?
 				blo.s	@gotTableEntry
 				clr.w	d0						; no entry, use the first one in the table
 @gotTableEntry
 				add.w	d0,d0					; advance to offset in table
-				lea		MachineIconTable,a0		; get table in a0							<SM4> rb
-				adda.l	d0,a0					; add offset to tyable entry				<SM4> rb
-				move.w	(a0),d0					; get icon resource id						<SM4> rb
+				lea		MachineIconTable,a0		; get table in a0
+				move.w	(a0,d0.w),d0			; get icon resource id
 
 				import	stdResult				;											<5>
 				lea		stdResult,a0			; get address of result routine				<5>
@@ -369,6 +420,22 @@ getMachineIcon
 				endproc	
 
 				
+************************************************************************
+*	Extended File System dispatching flags
+************************************************************************
+
+getFSAttr		Proc	Entry
+				moveq	#0, d0
+			 	move.w	#										\
+						(1<<gestaltFullExtFSDispatching)	|	\
+						(1<<gestaltHasFSSpecCalls)			|	\
+						(0<<gestaltHasFileSystemManager)		\
+						, d0
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+
+
 ************************************************************************
 *	Resource manager flags
 ************************************************************************
@@ -386,6 +453,58 @@ getResourceAttrs	proc	entry															;<20>
 				jmp		(a0)
 				endproc
 				
+
+
+************************************************************************
+*	Quickdraw feature flags
+************************************************************************
+
+CQDFeatures		Proc	Entry
+				EXPORT	qdrwBits
+
+				dc.w	$203C					; MOVE.L #x, d0
+qdrwBits
+				dc.l	$12345678
+
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+ 
+
+************************************************************************
+*	New thing with the hdwr selector (yuck!)
+************************************************************************
+
+HasSoftPowerOff		Proc	Entry
+				EXPORT	hdwrOrigAddr, hdwrNewBits
+
+				clr.w	-(sp)
+				move.l	10(sp), -(sp)
+				move.l	10(sp), -(sp)
+
+				dc.w	$4EB9					; JSR to absolute pointer
+hdwrOrigAddr
+				dc.l	$40800000
+
+				move.w	(sp)+, d1
+				beq.s	@nojank
+				move.w	d1, 12(sp)
+
+				import	stdExit
+				lea		stdExit, a0
+				jmp		(a0)
+
+@nojank
+				move.l	4(sp), a0
+				move.l	(a0), d0
+				dc.w	$0080					; OR.L #xxxxxxxx, D0
+hdwrNewBits
+				dc.l	0
+
+				import	stdResult
+				lea		stdResult,a0
+				jmp		(a0)
+
 
 
 ************************************************************************

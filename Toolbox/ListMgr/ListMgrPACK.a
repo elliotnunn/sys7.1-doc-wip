@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		ListMgrPACK.a
 ;
 ;	Contains:	the List Manager
@@ -11,30 +18,6 @@
 ;
 ;	Change History (most recent first):
 ;
-;	   <SM7>	  9/9/93	SAM		Changed ShiftDown to not assume the PtInRect will leave
-;									thePoint.v in D1 (good lord!).
-;	   <SM6>	 8/16/93	fau		Moved <LW3,4,5> to happen in the GetTheListProc routine, instead
-;									of where they were.  This is where the check should be
-;									performed.  This was exposed by a PageMaker bug, after Ludwig
-;									shipped.
-;	   <SM5>	 6/14/93	kc		Roll in Ludwig.
-;	   <LW5>	  5/3/93	chp		Flush the caches for LDEF handles smaller than 32 bytes. It used
-;									to be 16 bytes, but a 22-byte, unflushed, fake defproc has been
-;									discovered in Software Ventures Microphone II and Microphone
-;									Pro. (RADAR #1082386)
-;	   <LW4>	  3/8/93	fau		Made the compare in previous checkin be 16 bytes, instead of 12,
-;									and unsigned.
-;	   <LW3>	  3/6/93	fau		Fixed bug 1070072.  Essentially, a slimy developer was using a
-;									fake LDEF to stuff their own code and NOT flushing the cache
-;									afterwards.  They relied on the HLOCK in the initlist routine to
-;									flush it for them.  We "fixed" them by checking the size of the
-;									LDEF handle to see if it's less than 12 bytes.  If so, we will
-;									flush the cache for them.  This penalizes developers who use
-;									this method and do flush the cache.  All for compatibility.
-;	   <SM4>	 1/27/93	PN		Add emStartTicks extended memory global to use in ListMgrPack to
-;									replace the 'startTicks'.
-;		 <3>	11/11/92	GMA		Set RomMapInsert to mapTrue before getting LDEF resources. fixes
-;									bug # 1052658.
 ;	   <SM2>	 11/5/92	SWC		Changed PackMacs.a->Packages.a.
 ;		<13>	  3/4/91	dba		dty: get rid of SysVers conditionals
 ;		<12>	 1/14/91	dba		(stb) Restore the use of hilite value of 255 when there is no
@@ -722,11 +705,11 @@ clickWait
 			MOVE.L		(SP)+, D1				; Copy it into D1.
 			MOVE.L		D1, 10(SP)				; And put it on the stack for ScrollDelay.
 
-			move.l		ExpandMem,A0						; A0 -> ExpandedMem	 <SM4>
-			move.l		ExpandMemRec.emStartTicks(A0),D0	; See if we need to set this. <SM4>
+			LEA			startTicks,A0
+			MOVE.L		(A0),D0					; See if we need to set this.
 			BNE.S		@startTicksOK			; Skip if not.
 			MOVE.L		D1, D0					; Use TickCount value.
-			MOVE.L		D0,ExpandMemRec.emStartTicks(A0)	; Put it in startTicks. <SM4>
+			MOVE.L		D0,(A0)					; Put it in startTicks.
 
 @startTicksOK
 			MOVE.L		D0,14(SP)				; copy startTicks to stack for ScrollDelay.
@@ -739,8 +722,8 @@ clickWait
 			BRA.S		@doneAutoScroll
 
 @noAutoScroll
-			move.l	ExpandMem,A0						; A0 -> ExpandedMem	 <SM4>
-			move.l	#0,ExpandMemRec.emStartTicks(A0)	; Clear out startTicks we're not scrolling anymore <SM4>
+			LEA			startTicks,A0
+			CLR.L		(A0)					; Clear out startTicks we're not scrolling anymore
 
 @doneAutoScroll
 
@@ -1013,8 +996,8 @@ clickCont
 			SUBQ.L		#4, SP
 			_TickCount							; Get a time stamp.
 		
-			move.l	ExpandMem,A0						; A0 -> ExpandedMem	 <SM4>
-			move.l	(SP)+,ExpandMemRec.emStartTicks(A0)	; Put it in startTicks. <SM4>
+			LEA			startTicks,A0
+			MOVE.L		(SP)+,(A0)				; Put it in startTicks.
 
 			SUBQ		#2,SP
 			MOVE.L		D7,-(SP)				; pass ctl Handle
@@ -1023,8 +1006,8 @@ clickCont
 			_TrackControl
 			ADDQ		#2,SP
 clickExit
-			move.l	ExpandMem,A0						; A0 -> ExpandedMem	 <SM4>
-			move.l	#0,ExpandMemRec.emStartTicks(A0)	; Clear out startTicks <SM4>
+			LEA			startTicks,A0
+			CLR.L		(A0)					; Clear out startTick
 
 			ADDQ		#8,SP					; strip off the rect
 Std10Exit
@@ -1134,7 +1117,7 @@ ShiftDown
 @3
 			MOVE.B		D0,-(SP)				; only on if in rect and turn on
 			MOVE.W		D3,-(SP)				; push the cell again
-			MOVE.W		D5,-(SP)				; push point.v (dont assume PtInRect will leave it in D1! SHeesh!)	<SM7> SAM
+			MOVE.W		D1,-(SP)				; push point.v
 			MOVE.L		A4,-(SP)				; and the handle
 			_LSetSelect 						; and select/deselect the cell
 @12
@@ -1151,6 +1134,8 @@ ShiftDown
 			MOVEM.L 	(SP)+,D7/A2 			; get old click, our address
 			RTS
 
+
+startTicks	DC.L		0
 
 ;-------------------------------------------------------------------------------
 ;			PROCEDURE ClickTrack( ctl: ControlHandle; part: INTEGER );
@@ -1209,8 +1194,7 @@ ClickTrack
 @2
 
 			SUBQ.L		#2, SP					; Make room for ScrollDelay return
-			move.l		ExpandMem,A0						; A0 -> ExpandedMem	 <SM4>
-			move.l		ExpandMemRec.emStartTicks(A0),-(SP)	; startTicks for ScrollDelay <SM4>
+			MOVE.L		startTicks,-(SP)		; startTicks for ScrollDelay
 			SUBQ.L		#4, SP					; Reserve space for actionTicks
 			MOVE.W		D0, -(SP)				; itemsVisible for ScrollDelay
 
@@ -1351,21 +1335,7 @@ DoDrExit
 GetTheListProc
 			MOVE.L		ListDefHandle(A3),D0	; get the handle
 			BEQ.S		@done					; => didn’t get one
-
-; Some programmers are pretty slimy and load an LDEF that is empty.  They then					<LW3> fau
-; stuff some code into it.  However, since HLOCK does not flush the cache anymore,				<LW3> fau
-; the code that they stuff into it might not get written back to memory.  To solve this,		<LW3> fau
-; we check here whether the LDEF resource size is less than, say, 32 bytes.  If so, we			<LW5> chp
-; assume that they have already loaded the LDEF and modified it, so we flush the cache			<LW3> fau
-; for them.
-
-			MOVE.L		ListDefHandle(A3),A0	; get the handle								<LW3> fau
-			_GetHandleSize						; How big is our LDEF Handle					<LW3> fau
-			cmp.l		#32,D0					; Is it "small"									<LW5> chp
-			bhi.s		@RealLDEF				; no, don't flush the cache						<LW3> fau
-			jsr			([jCacheFlush])			; else, flush the caches.						<LW3> fau
-@RealLDEF										;												<LW3> fau
-			MOVE.L		ListDefHandle(A3),A0	; get the handle								<LW3> fau
+			MOVE.L		D0,A0
 			MOVE.L		A0,-(SP)				; and load the defProc
 			_LoadResource
 			MOVE.L		(A0),D0					; Is the handle still empty?	<S412	29Feb88>
@@ -1756,8 +1726,6 @@ ListNew 										; don’t use StdEntry because no handles yet
 			MOVE.L		A0,cells(A3)			; save handle
 
 ; initialize the list defProc handle
-
-			MOVE.W		#MapTrue, RomMapInsert	; insert ROM map							<SM3>
 
 			MOVE.W		NLProc(A6),D3			; get the defProc ID
 

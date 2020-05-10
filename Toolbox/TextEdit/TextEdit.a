@@ -1,4 +1,11 @@
 ;
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;
+
+;
 ;	File:		TextEdit.a (formerly te68k.a)
 ;
 ;	Contains:	TextEdit for ROM or (when included in TextEditPatch.a) 'ptch' 0
@@ -18,7 +25,6 @@
 ;									teHandle from a RecoverHandle on the tePtr
 ;	   <SM8>	 6/28/93	kc		Init TEDoText,TERecal and TEWdBreak at TEGlobalInit time so work
 ;									around a QuickTime bug. (Movies containing text as StartupItems)
-;	   <SM7>	10/22/92	CSS		Change some branch short instructions to word branches.
 ;	   <SM6>	 10/6/92	PN		# 1040150 Get rid of Sysvers conditionals and bring the code to
 ;									the current state (7.1)
 ;		<50>	 8/11/92	SMB		#1036481 <gbm>: #1036481 <gbm>: Removed font/keyboard
@@ -1234,7 +1240,6 @@ TextEdit	Proc		Export
 			
 ; sets up vectors to be used for patching TextEdit and clears ExpandMem TE globals <28June89smb>
 			Export		GestaltTEVersion					; <13>
-			Export		TEGlobalInit					; <13>
 ;-------------------------------------------------------------------------------------------------
 
 AddrTable	DC.W		iTEStylPaste-AddrTable				; 0
@@ -1254,92 +1259,6 @@ AddrTable	DC.W		iTEStylPaste-AddrTable				; 0
 			DC.W		iTECustomHook-AddrTable				; 12
 			DC.W		iTENumStyles-AddrTable				; 13
 			DC.W		iTEFeatureFlag-AddrTable			; 14
-
-;-------------------------------------------------------------------------------------------------
-
-; Add new vectors <28June89smb>
-; EMVectorTable contains the offset in ExpandMemRec which holds the routine address
-; and the offset to the routine from here.
-
-EMVectorTable
-			with	ExpandMemRec
-			dc.w	vDoErase,			xDoErase-EMVectorTable
-			dc.w	vCaretDisplay,		xCaretDisplay-EMVectorTable
-			dc.w	vGetLRPosition,		xGetLRPosition-EMVectorTable
-			dc.w	vGetRLPosition,		xGetRLPosition-EMVectorTable
-			dc.w	vOnLineEnd,			xOnLineEnd-EMVectorTable
-			dc.w	vCaretInsideRun,	xCaretInsideRun-EMVectorTable
-			
-			dc.w	vSetDirection,		xSetDirection-EMVectorTable
-			dc.w	vGetDirection,		xGetDirection-EMVectorTable
-			
-			dc.w	vGetStylesInOrder,	xGetStylesInOrder-EMVectorTable			
-			dc.w	vteGetFormatOrder,	xteGetFormatOrder-EMVectorTable
-			
-			dc.w	vGetWidth,			xGetWidth-EMVectorTable
-			dc.w	vGetCurScript,		xGetCurScript-EMVectorTable
-
-			dc.w	vOnSameLine,		xOnSameLine-EMVectorTable
-			dc.w	vMeasureWidth,		xMeasureWidth-EMVectorTable
-			dc.w	vMeasureWholeRun,	xMeasureWholeRun-EMVectorTable
-			dc.w	vHiliteLineEnds,	xHiliteLineEnds-EMVectorTable
-			dc.w	vInvrtRectangle,	xInvrtRectangle-EMVectorTable
-			dc.w	vPixelWidths,		xPixelWidths-EMVectorTable
-			
-			dc.w	vTEBufferText,		xTEBufferText-EMVectorTable
-			dc.w	vDumpBuffer,		xDumpBuffer-EMVectorTable
-			
-			dc.w	vCursorMovement,	xCursorMovement-EMVectorTable
-			dc.w	vTestRunDirection,	xTestRunDirection-EMVectorTable
-			
-			dc.w	vBufferChar,		xBufferChar-EMVectorTable
-			
-			dc.w	vSetFont2Keyboard,	xSetFont2Keyboard-EMVectorTable
-			dc.w	vSetKeyboard2Font,	xSetKeyboard2Font-EMVectorTable
-			
-			dc.w	vStyleGuts,			xStyleGuts-EMVectorTable
-			dc.w	vConcatRuns,		xConcatRuns-EMVectorTable
-			dc.w	0,0
-
-;formFeed
-;----------------------------------------------------------------------
-;
-;			PROCEDURE TEGlobalInit
-;			<27June89smb>
-;
-;			To be called from StartInit, in order to assign vectors 
-;			and clear expandMem globals only once.
-;
-;----------------------------------------------------------------------
-TEGlobalInit
-			movem.l	a2/a3,-(sp)
-												;							<SM8>
-			Lea 		XDoText,A0				; set up doText hook		<SM8>
-			Move.L		A0,TEDoText				;							<SM8>
-			Lea 		XReCalLines,A0			; set up recal hook			<SM8>
-			Move.L		A0,TERecal				;							<SM8>
-			Lea 		DefWordBrk,A0			; get default word break	<SM8>
-			Move.L		A0,TEWdBreak			;							<SM8>
-												;							<SM8>
-; initialize expandMem with my TE vectors
-			lea		EMVectorTable,a0			; base address of vector table
-			move.l	a0,a1					
-			move.l	ExpandMem,a2				; get pointer to expandMem
-VectorLoop
-			move.l	(a1)+,d0					; get routine offset from EMVectorTable
-			beq.s	LoopXit
-			lea		0(a0,d0.w),a3				; get routine address
-			swap	d0							; get expandMem offset (vector place holder)
-			move.l	a3,0(a2,d0.w)				; load into expandMem
-			bra.s	VectorLoop
-LoopXit
-			movem.l	(sp)+,a2/a3
-			
-; when TextEdit 3.0 is ptch0, need this code			
-			move.l	#gestaltTextEditVersion, d0	; <8Aug89smb>
-			lea		GestaltTEVersion, a0
-			_NewGestalt
-			rts
 
 ;----------------------------------------------------------------------
 ;			PROCEDURE GestaltTEVersion
@@ -2883,7 +2802,7 @@ waitLoop
 			Beq.S		noClikProc
 			Move.L		D0,A0
 			Jsr 		(A0)
-			Beq			done1					; if returns zero abort drag						<SM7> CSS 
+			Beq.s		done1					; if returns zero abort drag
 
 noClikProc
 			Clr 		-(SP)					; make room for result
@@ -3146,7 +3065,7 @@ DoSearch
 			MoveQ		#1,D2					; just 1 style
 			Move.W		D3,D1					; start of line
 			Move.W		D6,D0					; whole line
-			Bra			@DoMeasure
+			Bra.s		@DoMeasure
 
 @StyledRecord
 			sf			useOldMethod(a6)		; flag for getting style runs <28Sept88smb>
@@ -7963,8 +7882,22 @@ StyleTrap
 
 DontSet
 		
+;;	If forRAM THEN
+	If (Not ForROM) THEN						; <19Feb89smb>
+			BTst		#14,ROM85				; color QD around?					<C971/RWW112487>
+			Bnz.S		@1						; nope								<C971/RWW112487>
+			Move.W		teMode(A3),txMode(A0)	; 									<C971/RWW112487>
+			_GetForeColor						; 									<C971/RWW112487>
+			Bra.S		@2						; 									<C971/RWW112487>
+@1			Bsr			GetForeColor			; 									<C971/RWW112487>
+@2
+;;	ElseIf onNuMac|onMvMac THEN					; <C914/29Oct87> rwh
+	ElseIf hasCQD THEN							; <19Feb89smb> 
 			Move.W		teMode(A3),txMode(A0)	; do set the mode		** <C815/13feb87/MBK **
 			_GetForeColor						; for Ikki				** <C182/6oct86/MBK> **
+	Else
+			Bsr			GetForeColor			; for Alladin			** <C182/6oct86/MBK> **
+	EndIf
 
 			Move.L		teTextH(A3),A0			; get handle size
 
@@ -9868,7 +9801,7 @@ iLineLoop
 
 			SubQ		#2,A0					; got over-incremented
 			Move.L		A0,savePtr(A6)			; save it
-			Bra 		iStage3					; on to stage 3 		<SM7> CSS 
+			Bra.s		iStage3					; on to stage 3
 
 @3
 ; D5 (temp lineStart array) may be greater than the old number of lines, so skip the
@@ -10568,7 +10501,7 @@ DoPaste
 			_HLock								; lock text scrap		** MBK 6/20/86 **
 			Move.L		(A0),D6					; ptr to scrap			** MBK 6/20/86 **
 
-			Bsr 		PasteGuts				; go paste the scrap	<C971/RWW102887>NO <SM7> CSS 
+			Bsr.s		PasteGuts				; go paste the scrap	<C971/RWW102887>NO
 
 @1			Move.L		(SP)+,A0				; temp scrap handle		** MBK 6/20/86 **
 			_DisposHandle						; get rid of it			** MBK 6/20/86 **
@@ -13449,11 +13382,7 @@ scrollEm
 			move.w		#1,-(sp)				; itemsVisible = smallest possible (1)		<4>
 			move		d4,-(sp)				; pass dh
 			move		d1,-(sp)				; pass dv
-
-			movea.l		a3, a0					; Grab Text Edit pointer from A3			<sm9>
-			_RecoverHandle						; Recover the tehandle						<sm9>
-			move.l		a0,-(sp)				; slam tehandle onto stack					<sm9>
-
+			move.l		8(a6),-(sp)				; slam tehandle onto stack
 			subq.l		#4,sp					;											<4>
 			_TickCount							; Get a time stamp.							<4>
 			move.l		(sp)+,d1				; Copy it into D1.							<4>

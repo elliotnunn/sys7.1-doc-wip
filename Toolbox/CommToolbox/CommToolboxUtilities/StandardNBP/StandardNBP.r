@@ -1,4 +1,11 @@
 /*
+	Hacks to match MacOS (most recent first):
+
+	<Sys7.1>	  8/3/92	Elliot make this change
+				  9/2/94	SuperMario ROM source dump (header preserved below)
+*/
+
+/*
 	File:		StandardNBP.r
 
 	Contains:	Resources for StandardNBP dialog
@@ -140,7 +147,7 @@ resource 'DITL' (CTB_NulookupDITLID, purgeable) {
 			disabled
 		},
 		/* [9] version string */
-#ifdef Pre70
+#if Pre70
 		{194, 10, 207, 176},
 #else
 		{197, 10, 207, 176},			// need more room for focus
@@ -168,7 +175,7 @@ resource 'DITL' (CTB_NulookupDITLID, purgeable) {
 		UserItem {
 			disabled
 		},
-#ifndef Pre70
+#if !Pre70
 		/* [14] hdlg ref 	*/
 		{0, 0, 0, 0},
 		HelpItem {

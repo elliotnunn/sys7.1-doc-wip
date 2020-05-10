@@ -1,3 +1,10 @@
+;/*
+;	Hacks to match MacOS (most recent first):
+;
+;	<Sys7.1>	  8/3/92	Elliot make this change
+;				  9/2/94	SuperMario ROM source dump (header preserved below)
+;*/
+
 	ComponentDispatch (CallComponent , ComponentResult , 0);
 	ComponentDispatch (RegisterComponent , Component , 1);
 	ComponentDispatch (UnregisterComponent , OSErr , 2);
@@ -33,12 +40,3 @@
 	ComponentDispatch (UnloadComponent , OSErr , 32);
 	ComponentDispatch (OpenDefaultComponent , ComponentInstance , 33);
 	ComponentDispatch (ComponentSearch , void , 34);
-	ComponentDispatch (ValidComponent , RegisteredComponentPtr, 35);
-	ComponentDispatch (xDelegateStub , void, -36);
-	ComponentDispatch (ValidComponentInstance , RegisteredComponentInstancePtr , 37);
-	ComponentDispatch (GrowRegisteredComponentInstanceTable , OSErr, 38);
-	ComponentDispatch (GrowRegisteredComponentTable , OSErr, 39);
-	ComponentDispatch (GetComponentInfoPrivate , OSErr, 40);
-	ComponentDispatch (GetComponentIconSuite , OSErr, 41);
-	ComponentDispatch (RegisterROMComponents , void, 42);
-	ComponentDispatch (ResolveComponentPlatform , short, 43);

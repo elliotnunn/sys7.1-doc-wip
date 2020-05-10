@@ -1,4 +1,11 @@
 #
+#	Hacks to match MacOS (most recent first):
+#
+#	<Sys7.1>	  8/3/92	Elliot make this change
+#				  9/2/94	SuperMario ROM source dump (header preserved below)
+#
+
+#
 #	File:		AliasMgr.make
 #
 #	Contains:	Makefile for the Alias manager Library.
@@ -11,13 +18,16 @@
 #
 
 
-AliasMgrObjects			=	"{ObjDir}alDlogUtil.a.o"		∂
-							"{ObjDir}alExt.c.o"				∂
-							"{ObjDir}alFill.c.o"			∂
-							"{ObjDir}alFind.c.o"			∂
+AliasMgrObjects			=	"{ObjDir}AliasMgrPatch.a.o"		∂
 							"{ObjDir}AliasMgr.a.o"			∂
+							"{ObjDir}alExt.c.o"				∂
+							"{ObjDir}alFind.c.o"			∂
+							"{ObjDir}alFill.c.o"			∂
 							"{ObjDir}alUtil.c.o"			∂
-							"{ObjDir}FolderMgr.a.o"
+							"{ObjDir}alDlogUtil.a.o"		∂
+							"{ObjDir}FolderMgr.a.o"			∂
+							"{ObjDir}PromptForUser.a.o"		∂
+							"{ObjDir}PromptForUser.c.o"
 
 
 "{LibDir}AliasMgr.lib"			ƒ	{AliasMgrObjects}
@@ -94,3 +104,11 @@ AliasMgrObjects			=	"{ObjDir}alDlogUtil.a.o"		∂
 									"{AIncludes}GestaltEqu.a"						∂
 									"{AliasMgrDir}FolderMgr.a"
 	Asm {StdAOpts} -o "{Targ}" "{AliasMgrDir}FolderMgr.a"
+
+
+"{ObjDir}AliasMgrPatch.a.o"		ƒ 	"{AliasMgrDir}AliasMgrPatch.a"
+	Asm {StdAOpts} -o "{Targ}" "{AliasMgrDir}AliasMgrPatch.a"
+
+
+"{RsrcDir}AliasMgr.rsrc"		ƒ	"{AliasMgrDir}alDialog.r"
+	Rez {StdROpts} -o {Targ} "{AliasMgrDir}alDialog.r"
